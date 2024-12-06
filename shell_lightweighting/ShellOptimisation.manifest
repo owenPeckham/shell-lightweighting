@@ -1,0 +1,13 @@
+{
+	"autodeskProduct":	"Fusion360",
+	"type":	"addin",
+	"id":	"2e18c25b-d8d8-4deb-9b02-f86aaa293e24",
+	"author":	"Owen Peckham",
+	"description":	{
+		"":	"An add-in that optimises the thickness of an outside shell of a body to retain the body's mass with the aim of lightweighting."
+	},
+	"version":	"V1.0",
+	"runOnStartup":	false,
+	"supportedOS":	"windows|mac",
+	"editEnabled":	true
+}
