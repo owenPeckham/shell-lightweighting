@@ -1,0 +1,20 @@
+# EXAMPLE LOG
+
+Optimisation of Body 1 shell thickness to maintain mass of 583.993048 g.
+17-09-2024 10:05:16
+Iteration: 1	Thickness: 1.56 mm	 Mass: 592.088414 g
+Iteration: 2	Thickness: 1.56 mm	 Mass: 592.088414 g
+Iteration: 3	Thickness: 1.56 mm	 Mass: 592.088414 g
+Iteration: 4	Thickness: 1.56 mm	 Mass: 592.088414 g
+Iteration: 5	Thickness: 1.56 mm	 Mass: 592.088414 g
+Iteration: 6	Thickness: 1.56 mm	 Mass: 592.088414 g
+Iteration: 7	Thickness: 1.54375 mm	 Mass: 589.207337 g
+Iteration: 8	Thickness: 1.54375 mm	 Mass: 589.207337 g
+Iteration: 9	Thickness: 1.54375 mm	 Mass: 589.207337 g
+Iteration: 10	Thickness: 1.54375 mm	 Mass: 589.207337 g
+Iteration: 11	Thickness: 1.536641 mm	 Mass: 587.542078 g
+Iteration: 12	Thickness: 1.532578 mm	 Mass: 586.590418 g
+
+Optimal shell thickness for Body 1 is 1.532578 mm.
+Initial mass: 583.993048 g	Final mass: 586.590418 g
+Optimisation completed in 12 iterations and 1484.928 seconds.
