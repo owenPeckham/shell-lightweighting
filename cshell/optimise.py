@@ -21,8 +21,8 @@ from scipy import ndimage
 
 from . import config as ccfg
 from . import fea
-from .band import Band
-from .design import DesignMap, DesignSpace, Discretisation, heaviside, passive_thin
+from .band import Band, P_from_compact
+from .design import DesignMap, DesignSpace, DeviceDesignMap, DeviceDisc, Discretisation, passive_thin
 from .fe_sparse import ActiveGrid, SparseFE
 from .mma import MMA, ProjectedLBFGSB, restore_mass
 from .objective import Settings, evaluate
@@ -30,7 +30,8 @@ from .surface import DesignSurface, medial_depth, mount_face_ids, mount_vertices
 
 HIST_COLS = ["start", "phase", "iter", "J", "C_C0", "lam_s_ratio", "lam_b_ratio", "lam_ratio", "governing",
              "mass_err", "G_s", "max_dxi", "max_dxi_raw", "move", "n_restore", "eig_iters", "eig_converged", "active_dof",
-             "t_geometry", "t_fe", "t_mma", "t_restore", "gpu_mem_GiB", "c_norm", "sliver_w", "stress_p", "beta"]
+             "t_geometry", "t_fe", "t_mma", "t_restore", "gpu_mem_GiB", "c_norm", "sliver_w", "stress_p", "beta",
+             "t_pull", "t_mmasub", "t_upload", "gpu_peak_GiB"]    # t_mma = t_pull + t_mmasub (+ bookkeeping)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -85,16 +86,27 @@ class PhaseModel:
         t0 = time.time()
         band = Band.build(ctx.V, ctx.T, self.h_g, D_comp)
         self.band = band
-        P = band.P(ctx.surf.V, ctx.surf.T)
+        face, bary = band.P_compact(ctx.surf.V, ctx.surf.T)
         ijk = band.ijk()
         eshape = tuple(int(np.ceil(n / self.k)) for n in band.grid.shape)
         eijk = ijk // self.k
+        del ijk
         elem = (eijk[:, 0] * eshape[1] + eijk[:, 1]) * eshape[2] + eijk[:, 2]
+        del eijk
         self.elem_shape, self.node_shape = eshape, tuple(n + 1 for n in eshape)
         self.origin = band.grid.origin                         # FE node (0,0,0) = band-grid corner
         rho_min = cfg["grid"]["rho_min"]
-        disc = Discretisation(phi=band.phi.astype(np.float64), P=P, elem=elem, n_elem=int(np.prod(eshape)), k=self.k,
-                              h_g=self.h_g, rho_min=rho_min, V_extra=band.n_deep * self.h_g ** 3)
+        n_elem, V_extra = int(np.prod(eshape)), band.n_deep * self.h_g ** 3
+        self.geometry_device = geometry_device(cfg["grid"].get("geometry_device", "auto"))
+        self.geometry_offload = bool(cfg["grid"].get("geometry_offload", True))
+        if self.geometry_device == "gpu":                      # compact band on the device (24 B/cell)
+            disc = DeviceDisc(band.phi, face, bary, ctx.surf.T, elem.astype(np.int32), ctx.surf.n_vertices, n_elem,
+                              self.k, self.h_g, rho_min, V_extra, log=log)
+        else:
+            P = P_from_compact(face, bary, np.ascontiguousarray(ctx.surf.T, np.int32), ctx.surf.n_vertices)
+            disc = Discretisation(phi=band.phi.astype(np.float64), P=P, elem=elem, n_elem=n_elem, k=self.k,
+                                  h_g=self.h_g, rho_min=rho_min, V_extra=V_extra)
+        del face, bary, elem
         m = cfg["manufacturing"]
         d = cfg["design"]
         a_hi = ctx.r_ma + d["closure_gamma"] * self.h_g
@@ -111,12 +123,10 @@ class PhaseModel:
                          filt=ctx.surf.filter(self.r_f), t_min=m["t_min_mm"], v_min=m["void_min_mm"],
                          b_v=m["wall_bias_mm"], b_o=m["outer_bias_mm"], soft_w=d["inset_soft_mm"])
         self.ds, self.disc = ds, disc
-        self.dm = DesignMap(ds, disc)
+        self.dm = DeviceDesignMap(ds, disc) if self.geometry_device == "gpu" else DesignMap(ds, disc)
         # solid: ψ = φ (nominal), ψ_ab = φ + b_o (THEORY §3.8, §3.9)
-        chi0, _ = heaviside(np, -disc.phi, disc.eps)
-        self.V0 = float(chi0.sum()) * self.h_g ** 3 + disc.V_extra
-        chi0ab, _ = heaviside(np, -(disc.phi + m["outer_bias_mm"]), disc.eps)
-        self.rho0 = np.bincount(elem, weights=chi0ab, minlength=disc.n_elem) / self.k ** 3
+        self.V0 = self.dm.solid_volume()
+        self.rho0 = self.dm.solid_rho(m["outer_bias_mm"])
         # BCs on the dense node box (THEORY §4.3)
         self.fixed, self.load, self.bc_info = fea.build_bcs(self.origin, self.h_e, self.node_shape, ctx.V, ctx.T, ctx.TF,
                                                             ctx.support, ctx.loads)
@@ -126,6 +136,11 @@ class PhaseModel:
         self.fe = None
         log(f"[cshell] phase {phase}: h_e {self.h_e} h_g {self.h_g}, band {band.n / 1e6:.1f} M cells, element box "
             f"{eshape}, passive {self.passive_parts}, V0 {self.V0:.1f} mm³, {self.t_setup:.0f} s")
+        if self.geometry_device == "gpu":
+            log(f"[cshell]   geometry chain on the GPU: compact band {disc.nbytes / 2**30:.2f} GiB"
+                + (", released from the device during each FE evaluation" if self.geometry_offload else ""))
+        else:
+            log("[cshell]   geometry chain on the CPU (NumPy/SciPy)")
 
     def _stress_mask(self) -> np.ndarray:
         """m_e = 0 within exclude_bc_mm of a fixed or loaded node and in mounts unless include_mounts (THEORY §4.4(b))."""
@@ -137,9 +152,7 @@ class PhaseModel:
         near = ndimage.binary_dilation(bc, iterations=r)[:-1, :-1, :-1]
         m = ~near
         if not cap["include_mounts"]:
-            mf = self.dm.disc.P @ self.ctx.mount.astype(float)
-            frac = np.bincount(self.disc.elem, weights=mf, minlength=self.disc.n_elem) / np.maximum(
-                np.bincount(self.disc.elem, minlength=self.disc.n_elem), 1)
+            frac = self.dm.elem_mean(self.ctx.mount.astype(float))
             m &= frac.reshape(self.elem_shape) < 0.5
         return m.ravel()
 
@@ -156,16 +169,13 @@ class PhaseModel:
         if self.fe is not None:
             self.fe.free()
             self.fe = None
-            try:                                             # return the old factor's buffers before planning anew
-                import cupy as cp
-                cp.get_default_memory_pool().free_all_blocks()
-            except ImportError:
-                pass
+        free_device_memory()          # old factor and cached blocks go back before the new plan sizes itself
         self.grid_fe = ActiveGrid(mask)
         c = self.ctx.cfg
         self.fe = SparseFE(self.grid_fe, self.fixed, self.load, self.h_e, c["material"]["E_MPa"], c["material"]["nu"],
-                           backend=c["fe"]["backend"])
-        self.log(f"[cshell]   active set rebuilt: {self.grid_fe.Ne} elements, {self.grid_fe.ndof} DOF")
+                           backend=c["fe"]["backend"], precision=c["fe"].get("precision", "auto"))
+        self.log(f"[cshell]   active set rebuilt: {self.grid_fe.Ne} elements, {self.grid_fe.ndof} DOF, "
+                 f"{_gpu_free():.1f} GiB device memory free")
         return True
 
     def settings(self, frac: float) -> Settings:
@@ -180,7 +190,28 @@ class PhaseModel:
                         rho_min=c["grid"]["rho_min"])
 
     def fe_eval(self, rho: np.ndarray, st: Settings, base, c_norm: float, prev_modes=None):
-        """FE responses for element densities ρ (dense element box)."""
+        """FE responses for element densities ρ (dense element box). With the GPU chain and `grid.geometry_offload`
+        the compact band leaves the device for the FE evaluation, so the factor sees the same free memory as with
+        the CPU chain (same fp64/fp32 choice); `t_upload` records the copy back."""
+        off = self.geometry_device == "gpu" and self.geometry_offload
+        if off:
+            self.disc.release()
+        try:
+            return self._fe_eval(rho, st, base, c_norm, prev_modes)
+        finally:
+            if off:
+                self.t_upload = self.disc.upload()
+
+    def release(self):
+        """Free the FE factor and the device band (before the next PhaseModel is built)."""
+        if self.fe is not None:
+            self.fe.free()
+            self.fe = None
+        if self.geometry_device == "gpu":
+            self.disc.release()
+        free_device_memory()
+
+    def _fe_eval(self, rho: np.ndarray, st: Settings, base, c_norm: float, prev_modes=None):
         if self.ensure_active(rho):
             prev_modes = None                                # new DOF numbering: warm-start modes no longer apply
         g = self.grid_fe
@@ -249,7 +280,17 @@ class Run:
             return np.concatenate([np.full(nv, 0.5), np.full(nv, 0.5)])
         if self.start == "solid":
             return np.concatenate([np.zeros(nv), np.ones(nv)])
-        raise NotImplementedError(f"start {self.start!r} (vshell start is Stage 2)")
+        if self.start == "vshell":                       # S2: map vshell's best design (cshell.collect, §7.4)
+            from .collect import vshell_start_xi
+            ctx = getattr(self, "ctx", None)             # set by the CLI; otherwise build the context once
+            if ctx is None:
+                self.log("[cshell] vshell start: no context attached to Run, building one")
+                ctx = self.ctx = Context(self.cfg, log=self.log)
+            xi = vshell_start_xi(ctx, self.cfg, log=self.log)
+            if len(xi) != 2 * nv:
+                raise ValueError(f"vshell start has {len(xi)} entries, expected {2 * nv}")
+            return xi
+        raise NotImplementedError(f"start {self.start!r}")
 
     # -- checkpoints ---------------------------------------------------------------------------------------------
     def _ckpt_path(self, rs: RunState):
@@ -277,8 +318,12 @@ class Run:
     def _history(self, row: dict):
         path = os.path.join(self.out, "history.csv")
         new = not os.path.exists(path)
+        cols = HIST_COLS
+        if not new:                                      # keep an existing file's columns (runs resumed across versions)
+            with open(path, newline="") as f:
+                cols = next(csv.reader(f), None) or HIST_COLS
         with open(path, "a", newline="") as f:
-            w = csv.DictWriter(f, fieldnames=HIST_COLS, extrasaction="ignore")
+            w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
             if new:
                 w.writeheader()
             w.writerow(row)
@@ -295,12 +340,16 @@ class Run:
             self.log(f"[cshell] resuming {self.start} at phase {rs.phase} iteration {rs.it}")
         hours0 = rs.hours_used
         phases = range(len(cfg["grid"]["phases"])) if only_phase is None else [only_phase]
+        model = None
         result = {}
         for ph in phases:
             if ph < rs.phase:
                 continue
             pending_d = None
             while True:                                          # restarts after an outward-extent extension
+                if model is not None:                            # free the previous band/factor before building anew
+                    model.release()
+                model = dm = disc = None
                 model = PhaseModel(ctx, ph, rs.D_comp, self.log)
                 if pending_d is not None:                        # §3.5 step 2: keep d unchanged on the new d^hi
                     tgt = np.clip(pending_d / np.maximum(model.ds.d_hi, 1e-12), 0.0, 1.0)
@@ -353,14 +402,18 @@ class Run:
                         lam_s0 = cfg["material"]["strength_MPa"] / (c_norm * base["sigma_pn0"])
                         from .objective import capacity
                         base_c["lam0"] = capacity(lam_s0, base["mu0"], st.knockdown, st.beta)[0]
+                    peak = PeakGPU().start()
                     fe = model.fe_eval(rho, st, base_c, c_norm, prev_modes)
                     t_fe = time.time() - t0
+                    gpu_peak = peak.stop()
                     if not np.isfinite(fe["J"]):
                         raise FloatingPointError(f"non-finite objective at phase {ph} iteration {it}")
                     t0 = time.time()
-                    g_rho = np.zeros(disc.n_elem)
-                    g_rho[model.grid_fe.elem_dense] = fe["dJ"]
+                    cx = dm.cxp                                  # element-box array module (CuPy on the GPU chain)
+                    g_rho = cx.zeros(disc.n_elem)
+                    g_rho[cx.asarray(model.grid_fe.elem_dense)] = cx.asarray(fe["dJ"])
                     gJd, gJa = dm.pull_rho_hat(sab, g_rho)
+                    del g_rho
                     snom = dm.forward(xi[:nv], xi[nv:], as_built=False)
                     V = dm.volume(snom)
                     gVd, gVa = dm.volume_grad(snom)
@@ -369,6 +422,7 @@ class Run:
                     gJ = np.concatenate([gJd, gJa])[act]
                     gG = np.concatenate([gGd, gGa])[act]
                     gV = np.concatenate([gVd, gVa])[act] / model.V0
+                    t_pull = time.time() - t0
                     if s_J is None:
                         s_J = 10.0 / max(np.abs(gJ).max() * opt["move"] * 10, 1e-12)   # |Δf0| ~ 10 per full move
                     f0 = s_J * (-fe["J"] + w_s * Gs)
@@ -377,7 +431,9 @@ class Run:
                     g = np.array([e - tau, -e - tau]) / tau
                     dg = np.vstack([gV, -gV]) / tau
                     x_act = xi[act]
+                    t1 = time.time()
                     x_new = optimiser.step(x_act, f0, df0, g, dg)
+                    t_mmasub = time.time() - t1
                     xi_new = xi.copy()
                     xi_new[act] = x_new
                     t_mma = time.time() - t0
@@ -404,7 +460,8 @@ class Run:
                                move=float(np.ravel(getattr(getattr(optimiser, "state", None), "move", opt["move"]))[0]),
                                n_restore=nres, eig_iters=fe["eig_iters"], eig_converged=fe["eig_converged"],
                                active_dof=model.grid_fe.ndof, t_geometry=t_geo, t_fe=t_fe, t_mma=t_mma, t_restore=t_res,
-                               gpu_mem_GiB=_gpu_mem(), c_norm=c_norm, sliver_w=w_s, stress_p=st.stress_p, beta=st.beta)
+                               gpu_mem_GiB=_gpu_mem(), gpu_peak_GiB=gpu_peak, t_pull=t_pull, t_mmasub=t_mmasub,
+                               t_upload=getattr(model, "t_upload", 0.0), c_norm=c_norm, sliver_w=w_s, stress_p=st.stress_p, beta=st.beta)
                     self._history(row)
                     self.log(f"[{self.start}] ph {ph} it {it:3d}  J {fe['J']:+.5f}  C/C0 {row['C_C0']:.4f}  "
                              f"V/V0-1 {mass_err:+.1e}  Gs {Gs:.3f}  |dξ̃| {dxi:.4f} (raw {dxi_raw:.2f})  FE {t_fe:.1f}s geo {t_geo:.1f}s")
@@ -429,8 +486,7 @@ class Run:
                         break
                 if extended:                                     # §3.5: double D_comp, rebuild, re-map, restore, reset MMA
                     _, _, pending_d, _, _, _ = model.dm.vertex_fields(xi[:nv], xi[nv:])
-                    if model.fe is not None:
-                        model.fe.free()
+                    model.release()
                     D_new = 2.0 * rs.D_comp
                     self.log(f"[cshell] outward extent extended {rs.D_comp:.1f} -> {D_new:.1f} mm at phase {ph} "
                              f"iteration {rs.it}")
@@ -442,8 +498,7 @@ class Run:
             result[f"phase_{ph}"] = dict(J=J_prev, xi=xi, **stats)
             np.save(os.path.join(self.out, f"xi_{self.start}_phase{ph}.npy"), xi)
             rs = RunState(self.start, ph + 1, 0, xi, c_norm, None, None, rs.D_comp, rs.hours_used)
-            if model.fe is not None:
-                model.fe.free()
+            model.release()
         return dict(status="done", **{k: {kk: vv for kk, vv in v.items() if kk != "xi"} for k, v in result.items()})
 
     def _check_extension(self, model: PhaseModel, xi, nv) -> bool:
@@ -469,6 +524,73 @@ def phase_stats(model: PhaseModel, xi, nv) -> dict:
                 snap_closed_area_frac=float((A * (xt_a >= 0.98)).sum() / At),
                 d_max=float(d[act].max()), d_mean=float((A * d).sum() / At),
                 wall_open_min=float(w.min()) if w.size else None, wall_open_max=float(w.max()) if w.size else None)
+
+
+def geometry_device(choice: str) -> str:
+    """`grid.geometry_device`: "auto" (GPU when CuPy sees a CUDA device), "cpu" or "gpu" (error without CUDA)."""
+    if choice not in ("auto", "cpu", "gpu"):
+        raise ValueError(f"grid.geometry_device must be auto, cpu or gpu, not {choice!r}")
+    if choice == "cpu":
+        return "cpu"
+    from .fe_sparse import _cuda_ok
+    if _cuda_ok():
+        return "gpu"
+    if choice == "gpu":
+        raise RuntimeError("grid.geometry_device = 'gpu' but CuPy finds no CUDA device")
+    return "cpu"
+
+
+class PeakGPU:
+    """Peak device memory in use (driver view, includes cuDSS) between start() and stop(), sampled every 20 ms."""
+
+    def __init__(self, dt: float = 0.02):
+        import threading
+        self.dt, self.peak, self._stop, self._th = dt, float("nan"), threading.Event(), None
+        self._threading = threading
+
+    def start(self):
+        try:
+            import cupy as cp
+            cp.cuda.runtime.memGetInfo()
+        except Exception:
+            return self
+        self.peak = _gpu_mem()
+        self._stop.clear()
+
+        def loop():
+            while not self._stop.wait(self.dt):
+                self.peak = max(self.peak, _gpu_mem())
+        self._th = self._threading.Thread(target=loop, daemon=True)
+        self._th.start()
+        return self
+
+    def stop(self) -> float:
+        if self._th is not None:
+            self._stop.set()
+            self._th.join()
+            self._th = None
+            self.peak = max(self.peak, _gpu_mem())
+        return self.peak
+
+
+def free_device_memory() -> None:
+    """Collect unreachable objects (the nvmath/cuDSS solver of a freed SparseFE sits in reference cycles and keeps its
+    factor alive until the cyclic GC runs) and return CuPy's cached blocks to the driver."""
+    import gc
+    gc.collect()
+    try:
+        import cupy as cp
+        cp.get_default_memory_pool().free_all_blocks()
+    except Exception:                                        # no CuPy, or CuPy without a CUDA device (CPU nodes)
+        pass
+
+
+def _gpu_free() -> float:
+    try:
+        import cupy as cp
+        return cp.cuda.runtime.memGetInfo()[0] / 2 ** 30
+    except Exception:
+        return float("nan")
 
 
 def _gpu_mem() -> float:

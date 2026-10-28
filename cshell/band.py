@@ -330,6 +330,15 @@ def heaviside_quintic(s: np.ndarray, eps: float) -> np.ndarray:
     return 0.5 + x * (15.0 / 16.0 + x * x * (-5.0 / 8.0 + 3.0 / 16.0 * x * x))
 
 
+def P_from_compact(face: np.ndarray, bary: np.ndarray, Th: np.ndarray, n_v: int, dtype=np.float64) -> sp.csr_matrix:
+    """CSR P from (closest Γ_h triangle, raw barycentrics): β ← max(β, 0) / Σ max(β, 0) in float64 (§3.6)."""
+    n = len(face)
+    b = np.clip(bary.astype(np.float64), 0.0, None)
+    b /= b.sum(1, keepdims=True)
+    indptr = np.arange(0, 3 * n + 1, 3, dtype=np.int64 if 3 * n >= 2**31 - 1 else np.int32)
+    return sp.csr_matrix((b.astype(dtype, copy=False).ravel(), Th[face].ravel(), indptr), shape=(n, n_v))
+
+
 @dataclass
 class Band:
     """Sparse φ band (§3.1). Arrays are indexed by band cell (sorted by `flat`)."""
@@ -413,22 +422,24 @@ class Band:
         """Sparse (n_cells x N_v) matrix, 3 non-zeros per row: x_c -> π(x_c) on the fine tessellation -> closest
         triangle t' of Γ_h and barycentrics β' (§3.6). Rows sum to 1; a linear vertex field is reproduced exactly
         at the located point. Vh (N_v, 3) mm, Th (N_t, 3)."""
+        face, bary = self.P_compact(Vh, Th, chunk, backend, device)
+        return P_from_compact(face, bary, np.ascontiguousarray(Th, np.int32), len(Vh), dtype)
+
+    def P_compact(self, Vh: np.ndarray, Th: np.ndarray, chunk: int = CHUNK, backend: str = "auto",
+                  device: str | None = None):
+        """Compact form of P (§3.6): closest triangle of Γ_h per cell (int32) and the raw float32 barycentrics of the
+        located point. `P_from_compact` (CPU) and design.DeviceDisc (GPU) clip and normalise them identically."""
         Vh = np.ascontiguousarray(Vh, np.float64)
         Th = np.ascontiguousarray(Th, np.int32)
         be = make_backend(Vh - self.c0, Th, backend, device)
         n = self.n
-        cols = np.empty((n, 3), np.int32)
-        val = np.empty((n, 3), dtype)
+        face = np.empty(n, np.int32)
+        bary = np.empty((n, 3), np.float32)
         for s in range(0, n, chunk):
             sl = slice(s, min(n, s + chunk))
             pi = self.closest_points(sl) - self.c0
-            _, face, bary = be.query(pi, signed=False)
-            b = np.clip(bary.astype(np.float64), 0.0, None)
-            b /= b.sum(1, keepdims=True)
-            cols[sl] = Th[face]
-            val[sl] = b
-        indptr = np.arange(0, 3 * n + 1, 3, dtype=np.int64 if 3 * n >= 2**31 - 1 else np.int32)
-        return sp.csr_matrix((val.ravel(), cols.ravel(), indptr), shape=(n, len(Vh)))
+            _, face[sl], bary[sl] = be.query(pi, signed=False)
+        return face, bary
 
     # ---- §3.5 D_comp doubling -------------------------------------------------------------------------------
     def extend(self, D_new: float, chunk: int = CHUNK, verbose: bool = False) -> "Band":

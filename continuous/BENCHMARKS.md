@@ -62,3 +62,36 @@ MBB solid, h_e = 0.4 mm, 4.86 M DOF, same script and job type as the table above
 | Refactor (s) | 7.8 | 7.8 |
 | Compliance | 85.617328601565 | 85.617328601560 |
 | μ (6 modes), max relative difference | — | 3.4e-12 |
+
+## Geometry chain on GPU (`design.DeviceDesignMap`, Task G; runs `runs_cshell/G_timing/*`)
+
+The band chain (ψ → χ → ρ, V, ∇V, Pᵀ pull-backs, restoration volumes) runs as fused CuPy kernels over a compact band
+(φ f32, closest Γ_h triangle i32, raw barycentrics 3×f32, element i32 = 24 B/cell; nothing per cell is stored between
+passes). Per-vertex work (filter, D1 bounds, sliver) stays on the host. The band is held in pinned host memory and
+released from the device during every FE evaluation (`grid.geometry_offload`, default on), so the FE sees the same free
+memory as with the CPU chain. If the re-upload does not fit, the kernels read the pinned copy in place (zero-copy) for
+the rest of the phase, with a log line. Config: `grid.geometry_device` = auto | cpu | gpu.
+
+Phase B (h_e 0.4, h_g 0.1), seconds per iteration (median of the iterations shown), same code and FE, CPU vs GPU chain.
+J agrees to ≤ 3e-10 in every iteration (all printed digits in the runs listed).
+
+| Part (objective) | Band cells / device footprint | Chain | t_geometry | t_pull | t_mmasub | t_restore (5 V evals) | chain total | t_fe |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Cantilever (full, buckling) jobs 7800362 / 7800683 | 220 M / 4.93 GiB | CPU | 5.24 | 13.67 | 0.43 | 33.7 | 53 | 95 |
+| | | GPU | 0.03 | 0.04 | 0.44 | 0.07 | 0.58 (+0.01 upload) | 95 |
+| MBB (compliance, fp32 factor) jobs 7800935 / 7800934 | 282 M / 6.30 GiB | CPU | 7.8 | 19.3 | 0.44 | 23.9 | 51 | 16 |
+| | | GPU | 0.02 | 0.07 | 0.45 | 0.04 | 0.58 (+0.03 upload) | 16 |
+
+Phase A (h_g 0.2, 28–36 M cells): chain 7.3 → 0.6 s (cantilever), 5.9 → 0.6 s (MBB). What is left of `t_mma` is
+`mmasub` itself (0.45 s, mmapy on ~1.3·10⁵ variables, CPU). The phase-B iteration is now the FE (16–95 s).
+
+GPU memory (driver view): the band costs 0 GiB during the FE and 4.9 / 6.3 GiB between FE evaluations; re-upload
+0.01–0.03 s from pinned memory. Cantilever full objective peaks at 87 GiB (fp32-preconditioned factor, buckling).
+
+**MBB with buckling at 0.4 mm does not fit (K11), independently of the geometry chain** (band off the device during the
+FE): job 7800463 (6 modes, fp32 factor) OOM in the Krylov orthonormalisation; job 7800764 (4 modes) OOM in buckling
+after the active-set rebuild. Cause: device memory of a freed cuDSS DirectSolver is not returned (measured: free memory
+85.8 → 41.5 GiB across one rebuild at 6.3 → 8.4 M DOF, MBB job 7800934; 80.9 → 51.3 GiB cantilever), so the second
+factor plus buckling no longer fits. With `fe.precision = auto` the new fe_sparse chooses fp64 hybrid at 6.3 M DOF,
+which spills the factor to host memory and was killed by the 115 GB job memory limit (jobs 7800876/7800877, both
+chains); the MBB timings above therefore use `fe.precision = fp32`.
