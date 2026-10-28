@@ -189,12 +189,12 @@ def _two_cylinders(R=3.0, D=10.0, h=30.0, sections=360):
 def test_outward_clearance_parallel_cylinders():
     R, D = 3.0, 10.0
     V, T = _two_cylinders(R, D)
-    ds = S.DesignSurface.from_mesh(V, T)
-    c1 = (np.hypot(V[:, 0], V[:, 1]) < R + 1e-6) & (np.abs(V[:, 2]) < 10.0) & (np.hypot(V[:, 0], V[:, 1]) > R - 1e-6)
-    ro = S.outward_clearance(ds.V[c1], ds.N[c1], S.MeshQuery(V, T), tess_tol=2e-3)
+    ds = S.DesignSurface.build(V, T, None, ell=0.8, hausdorff_tol=0.02, tess_tol=2e-3)
+    c1 = (ds.V[:, 0] < 5.0) & (np.abs(ds.V[:, 2]) < 10.0) & (np.abs(np.hypot(ds.V[:, 0], ds.V[:, 1]) - R) < 1e-3)
+    ro = ds.clearance()[c1]
     # analytic: ray p + t n with p = R(cos th, sin th), n = p/R, hitting circle (D, 0) of radius R
     p = ds.V[c1][:, :2]
-    n = ds.N[c1][:, :2]
+    n = ds.projected_normals()[c1][:, :2]
     n = n / np.linalg.norm(n, axis=1, keepdims=True)
     f = p - np.array([D, 0.0])
     b = (f * n).sum(1)
@@ -204,8 +204,10 @@ def test_outward_clearance_parallel_cylinders():
     t = np.where(t > 0, t, np.inf)
     ref = 0.5 * t
     fin = np.isfinite(ref)
+    near_tangent = np.abs(disc) < 0.05                       # grazing rays: hit/miss is ill-conditioned
     assert fin.sum() > 10 and (~fin).sum() > 10
-    assert np.array_equal(np.isfinite(ro), fin)
+    assert np.array_equal(np.isfinite(ro)[~near_tangent], fin[~near_tangent])
+    fin = fin & ~near_tangent
     assert np.abs(ro[fin] - ref[fin]).max() < 5e-3 + 2e-3
     assert abs(ro[fin].min() - 0.5 * (D - 2 * R)) < 5e-3      # facing point: gap 4 -> r_out = 2
 
@@ -221,10 +223,12 @@ def test_keepout_distance_slab_sphere():
     reach = 3.5 ** 2 - rho2
     ref = np.where(reach > 0, 8 - np.sqrt(np.maximum(reach, 0)) - 2.0, np.inf)
     fin = np.isfinite(ref)
+    graz = np.abs(reach) < 0.3                                  # tangent rays: hit/miss ill-conditioned
     assert fin.sum() > 5 and (~fin).sum() > 5
-    assert np.array_equal(np.isfinite(t), fin)
-    assert np.abs(t[fin] - ref[fin]).max() < 2e-3
-    assert abs(t[(rho2 == 0)][0] - 2.5) < 2e-3
+    assert np.array_equal(np.isfinite(t)[~graz], fin[~graz])
+    fin = fin & ~graz
+    assert np.abs(t[fin] - ref[fin]).max() < 1e-3
+    assert abs(t[(rho2 == 0)][0] - 2.5) < 1e-3
     # no keep-out reachable -> inf; already inside the clearance -> 0
     assert np.isinf(S.keepout_distance(P[:1], -N[:1], [K], t_max=20.0)).all()
     assert S.keepout_distance(np.array([[0.0, 0.0, 5.2]]), N[:1], [K])[0] == 0.0
@@ -235,7 +239,7 @@ def test_keepout_primitives_signed_distance():
     box = S.KeepOut("box", lo=[-1, -1, -1], hi=[1, 1, 1])
     assert np.allclose(box.phi(X), [-1.0, 2.0, 0.0, 9.0])
     cyl = S.KeepOut("cylinder", p0=[0, 0, -2], p1=[0, 0, 2], radius=1.0)
-    assert np.allclose(cyl.phi(X), [-1.0, 2.0, np.sqrt(2) - 1.0 if False else np.hypot(np.sqrt(2) - 1.0, 0.0) if False else cyl.phi(X)[2], 8.0])
+    assert np.allclose(cyl.phi(X), [-1.0, 2.0, np.sqrt(2) - 1.0, 8.0])
     assert abs(cyl.phi(np.array([[0, 0, 0.0]]))[0] + 1.0) < 1e-12 and abs(cyl.phi(np.array([[1.0, 0, 0]]))[0]) < 1e-12
     m = trimesh.creation.icosphere(subdivisions=4, radius=3.0)
     mesh = S.KeepOut("mesh", V=np.asarray(m.vertices, float), T=np.asarray(m.faces, np.int64))
@@ -283,7 +287,7 @@ def test_cantilever_end_to_end():
     hd = ds.info["hausdorff"]
     assert 4e4 < ds.n_vertices < 1.2e5
     assert abs(S.signed_volume(ds.V, ds.T) - S.signed_volume(V, T)) / S.signed_volume(V, T) < 2e-3
-    assert hd["frac_above_tol"] < 0.01 and hd["hausdorff"] < 0.06       # tolerance reported, see info["hausdorff_ok"]
+    assert hd["frac_above_tol"] < 1e-3 and hd["hausdorff"] < 0.03     # spec 0.02: see info["hausdorff_ok"]
     F = ds.filter(3.0)
     y = F.apply(np.random.default_rng(0).random(ds.n_vertices))
     assert y.min() > -0.01 and y.max() < 1.01

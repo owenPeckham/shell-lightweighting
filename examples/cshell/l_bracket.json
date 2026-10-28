@@ -1,0 +1,36 @@
+{
+ "name": "L-bracket",
+ "step_file": "../step/Solid L-bracket.step",
+ "output_dir": "../../runs_cshell",
+ "supports": [
+  {
+   "type": "cylinder",
+   "radius": 4.26,
+   "tol": 0.05
+  }
+ ],
+ "loads": [
+  {
+   "faces": {
+    "type": "plane",
+    "normal": [
+     0,
+     0,
+     1
+    ],
+    "box": {
+     "x": [
+      -15,
+      20
+     ]
+    },
+    "extreme": true
+   },
+   "force_N": [
+    0,
+    0,
+    -200
+   ]
+  }
+ ]
+}
