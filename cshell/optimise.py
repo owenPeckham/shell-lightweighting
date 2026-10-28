@@ -155,6 +155,12 @@ class PhaseModel:
         mask = ndimage.binary_dilation((rho > 0).reshape(self.elem_shape), iterations=margin)
         if self.fe is not None:
             self.fe.free()
+            self.fe = None
+            try:                                             # return the old factor's buffers before planning anew
+                import cupy as cp
+                cp.get_default_memory_pool().free_all_blocks()
+            except ImportError:
+                pass
         self.grid_fe = ActiveGrid(mask)
         c = self.ctx.cfg
         self.fe = SparseFE(self.grid_fe, self.fixed, self.load, self.h_e, c["material"]["E_MPa"], c["material"]["nu"],
