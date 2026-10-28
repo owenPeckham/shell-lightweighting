@@ -1,0 +1,44 @@
+{
+ "name": "Solid_Cantilever",
+ "V0": 61023.19917975383,
+ "uniform": [
+  {
+   "t": 0.5,
+   "done": false,
+   "valid": false,
+   "dV": NaN,
+   "secs": 7.0
+  },
+  {
+   "t": 1.0,
+   "done": false,
+   "valid": false,
+   "dV": NaN,
+   "secs": 7.1
+  },
+  {
+   "t": 1.5,
+   "done": false,
+   "valid": false,
+   "dV": NaN,
+   "secs": 7.3
+  },
+  {
+   "t": 2.0,
+   "done": false,
+   "valid": false,
+   "dV": NaN,
+   "secs": 7.6
+  }
+ ],
+ "perface": {
+  "done": false,
+  "exc": "Standard_NullObject('BRepCheck_Analyzer::Init() - NULL shape')",
+  "secs": 7.1
+ },
+ "thick": {
+  "done": false,
+  "exc": "Standard_NullObject('BRepCheck_Analyzer::Init() - NULL shape')",
+  "secs": 3.9
+ }
+}

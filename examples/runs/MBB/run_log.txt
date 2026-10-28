@@ -1,0 +1,18 @@
+[vshell] MBB: reading /home/claude/vshell_repo/examples/step/Solid MBB.step
+  192 faces (76 analytic), V0 = 85376.9 mm3 (88.79 g); supports on faces [10, 20, 106, 116]; loads on [[34, 47, 130, 143]], F = [0.0, 0.0, -200.0] N
+  segmentation: 12 joints, 16 struts, 8 mounts (13 s)
+  baseline: FE of the original solid
+  baseline: K0 = 472.92 N/mm, P0 = 2742.0 N (strength), mass 88.69 g
+  mass sweep over k = 0..28: 28 feasible hollow designs (s from 2.196 mm at k = 0); 161 s
+  k =  0: s = 2.196 mm, K/K0 = 0.940, P/P0 = 0.889 (strength), J = -0.0899
+  k =  4: s = 2.233 mm, K/K0 = 0.954, P/P0 = 0.894 (strength), J = -0.0798
+  k =  9: s = 2.264 mm, K/K0 = 0.957, P/P0 = 0.889 (strength), J = -0.0808
+  k = 14: s = 2.182 mm, K/K0 = 0.894, P/P0 = 0.825 (strength), J = -0.1523
+  k = 18: s = 2.145 mm, K/K0 = 0.917, P/P0 = 0.830 (strength), J = -0.1366
+  k = 22: s = 2.056 mm, K/K0 = 0.948, P/P0 = 0.857 (strength), J = -0.1036
+  k = 27: s = 1.765 mm, K/K0 = 1.000, P/P0 = 1.000 (strength), J = +0.0003
+  k = 26: s = 1.991 mm, K/K0 = 0.979, P/P0 = 0.980 (strength), J = -0.0208
+  k = 25: s = 2.078 mm, K/K0 = 0.964, P/P0 = 0.965 (strength), J = -0.0357
+  k = 24: s = 1.982 mm, K/K0 = 0.959, P/P0 = 0.954 (strength), J = -0.0441
+  decision: keep the original SOLID part -- shelling does not improve the part: combined gain J = +0.0003 is not above ln(1 + 0.02)
+[vshell] done in 1401 s -> /home/claude/vshell_repo/examples/runs/MBB

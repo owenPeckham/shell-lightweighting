@@ -1,0 +1,140 @@
+{
+  "decision": {
+    "outcome": "HOLLOW design accepted",
+    "reason": "best hollow design changes stiffness by -0.8% and load capacity by +162.6% at constant mass (J = +0.4788)",
+    "best design (k solid regions)": 7,
+    "final mesh": "final_design.stl"
+  },
+  "part": {
+    "STEP file": "/home/claude/vshell_repo/examples/step/Solid Cantilever.step",
+    "volume (B-rep) mm3": 61023.19917975383,
+    "volume (field) mm3": 60988.484375,
+    "mass g": 63.46412714694398,
+    "faces": 81,
+    "analytic faces": 39,
+    "support faces": [
+      10,
+      17,
+      25,
+      33
+    ],
+    "load faces": [
+      [
+        42
+      ]
+    ],
+    "force N": [
+      0.0,
+      0.0,
+      -200.0
+    ]
+  },
+  "segmentation": {
+    "joints": 4,
+    "struts": 5,
+    "mounts": 5,
+    "rank order (most shear-critical first)": [
+      3,
+      9,
+      4,
+      1,
+      2,
+      6,
+      5,
+      8,
+      7
+    ]
+  },
+  "baseline (solid)": {
+    "stiffness K0 N/mm": 256.78948594208543,
+    "load capacity P0 N": 431.33097335338937,
+    "governing mode": "Euler buckling",
+    "lambda strength": 9.331453396871199,
+    "lambda Euler": 2.1566548667669467,
+    "von Mises q MPa": 3.9222185916153047,
+    "mount von Mises q MPa": 6.710747896983305,
+    "FE DOF": 517686,
+    "FE cells": 139840,
+    "CG iterations": 34
+  },
+  "best hollow candidate": {
+    "solid regions": [
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      9,
+      10,
+      11,
+      12,
+      13,
+      14
+    ],
+    "hollow regions": [
+      7,
+      8
+    ],
+    "outer offset / strut wall s mm": 1.9127107865038375,
+    "as-built wall mm": 1.7127107865038376,
+    "stiffness K N/mm": 254.79739685996137,
+    "K/K0": 0.9922423261419147,
+    "load capacity P N": 1132.5904530621583,
+    "P/P0": 2.6258036705706904,
+    "J": 0.4787995441298262,
+    "governing mode": "Euler buckling",
+    "governing region": 7,
+    "lambda strength / Euler / local": [
+      9.10476731126887,
+      5.662952265310792,
+      94.66083634881424
+    ],
+    "mass (field) g": 63.4280105843361,
+    "enclosed voids": 2,
+    "filled small voids mm3": 0.0,
+    "mesh volume mm3": 60890.22205356927,
+    "mesh watertight": false
+  },
+  "search": {
+    "hollow designs analysed": 9,
+    "feasible in mass sweep": 9,
+    "objective": {
+      "w_stiffness": 0.5,
+      "w_capacity": 0.5,
+      "min_gain": 0.02,
+      "floor_stiffness": 0.85,
+      "floor_capacity": 0.85
+    }
+  },
+  "grid": {
+    "sdf_mm": 0.4,
+    "shape": [
+      426,
+      376,
+      376
+    ],
+    "fe_mm": 0.8,
+    "seg_mm": 1.0,
+    "n_exact": 4571645,
+    "n_active": 3661998
+  },
+  "timings s": {
+    "geometry": 2.800856351852417,
+    "sdf": 236.8328423500061,
+    "segmentation": 12.164327621459961,
+    "fe": 645.0606167316437,
+    "mass_sweep": 83.03011536598206,
+    "outputs": 9.319046974182129,
+    "total": 1105.8971991539001
+  },
+  "provenance": {
+    "time (UTC)": "2026-10-28T08:06:25+00:00",
+    "host": "vm",
+    "platform": "Linux-6.18.44-fc-v180-x86_64-with-glibc2.39",
+    "python": "3.13.18",
+    "git": null,
+    "STEP sha256": "6bc427af481b617f",
+    "packages": "numpy 2.5.3, scipy 1.18.1, scikit-image 0.26.0, skan 0.13.1, libigl 2.6.3, pyamg 5.3.0, trimesh 5.2.0, matplotlib 3.11.2, build123d 0.13.0"
+  }
+}

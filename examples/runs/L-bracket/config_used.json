@@ -1,0 +1,98 @@
+{
+  "name": "L-bracket",
+  "step_file": "/home/claude/vshell_repo/examples/step/Solid L-bracket.step",
+  "output_dir": "/home/claude/vshell_repo/examples/runs",
+  "material": {
+    "E_MPa": 1760.0,
+    "nu": 0.42,
+    "density_g_cm3": 1.04,
+    "strength_MPa": 36.6
+  },
+  "manufacturing": {
+    "t_min_mm": 1.5,
+    "wall_bias_mm": 0.2,
+    "void_min_mm3": 30.0,
+    "escape_holes_per_void": 2,
+    "escape_hole_diameter_mm": 3.0
+  },
+  "supports": [
+    {
+      "type": "cylinder",
+      "radius": 4.26,
+      "tol": 0.05
+    }
+  ],
+  "loads": [
+    {
+      "faces": {
+        "type": "plane",
+        "normal": [
+          0,
+          0,
+          1
+        ],
+        "box": {
+          "x": [
+            -15,
+            20
+          ]
+        },
+        "extreme": true
+      },
+      "force_N": [
+        0,
+        0,
+        -200
+      ]
+    }
+  ],
+  "mounts": {
+    "auto_analytic": true,
+    "extra_faces": [],
+    "min_blob_fraction": 0.01,
+    "dilate_mm": 1.5
+  },
+  "grid": {
+    "sdf_mm": 0.4,
+    "fe_factor": 2,
+    "seg_mm": 1.0,
+    "band_mm": 4.0,
+    "pad_mm": 4.0,
+    "tessellation_mm": 0.02
+  },
+  "segmentation": {
+    "joint_k": 1.6
+  },
+  "design": {
+    "transition_mm": 3.0,
+    "max_offset_mm": 4.0
+  },
+  "capacity": {
+    "stress_quantile": 0.995,
+    "exclude_bc_mm": 2.0,
+    "include_mounts": false,
+    "K_eff": 0.7,
+    "local_buckling": true
+  },
+  "objective": {
+    "w_stiffness": 0.5,
+    "w_capacity": 0.5,
+    "min_gain": 0.02,
+    "floor_stiffness": 0.85,
+    "floor_capacity": 0.85
+  },
+  "search": {
+    "max_fe_evaluations": 10,
+    "rank_by": "R"
+  },
+  "fe": {
+    "vf_min": 0.05,
+    "tol": 1e-08,
+    "maxiter": 800
+  },
+  "report": {
+    "enabled": true,
+    "dpi": 130
+  },
+  "verbose": true
+}

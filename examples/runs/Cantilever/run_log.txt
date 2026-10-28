@@ -1,0 +1,17 @@
+[vshell] Cantilever: reading /home/claude/vshell_repo/examples/step/Solid Cantilever.step
+  81 faces (39 analytic), V0 = 61023.2 mm3 (63.46 g); supports on faces [10, 17, 25, 33]; loads on [[42]], F = [0.0, 0.0, -200.0] N
+  segmentation: 4 joints, 5 struts, 5 mounts (12 s)
+  baseline: FE of the original solid
+  baseline: K0 = 256.79 N/mm, P0 = 431.3 N (Euler buckling), mass 63.43 g
+  mass sweep over k = 0..9: 9 feasible hollow designs (s from 1.830 mm at k = 0); 83 s
+  k =  0: s = 1.830 mm, K/K0 = 1.012, P/P0 = 2.481 (Euler buckling), J = +0.4604  acceptable
+  k =  1: s = 1.819 mm, K/K0 = 1.007, P/P0 = 2.427 (Euler buckling), J = +0.4467  acceptable
+  k =  2: s = 1.819 mm, K/K0 = 1.007, P/P0 = 2.427 (Euler buckling), J = +0.4468  acceptable
+  k =  3: s = 1.809 mm, K/K0 = 1.003, P/P0 = 2.400 (Euler buckling), J = +0.4391  acceptable
+  k =  4: s = 1.811 mm, K/K0 = 1.003, P/P0 = 2.402 (Euler buckling), J = +0.4396  acceptable
+  k =  5: s = 1.815 mm, K/K0 = 1.003, P/P0 = 2.406 (Euler buckling), J = +0.4405  acceptable
+  k =  6: s = 1.851 mm, K/K0 = 0.997, P/P0 = 2.437 (Euler buckling), J = +0.4440  acceptable
+  k =  7: s = 1.913 mm, K/K0 = 0.992, P/P0 = 2.626 (Euler buckling), J = +0.4788  acceptable
+  k =  8: s = 1.910 mm, K/K0 = 0.996, P/P0 = 1.035 (Euler buckling), J = +0.0156
+  decision: HOLLOW design k = 7 accepted -- best hollow design changes stiffness by -0.8% and load capacity by +162.6% at constant mass (J = +0.4788)
+[vshell] done in 1144 s -> /home/claude/vshell_repo/examples/runs/Cantilever

@@ -1,0 +1,48 @@
+{
+ "name": "Solid_L-bracket",
+ "V0": 41984.80650727407,
+ "uniform": [
+  {
+   "t": 0.5,
+   "done": true,
+   "valid": true,
+   "dV": -34884.42801202311,
+   "secs": 5.5
+  },
+  {
+   "t": 1.0,
+   "done": true,
+   "valid": true,
+   "dV": -33468.14486316478,
+   "secs": 5.6
+  },
+  {
+   "t": 1.5,
+   "done": true,
+   "valid": true,
+   "dV": -31946.80431267337,
+   "secs": 5.7
+  },
+  {
+   "t": 2.0,
+   "done": true,
+   "valid": false,
+   "dV": -15795.432367911155,
+   "secs": 6.2
+  }
+ ],
+ "perface": {
+  "done": true,
+  "valid": true,
+  "n_faces": 127,
+  "n_thin": 64,
+  "err": "BRepOffset_Error.BRepOffset_NoError",
+  "secs": 5.3,
+  "dV": -34884.42801202311
+ },
+ "thick": {
+  "done": false,
+  "exc": "Standard_NullObject('BRepCheck_Analyzer::Init() - NULL shape')",
+  "secs": 1.8
+ }
+}

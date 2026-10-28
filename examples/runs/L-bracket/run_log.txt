@@ -1,0 +1,18 @@
+[vshell] L-bracket: reading /home/claude/vshell_repo/examples/step/Solid L-bracket.step
+  127 faces (34 analytic), V0 = 41984.8 mm3 (43.66 g); supports on faces [9, 16, 24]; loads on [[37]], F = [0.0, 0.0, -200.0] N
+  segmentation: 6 joints, 9 struts, 4 mounts (12 s)
+  baseline: FE of the original solid
+  baseline: K0 = 48.25 N/mm, P0 = 540.3 N (strength), mass 43.64 g
+  mass sweep over k = 0..15: 15 feasible hollow designs (s from 1.809 mm at k = 0); 82 s
+  k =  0: s = 1.809 mm, K/K0 = 1.069, P/P0 = 0.944 (strength), J = +0.0042
+  k =  2: s = 1.781 mm, K/K0 = 1.050, P/P0 = 0.933 (strength), J = -0.0104
+  k =  5: s = 1.697 mm, K/K0 = 1.012, P/P0 = 0.920 (strength), J = -0.0354
+  k =  7: s = 1.713 mm, K/K0 = 1.016, P/P0 = 0.926 (strength), J = -0.0306
+  k =  9: s = 1.718 mm, K/K0 = 1.008, P/P0 = 0.926 (strength), J = -0.0343
+  k = 12: s = 1.725 mm, K/K0 = 1.007, P/P0 = 0.925 (strength), J = -0.0353
+  k = 14: s = 1.722 mm, K/K0 = 0.997, P/P0 = 0.994 (strength), J = -0.0049
+  k =  1: s = 1.805 mm, K/K0 = 1.068, P/P0 = 0.944 (strength), J = +0.0043
+  k =  3: s = 1.788 mm, K/K0 = 1.038, P/P0 = 0.926 (strength), J = -0.0200
+  k =  4: s = 1.794 mm, K/K0 = 1.021, P/P0 = 0.901 (strength), J = -0.0419
+  decision: keep the original SOLID part -- shelling does not improve the part: combined gain J = +0.0043 is not above ln(1 + 0.02)
+[vshell] done in 867 s -> /home/claude/vshell_repo/examples/runs/L-bracket

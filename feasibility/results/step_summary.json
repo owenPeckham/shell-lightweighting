@@ -1,0 +1,130 @@
+{
+ "Solid_Cantilever.step": {
+  "load_s": 0.22,
+  "solids": 1,
+  "shells": 1,
+  "faces": 81,
+  "edges": 426,
+  "surf_types": {
+   "Cylinder": 8,
+   "Plane": 31,
+   "BSplineSurface": 42
+  },
+  "volume_mm3": 61023.2,
+  "mass_g": 63.46,
+  "area_mm2": 27549.2,
+  "bbox_mm": [
+   160.0,
+   140.0,
+   140.6
+  ],
+  "valid": true
+ },
+ "Shelled_Cantilever.step": {
+  "load_s": 0.92,
+  "solids": 1,
+  "shells": 1,
+  "faces": 193,
+  "edges": 1188,
+  "surf_types": {
+   "Cylinder": 16,
+   "BSplineSurface": 132,
+   "Plane": 45
+  },
+  "volume_mm3": 59712.1,
+  "mass_g": 62.1,
+  "area_mm2": 51339.1,
+  "bbox_mm": [
+   160.0,
+   140.0,
+   141.9
+  ],
+  "valid": true
+ },
+ "Solid_L-bracket.step": {
+  "load_s": 0.34,
+  "solids": 1,
+  "shells": 1,
+  "faces": 127,
+  "edges": 608,
+  "surf_types": {
+   "Plane": 19,
+   "Cylinder": 15,
+   "BSplineSurface": 93
+  },
+  "volume_mm3": 41984.8,
+  "mass_g": 43.66,
+  "area_mm2": 18386.7,
+  "bbox_mm": [
+   124.0,
+   180.0,
+   78.6
+  ],
+  "valid": true
+ },
+ "Shelled_L-bracket.step": {
+  "load_s": 2.32,
+  "solids": 1,
+  "shells": 1,
+  "faces": 333,
+  "edges": 2180,
+  "surf_types": {
+   "BSplineSurface": 270,
+   "Plane": 32,
+   "Cylinder": 25,
+   "Torus": 4,
+   "Sphere": 2
+  },
+  "volume_mm3": 40555.9,
+  "mass_g": 42.18,
+  "area_mm2": 30406.6,
+  "bbox_mm": [
+   124.0,
+   180.0,
+   81.6
+  ],
+  "valid": true
+ },
+ "Solid_MBB.step": {
+  "load_s": 0.58,
+  "solids": 1,
+  "shells": 1,
+  "faces": 192,
+  "edges": 976,
+  "surf_types": {
+   "Cylinder": 12,
+   "BSplineSurface": 116,
+   "Plane": 64
+  },
+  "volume_mm3": 85376.9,
+  "mass_g": 88.79,
+  "area_mm2": 35029.2,
+  "bbox_mm": [
+   300.0,
+   110.0,
+   50.6
+  ],
+  "valid": true
+ },
+ "Shelled_MBB.step": {
+  "load_s": 1.96,
+  "solids": 1,
+  "shells": 1,
+  "faces": 432,
+  "edges": 2704,
+  "surf_types": {
+   "Cylinder": 28,
+   "BSplineSurface": 312,
+   "Plane": 92
+  },
+  "volume_mm3": 82141.1,
+  "mass_g": 85.43,
+  "area_mm2": 71486.3,
+  "bbox_mm": [
+   300.0,
+   110.0,
+   54.2
+  ],
+  "valid": true
+ }
+}

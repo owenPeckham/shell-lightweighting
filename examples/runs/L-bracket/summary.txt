@@ -1,0 +1,105 @@
+vshell run summary: L-bracket
+==============================================================================
+
+decision
+--------
+  outcome                        original SOLID part kept
+  reason                         shelling does not improve the part: combined
+                                 gain J = +0.0043 is not above ln(1 + 0.02)
+  best design (k solid regions)  1
+  final mesh                     final_design.stl
+
+part
+----
+  STEP file                      /home/claude/vshell_repo/examples/step/Solid
+                                 L-bracket.step
+  volume (B-rep) mm3             4.198e+04
+  volume (field) mm3             4.196e+04
+  mass g                         43.66
+  faces                          127
+  analytic faces                 34
+  support faces                  [9, 16, 24]
+  load faces                     [[37]]
+  force N                        [0, 0, -200]
+
+segmentation
+------------
+  joints                         6
+  struts                         9
+  mounts                         4
+  rank order (most shear-critical first) [6, 5, 14, 13, 1, 4, 11, 12, 2, 15, 3, 10, 8,
+                                 9, ...]
+
+baseline (solid)
+----------------
+  stiffness K0 N/mm              48.25
+  load capacity P0 N             540.3
+  governing mode                 strength
+  lambda strength                2.701
+  lambda Euler                   5.169
+  von Mises q MPa                13.55
+  mount von Mises q MPa          20.45
+  FE DOF                         341463
+  FE cells                       93372
+  CG iterations                  37
+
+best hollow candidate
+---------------------
+  solid regions                  [6, 16, 17, 18, 19]
+  hollow regions                 [1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12, 13, 14,
+                                 15]
+  outer offset / strut wall s mm 1.805
+  as-built wall mm               1.605
+  stiffness K N/mm               51.54
+  K/K0                           1.068
+  load capacity P N              510.2
+  P/P0                           0.9443
+  J                              0.004342
+  governing mode                 strength
+  governing region               -
+  lambda strength / Euler / local [2.551, 15.96, 19.06]
+  mass (field) g                 43.64
+  enclosed voids                 1
+  filled small voids mm3         0
+  mesh volume mm3                4.194e+04
+  mesh watertight                no
+
+search
+------
+  hollow designs analysed        10
+  feasible in mass sweep         15
+  objective                      {'w_stiffness': 0.5, 'w_capacity': 0.5,
+                                 'min_gain': 0.02, 'floor_stiffness': 0.85,
+                                 'floor_capacity': 0.85}
+
+grid
+----
+  sdf_mm                         0.4
+  shape                          [336, 476, 222]
+  fe_mm                          0.8
+  seg_mm                         1
+  n_exact                        2885716
+  n_active                       2360095
+
+timings s
+---------
+  geometry                       2.561
+  sdf                            235.2
+  segmentation                   11.79
+  fe                             413.7
+  mass_sweep                     82.36
+  outputs                        5.154
+  total                          831
+
+provenance
+----------
+  time (UTC)                     2026-10-28T08:25:34+00:00
+  host                           vm
+  platform                       Linux-6.18.44-fc-v180-x86_64-with-glibc2.39
+  python                         3.13.18
+  git                            -
+  STEP sha256                    b48aef84085ec4a9
+  packages                       numpy 2.5.3, scipy 1.18.1, scikit-image
+                                 0.26.0, skan 0.13.1, libigl 2.6.3, pyamg
+                                 5.3.0, trimesh 5.2.0, matplotlib 3.11.2,
+                                 build123d 0.13.0

@@ -1,0 +1,51 @@
+{
+ "uniform": {
+  "d_mm": 1.794,
+  "strut_wall_mm": 1.794,
+  "field_evals": 7,
+  "secs": 39.9,
+  "stl_volume": 60932,
+  "V0": 61023,
+  "watertight": false,
+  "solid_share_of_shellable": 0.0
+ },
+ "joints_solid": {
+  "d_mm": 1.62,
+  "strut_wall_mm": 1.62,
+  "field_evals": 7,
+  "secs": 38.5,
+  "stl_volume": 60919,
+  "V0": 61023,
+  "watertight": false,
+  "solid_share_of_shellable": 0.114
+ },
+ "joints_and_stubby_solid": {
+  "d_mm": 1.62,
+  "strut_wall_mm": 1.62,
+  "field_evals": 7,
+  "secs": 39.6,
+  "stl_volume": 60919,
+  "V0": 61023,
+  "watertight": false,
+  "solid_share_of_shellable": 0.124
+ },
+ "joints_original": {
+  "d_mm": 1.76,
+  "strut_wall_mm": 1.76,
+  "field_evals": 7,
+  "secs": 38.8,
+  "stl_volume": 60908,
+  "V0": 61023,
+  "watertight": false
+ },
+ "joints_and_stubby_original": {
+  "d_mm": 1.765,
+  "strut_wall_mm": 1.765,
+  "field_evals": 7,
+  "secs": 39.3,
+  "stl_volume": 60900,
+  "V0": 61023,
+  "watertight": false
+ },
+ "fusion_t": 1.756
+}
