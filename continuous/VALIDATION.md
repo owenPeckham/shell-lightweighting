@@ -49,7 +49,7 @@ errors, now fixed.
 | ID | Test | Result | Pass |
 | --- | --- | --- | --- |
 | V3-a | Clamped–free rod r = 5, L = 100: P_cr = 213.2 N | 0.4 mm: 215.7 N (+1.2 %); 0.8 mm: +2.4 % (job 7794919) | ✅ |
-| V3-b | Tube R_m = 10, t = 1.5, L = 60 vs ccx C3D10 | in progress (validate agent) | … |
+| V3-b | Tube R_m = 10, t = 1.5, L = 60, axial, vs ccx `*BUCKLE` C3D10 (converged to 0.1 % over 2–4 layers: λ₁ = 3.941) | voxel 0.4 mm: +4.9 %; 0.2 mm: +1.5 %; 0.8 mm: +18.9 % (jobs 7796155, 7796117; `research/validate/v3b.md`). λ₁ is an end-localised mode (≈ 70 % of modal energy in the loaded end slab). Body-fitted load as uniform traction: equal nodal shares on C3D10 are mesh-inconsistent (λ₁ 1.5–2.4). | ✅ (0.2–0.4); 0.8 misses |
 
 ## V4 sensitivities (§6.6)
 

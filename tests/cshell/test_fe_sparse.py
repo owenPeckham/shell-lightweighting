@@ -79,3 +79,16 @@ def test_centre_stress_voigt_order():
     sig = E * unit_D(NU) @ eps
     lam = E * NU / ((1 + NU) * (1 - 2 * NU)); mu = E / (2 * (1 + NU))
     assert np.isclose(sig[0], lam * eps[:3].sum() + 2 * mu * eps[0]) and np.isclose(sig[3], mu * eps[3])
+
+
+@pytest.mark.gpu
+def test_fp32_preconditioned_matches_fp64():
+    rng = np.random.default_rng(9)
+    rho = rng.uniform(0.3, 1.0, (24, 5, 6))
+    fixed, load = column(rho.shape)
+    g = ActiveGrid(np.ones(rho.shape, bool))
+    p64 = SparseFE(g, fixed, load, 1.0, E, NU, backend="gpu", precision="fp64").factor(g.gather_elems(rho)).primal()
+    fe32 = SparseFE(g, fixed, load, 1.0, E, NU, backend="gpu", precision="fp32").factor(g.gather_elems(rho))
+    p32 = fe32.primal()
+    assert abs(p32.compliance / p64.compliance - 1) < 1e-10
+    np.testing.assert_allclose(p32.U_e, p64.U_e, rtol=1e-8, atol=1e-14)

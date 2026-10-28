@@ -164,3 +164,4 @@ logs/
 runs_cshell
 .cache_cshell
 __pycache__/
+core

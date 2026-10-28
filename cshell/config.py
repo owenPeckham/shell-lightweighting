@@ -27,7 +27,7 @@ DEFAULTS = {
                "keep_out_clearance_mm": 0.5, "surface_edge_mm": 0.75, "closure_gamma": 0.75,
                "inset_soft_mm": 0.1},                            # D1: width of the smoothed (t_min − d)⁺ bound
     "grid": {"phases": [{"h_e": 0.8, "h_g": 0.2}, {"h_e": 0.4, "h_g": 0.1}], "export_h_mm": 0.05,
-             "rho_min": 1e-6, "tessellation_mm": 0.02, "active_margin_mm": 1.0},   # FE active-set dilation
+             "rho_min": 1e-6, "tessellation_mm": 0.02, "active_margin_mm": 0.5},   # FE active-set dilation
     "fe": {"engine": "sparse", "element_type": "q1_im", "backend": "auto"},
     "capacity": {"stress_p": [6, 8, 10], "stress_q": 2, "stress_quantile": 0.995, "exclude_bc_mm": 2.0,
                  "include_mounts": False, "buckling": True, "buckling_modes": 6, "buckling_p": 8,

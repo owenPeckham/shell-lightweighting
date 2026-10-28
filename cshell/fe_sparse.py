@@ -32,6 +32,7 @@ CORNERS = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
                     [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]], np.int64)
 import os as _os
 _EIG_VERBOSE = bool(_os.environ.get("CSHELL_EIG_VERBOSE"))
+FP64_BYTES_PER_DOF = 15e3                     # measured: cantilever 3.52 M DOF -> 49.4 GiB after factor
 _SELF = 13                                    # stencil slot of offset (0, 0, 0) in 13 + 9 dx + 3 dy + dz
 
 
@@ -166,7 +167,8 @@ class SparseFE:
     """K(ρ̂) on an ActiveGrid, factorised once per design; solves for any number of right-hand sides."""
 
     def __init__(self, grid: ActiveGrid, fixed_dof: np.ndarray, nodal_load: np.ndarray, h_mm: float, E_MPa: float,
-                 nu: float, backend: str = "auto", element_type: str = "q1_im", hybrid: bool = False):
+                 nu: float, backend: str = "auto", element_type: str = "q1_im", hybrid: bool = False,
+                 precision: str = "auto"):
         self.g, self.h, self.E, self.nu = grid, float(h_mm), float(E_MPa), float(nu)
         self.element_type = element_type
         if backend == "auto":
@@ -211,6 +213,8 @@ class SparseFE:
         self._K = None
         self._solver = None
         self.hybrid = bool(hybrid)
+        self.precision = precision                    # "fp64", "fp32" (fp32 factor preconditions fp64 CG) or "auto"
+        self._Kf = None
         self.stats = dict(Ne=grid.Ne, ndof=grid.ndof, nnz=grid.nnz, backend=backend)
 
     # -- assembly and factorisation --------------------------------------------------------------------------------
@@ -249,25 +253,43 @@ class SparseFE:
             if self._K is None:
                 self._K = self._sp.csr_matrix((data, cp.asarray(g.indices.astype(np.int32)),
                                                cp.asarray(g.indptr.astype(np.int32))), shape=(g.ndof, g.ndof))
-                self._b = cp.asfortranarray(cp.zeros((g.ndof, 1)))
+                if self.precision == "auto":
+                    free = cp.cuda.runtime.memGetInfo()[0]
+                    need = FP64_BYTES_PER_DOF * g.ndof
+                    self.precision = "fp64" if need < 0.8 * free else "fp32"
+                    if self.precision == "fp32":
+                        print(f"fe_sparse: fp64 factor needs ~{need / 2**30:.0f} GiB of {free / 2**30:.0f} GiB free "
+                              f"({g.ndof} DOF): using an fp32 factor as preconditioner of fp64 CG", flush=True)
+                self.stats["precision"] = self.precision
+                dt = np.float32 if self.precision == "fp32" else np.float64
+                self._Kf = self._K if dt == np.float64 else self._sp.csr_matrix(
+                    (data.astype(dt), self._K.indices, self._K.indptr), shape=self._K.shape)
+                self._b = cp.asfortranarray(cp.zeros((g.ndof, 1), dtype=dt))
                 opts = DirectSolverOptions(sparse_system_type=DirectSolverMatrixType.SPD,
                                            multithreading_lib=_cudss_mtlayer())          # threaded host planning
-                self._solver = DirectSolver(self._K, self._b, options=opts, execution=self._execution())
+                self._solver = DirectSolver(self._Kf, self._b, options=opts, execution=self._execution())
                 self._solver.plan()
                 self.stats["plan_s"] = time.time() - t1
             else:
                 self._K.data[...] = data                     # same buffers -> numeric refactorisation only
+                if self._Kf is not self._K:
+                    self._Kf.data[...] = data.astype(self._Kf.dtype)
             try:
                 self._solver.factorize()
-            except Exception as e:                       # no silent fallback: log, switch to hybrid memory, re-plan
+            except Exception as e:                       # no silent fallback: log, then fp32, then hybrid memory
                 if "ALLOC_FAILED" not in repr(e) or self.hybrid:
                     raise
-                print(f"fe_sparse: WARNING: cuDSS factor does not fit in GPU memory ({g.ndof} DOF); retrying in "
-                      f"hybrid memory mode (factor partly in host memory)", flush=True)
+                if self.precision == "fp64":
+                    print(f"fe_sparse: WARNING: fp64 cuDSS factor does not fit ({g.ndof} DOF); retrying with an "
+                          f"fp32 factor as preconditioner of fp64 CG", flush=True)
+                    self.precision = "fp32"
+                else:
+                    print(f"fe_sparse: WARNING: fp32 cuDSS factor does not fit ({g.ndof} DOF); retrying in hybrid "
+                          f"memory mode (factor partly in host memory)", flush=True)
+                    self.hybrid = True
+                    self.stats["hybrid_fallback"] = True
                 self.free()
                 self._K = None
-                self.hybrid = True
-                self.stats["hybrid_fallback"] = True
                 return self.factor(rho_hat_active)
             cp.cuda.Device().synchronize()
         else:
@@ -295,14 +317,45 @@ class SparseFE:
             b = b[:, None]
         b[xp.asarray(self.fixed)] = 0.0
         if self.backend == "gpu":
-            # nvmath operands must keep the planned buffer and strides: copy each column into it in place
             x = xp.empty_like(b)
             for j in range(b.shape[1]):
-                self._b[:, 0] = b[:, j]
-                x[:, j] = xp.asarray(self._solver.solve()).reshape(-1)
+                x[:, j] = self._direct(b[:, j]) if self.precision == "fp64" else self._pcg(b[:, j])
         else:
             x = np.column_stack([self._solver.solve(b[:, j]) for j in range(b.shape[1])])
         return x[:, 0] if one else x
+
+    def _direct(self, r):
+        """One cuDSS solve; nvmath operands must keep the planned buffer and strides, so copy into it in place."""
+        self._b[:, 0] = r
+        return self.xp.asarray(self._solver.solve()).reshape(-1).astype(self.xp.float64)
+
+    def _pcg(self, b, tol: float = 1e-11, maxit: int = 40):
+        """fp64 CG on the exact K, preconditioned by the fp32 Cholesky factor: converges in a few iterations to an
+        fp64-accurate solution, so every gradient identity still holds. Raises if not converged (no silent fallback)."""
+        xp = self.xp
+        nb = float(xp.linalg.norm(b))
+        if nb == 0.0:
+            return xp.zeros_like(b)
+        x = self._direct(b)
+        r = b - self._K @ x
+        z = self._direct(r)
+        p, rz = z.copy(), float(r @ z)
+        for k in range(1, maxit + 1):
+            if float(xp.linalg.norm(r)) <= tol * nb:
+                self.stats["pcg_its"] = self.stats.get("pcg_its", 0) + k
+                return x
+            Ap = self._K @ p
+            a = rz / float(p @ Ap)
+            x += a * p
+            r -= a * Ap
+            z = self._direct(r)
+            rz_new = float(r @ z)
+            p = z + (rz_new / rz) * p
+            rz = rz_new
+        if float(xp.linalg.norm(r)) <= tol * nb:
+            return x
+        raise RuntimeError(f"fp32-preconditioned CG did not converge in {maxit} iterations "
+                           f"(rel. residual {float(xp.linalg.norm(r)) / nb:.2e})")
 
     def matvec(self, x):
         return self._K @ x
