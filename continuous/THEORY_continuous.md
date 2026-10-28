@@ -1,6 +1,6 @@
 # cshell: continuous variable-thickness shelling at constant mass
 
-## Theory and operation (implementation specification, v1.1, 28 October 2026; v1.1 adds Owen's decisions of §14)
+## Theory and operation (implementation specification, v1.2, 28 October 2026; v1.1 adds Owen's decisions of §14; v1.2 records the implementation deviations D1, D2, D3, D6–D7 of §14 — see `continuous/STATUS.md` §4)
 
 Author: Owen Peckham (DMF Lab, University of Bristol), drafted with Claude. Audience: the Claude Code instance that will implement `cshell` on the GPU cluster, and anyone who later maintains it.
 
@@ -78,7 +78,7 @@ Hard requirements:
 
 | ID | Requirement |
 | --- | --- |
-| R1 | **Constant mass.** Every iterate the optimiser reports satisfies \|V/V₀ − 1\| ≤ 1·10⁻³ on the geometry grid, and the exported mesh satisfies \|V/V₀ − 1\| ≤ 2·10⁻³ after the final correction (§8.4). V₀ is the original part's volume on the same grid. |
+| R1 | **Constant mass.** Every iterate the optimiser reports satisfies \|V/V₀ − 1\| ≤ 1·10⁻⁴ on the geometry grid (v1.2: was 10⁻³, unified with §7.2), and the exported mesh satisfies \|V/V₀ − 1\| ≤ 2·10⁻³ after the final correction (§8.4). V₀ is the original part's volume on the same grid. |
 | R2 | **Stay solid unless hollowing earns its place.** Use vshell's acceptance rule (§5.4), checked at two FE resolutions. Otherwise output the original part and the reason. |
 | R3 | **Minimum-stiffness bolt-hole boundary condition.** All DOF of the support faces are clamped (agreed with Owen). Other BC models are optional extras. |
 | R4 | **Mounts (bolt lugs, load pads, any user-listed preserve faces) are never changed.** |
@@ -184,17 +184,17 @@ Here **L** is the cotangent Laplace–Beltrami stiffness (`igl.cotmatrix`, sign 
 
 Physical fields, per vertex:
 
-$$d_i = d^{hi}_i\,\tilde\xi^d_i, \qquad a_i = a^{lo} + \big(a^{hi}_i - a^{lo}\big)\,\tilde\xi^a_i$$
+$$d_i = d^{hi}_i\,\tilde\xi^d_i, \qquad a_i = a^{lo}(d_i) + \big(a^{hi}_i - a^{lo}(d_i)\big)\,\tilde\xi^a_i \quad\text{(v1.2: } a^{lo} \text{ depends on } d\text{, §14 D1)}$$
 
 | Bound | Value | Meaning |
 | --- | --- | --- |
-| a^{lo} | t_min (1.5 mm) | thinnest wall: d ≥ 0, so w ≥ a ≥ t_min |
+| a^{lo}(d_i) | w_s·softplus((t_min − d_i)/w_s), w_s = 0.1 mm (v1.2, Owen's D1) | smoothed (t_min − d)⁺: w = a + d ≥ t_min always, and the wall may lie wholly outside Γ₀ once d ≥ t_min (the add-in's a = 0 shell is in the design space) |
 | a^{hi}_i | r_MA,i + γ_c ε, with γ_c = 0.75 | void just closed, §3.8 |
 | d^{hi}_i | min(r_out,i − c_gap, keep-out distance − c_K, D_comp) | §3.5. Only the clearance terms are design limits. |
 
 Here c_gap defaults to 1 mm and c_K to 0.5 mm. ξ̃ᵃ = 1 is "locally solid", like vshell's θ. ξ̃ᵈ = 0 is "no outward growth".
 
-**Passive vertices.** Vertices within `mounts.dilate_mm` (1.5 mm) of a mount or BC face are fixed at ξᵃ = 1, ξᵈ = 0. vshell's `segment.py` computes the mount zones from analytic B-rep faces and support and load faces; reuse it, keeping only the mount part of the segmentation. So are vertices where a^{hi} ≤ a^{lo} + v_min/2, where the part is too thin to host a void wider than v_min. The passive values are imposed **after** filtering, and their gradient is zero. The filter still lets them blend smoothly into active neighbours, because active vertices see the passive neighbours' ξ through F.
+**Passive vertices.** Vertices within `mounts.dilate_mm` (1.5 mm) of a mount or BC face are fixed at ξᵃ = 1, ξᵈ = 0. vshell's `segment.py` computes the mount zones from analytic B-rep faces and support and load faces; reuse it, keeping only the mount part of the segmentation. So are vertices where a^{hi} ≤ max(t_min, v_min/2) + 0.05 mm (v1.2, with the D1 bound: a void ≥ v_min needs r_MA ≥ v_min/2 + a with a → 0 once d ≥ t_min), where the part is too thin to host a void wider than v_min. The passive values are imposed **after** filtering, and their gradient is zero. The filter still lets them blend smoothly into active neighbours, because active vertices see the passive neighbours' ξ through F.
 
 ### 3.5 Local depth, clearance and keep-outs
 
@@ -307,6 +307,17 @@ The second term is zero when the band covers the interior. Sum in float64. V₀ 
 - **Material.** Isotropic PA11: E = 1760 MPa, ν = 0.42. Element e has stiffness density ρ̂_e (§3.7), and `analysis.ConjugateGradient._volume_mesh` scales both Lamé parameters by the field it is given. So **pass ρ̂ (not ρ) as the field**; it must already contain the floor ρ_min.
 - **Element.** `element_type = "q1_im"`, the Wilson–Taylor incompatible-modes hexahedron, which is the CalculiX/Abaqus C3D8I formulation that vshell validated. Plain trilinear elements lock in bending of thin walls and must not be used for production.
 - **Solver.** `preconditioner = "gmg"` and `engine/pcg_engine = "auto"`. `gpu_analysis.probe()` picks the engine for the hardware.
+
+> **v1.2 — FE engine (Owen, 28 October 2026; STATUS.md §2.2).** Production FE uses `cshell/fe_sparse.py`, not the dense
+> box: only the **active set** of elements (ρ_e > 0, dilated by `grid.active_margin_mm`) is assembled, with the same
+> q1_im element matrix as the reference (`gpu_analysis.element_khat`), and factorised by **cuDSS** sparse Cholesky
+> (fp64). One factorisation per design serves the primal, the stress adjoint (§6.3) and the buckling eigen-solve and
+> its adjoint (§6.4), so **buckling runs at the design resolution (0.4 mm)**: the 0.8 mm buckling grid and its chained
+> sensitivity (item 2 below) are no longer used. Dropping the void elements changes K by O(ρ_min) and no design
+> derivative (∂χ/∂ψ = 0 away from the surface); the active set is rebuilt whenever the design puts material outside it.
+> The reference `ConjugateGradient` (via `cshell.fea.ShellCG`) remains the test reference. Measured costs:
+> `continuous/BENCHMARKS.md`. A single fp64 factor holds ≈ 7 M DOF on a 96 GB GH200 (≈ 9 kB/DOF), so 0.2 mm runs
+> need cuDSS hybrid memory or an iterative solver (STATUS K12).
 
 ### 4.2 Resolution, problem size and memory
 
@@ -448,7 +459,9 @@ The model is linear elastic and small-strain, and its capacity values are proxie
 
 For design variables ξ = (ξᵈ, ξᵃ):
 
-$$\max_{\xi}\; J(\xi) = \frac{w_K \sum_k \omega_k \ln\!\big(C_{0,k}/C_k(\xi)\big) \;+\; w_P \ln\!\big(\lambda(\xi)/\lambda_0\big)}{w_K + w_P}, \qquad w_K = w_P = 0.5.$$
+$$\max_{\xi}\; J(\xi) = \frac{w_K \ln\!\big(C_{0}/C(\xi)\big) \;+\; w_P \ln\!\big(\lambda(\xi)/\lambda_0\big)}{w_K + w_P}, \qquad w_K = w_P = 0.5.$$
+
+(v1.2: single load case, so no case weights ω_k; §14 D3.)
 
 - C_{0,k} and λ₀ belong to the original solid, evaluated by the same pipeline (as-built, b_o).
 - J = 0 is the solid.
@@ -542,7 +555,7 @@ Reverse mode, given g_e = ∂R/∂ρ̂_e from the FE layer:
 | ψ → (d, a) | ∂ψ_c/∂d_c = −1 if the outer branch is active (φ_c − d_c + b_o ≥ −φ_c − a^{ab}_c), else 0; ∂ψ_c/∂a^{ab}_c = −1 if the inner branch is active, else 0. Ties are measure-zero; send the gradient to the outer branch. |
 | grid → vertex | ∂R/∂**d** = **P**ᵀ ∂R/∂**d**_grid; same for a^{ab} |
 | as-built | ∂a^{ab}_i/∂a_i = 1 + S′(z_i), z_i = (r_MA,i − a_i)/b_v. This is ≥ 1, so a^{ab} is monotone in a. |
-| bounds | ∂d_i/∂ξ̃ᵈ_i = d^{hi}_i; ∂a_i/∂ξ̃ᵃ_i = a^{hi}_i − a^{lo}; zero on passive vertices |
+| bounds | ∂d_i/∂ξ̃ᵈ_i = d^{hi}_i; ∂a_i/∂ξ̃ᵃ_i = a^{hi}_i − a^{lo}(d_i); ∂a_i/∂d_i = a^{lo}′(d_i)(1 − ξ̃ᵃ_i) (D1); zero on passive vertices |
 | filter | ∂R/∂ξ = Fᵀ ∂R/∂ξ̃ = M (M + r_f² L)⁻¹ ∂R/∂ξ̃ |
 
 Implement the geometry map on the GPU (CuPy, or JAX with `jax.vjp` for the geometry part only; DLPack interoperates with numba-cuda arrays). Each reverse step needs its own unit test (§6.6).
@@ -596,7 +609,7 @@ Element-wise finite differences with steps of 10⁻³–10⁻² are too noisy to
 
 `cshell` must therefore correct the two terms for q1_im **inside cshell**. Subclass or wrap the buckling engine, replacing the Gauss solid stiffness with E_s·Khat, E_s = 2μ_s(1 + ν), wherever ∂K/∂ρ̂ appears: Term A and the explicit adjoint term. The geometric-stiffness terms built from compatible-B stresses are consistent as they stand. Do not edit the reference file.
 
-Then the directional test above must reach < 10⁻³ for q1_im, as it does for q1. Record the issue, with this reproducer, in `continuous/OPEN_QUESTIONS.md` for Owen. Until the fix passes, buckling gradients are approximate (about 6 % bias, correct direction). MMA tolerates that, but only accept a step if the evaluated J, not the predicted one, improves (GCMMA-style conservativeness).
+Then the directional test above must reach < 10⁻³ for q1_im, as it does for q1. (v1.2: done — `cshell.fea.ShellCG.run_buckling` applies the fix, directional error 5.3·10⁻² → 1.2·10⁻⁴; the production engine `fe_sparse.buckling` uses K⁰_e = E·K̂ throughout and passes the same test at 3.4·10⁻⁵.) Record the issue, with this reproducer, in `continuous/OPEN_QUESTIONS.md` for Owen. Until the fix passes, buckling gradients are approximate (about 6 % bias, correct direction). MMA tolerates that, but only accept a step if the evaluated J, not the predicted one, improves (GCMMA-style conservativeness).
 
 Test buckling sensitivities with **directional derivatives along smooth perturbations** of size about 10⁻² in ρ̂ (signal far above eigen-solver noise), using `engine="classic"` or a tight `lobpcg_tol`.
 
@@ -981,6 +994,8 @@ At each gate: tests green, commit, `STATUS.md` updated, and a short summary for 
 | D3 | Load cases | **Single** load case only (the Study 1 set-up) | §4.4(e) |
 | D4 | Objective weights | Equal by default; **user-tunable hyper-parameters** | §5.1 |
 | D5 | Cluster | **GH200** GPUs, **SLURM**, **24 h** wall-time limit. Working practice is covered by Owen's own instructions. | §4.2, §7.6, §10.4 |
+| D6 | Inset lower bound (v1.2) | a ≥ a^{lo}(d) = smoothed (t_min − d)⁺ instead of a ≥ t_min, so walls can lie wholly outside Γ₀. | §3.4, §6.1 |
+| D7 | FE engine (v1.2) | Research and build the fast FE first; production engine = active-set q1_im + cuDSS Cholesky, buckling on the same factor at 0.4 mm. | §4.1–4.2, §6.3–6.4 |
 
 **Still open.** Implement the default, record the question in `continuous/OPEN_QUESTIONS.md`, and do not block:
 
