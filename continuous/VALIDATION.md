@@ -36,13 +36,12 @@ checked equal to the full model; load pin as a 4 mm patch, supports one node pla
 | E | 2.5 | 0.0351 | 0.03697, +5.3 % | 0.03673, +4.6 % | 4.195 / 4.081 (+2.8 %) |
 
 A–D pass at both resolutions; **E misses the 4 % absolute gate** (+4.6 % at 0.4 mm) but its stiffness ratio is within
-2.8 %. vshell's own E result was +4.5 % (OPEN_QUESTIONS Q4); Abaqus itself is 12 % below Euler–Bernoulli at E and
+2.8 %. **Investigated (job 7800269, `research/tubeE/`):** E converges to 0.03677 kN/mm at 0.2 mm (6.9 M DOF), i.e. the voxel limit is +4.8 % vs Abaqus — refinement does not close the gap; the load-patch width (2/4/6/10 mm) moves k by ±0.5 % only. Voxel is 8 % below Euler–Bernoulli (0.0400), Abaqus 12 % below: the gap is extra local compliance (indentation/ovalisation) in Abaqus's load/BC treatment, a model difference, not discretisation. Gate not met in absolute terms; ratio passes. vshell's own E result was +4.5 % (OPEN_QUESTIONS Q4); Abaqus itself is 12 % below Euler–Bernoulli at E and
 over-predicts the measured tubes by 35–60 % (Q6). Earlier runs with a one-node-line load gave E −11 % at 0.4 mm
 (singular line load); with a 3 mm-wide clamped support patch the beam was partially clamped (+41 %): both modelling
 errors, now fixed.
 
-**V2-c: thin-wall convergence (1.7 mm wall, OD 25)**: k = 0.02669 (0.8 mm) → 0.02627 (0.4 mm), −1.6 %, monotone.
-0.2 mm does not fit as one fp64 cuDSS factor even in hybrid memory mode (6.4 M DOF; STATUS K12): **pending**.
+**V2-c: thin-wall convergence (1.7 mm wall, OD 25)**: k = 0.02669 (0.8 mm) → 0.02627 (0.4 mm) → 0.02626 (0.2 mm, 5.2 M DOF, fp32-factor-preconditioned fp64 CG, 17 s; job 7800269). Monotone; 0.4 within **0.04 %** of 0.2. ✅
 
 ## V3 buckling
 
