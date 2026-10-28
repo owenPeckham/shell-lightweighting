@@ -5,4 +5,4 @@ export TMPDIR=$SCRATCH/tmp/${SLURM_JOB_ID:-login}; mkdir -p "$TMPDIR"
 export CSHELL_FE_SCRATCH=$TMPDIR/fe
 export NUMBA_CACHE_DIR=$SCRATCH/numba_cache/cshell
 export PYTHONUNBUFFERED=1
-cd $HOME/shell-lightweighting
+cd "${SLURM_SUBMIT_DIR:-$HOME/shell-lightweighting}"   # run the checkout the job was submitted from (worktrees)
