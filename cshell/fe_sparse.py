@@ -32,7 +32,6 @@ CORNERS = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
                     [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]], np.int64)
 import os as _os
 _EIG_VERBOSE = bool(_os.environ.get("CSHELL_EIG_VERBOSE"))
-FP64_BYTES_PER_DOF = 15e3                     # measured: cantilever 3.52 M DOF -> 49.4 GiB after factor
 _SELF = 13                                    # stencil slot of offset (0, 0, 0) in 13 + 9 dx + 3 dy + dz
 
 
@@ -121,6 +120,7 @@ class ActiveGrid:
         nb_dense = (nb_ijk[:, 0] * nyn + nb_ijk[:, 1]) * nzn + nb_ijk[:, 2]
         blk_col = node_of_dense[nb_dense]
         assert np.all(blk_col >= 0) and np.array_equal(rr, blk_row)
+        self.blk_col = blk_col                                               # node-level CSR: (bptr, blk_col)
         # CSR arrays
         k = np.arange(self.nblk) - self.bptr[blk_row]                       # rank of the block within its row
         p = np.arange(3)
@@ -168,7 +168,7 @@ class SparseFE:
 
     def __init__(self, grid: ActiveGrid, fixed_dof: np.ndarray, nodal_load: np.ndarray, h_mm: float, E_MPa: float,
                  nu: float, backend: str = "auto", element_type: str = "q1_im", hybrid: bool = False,
-                 precision: str = "auto"):
+                 precision: str = "auto", nrhs: int = 14, hybrid_device_GiB: float = 20.0):
         self.g, self.h, self.E, self.nu = grid, float(h_mm), float(E_MPa), float(nu)
         self.element_type = element_type
         if backend == "auto":
@@ -198,13 +198,18 @@ class SparseFE:
         self.f = xp.asarray(f)
         # entries kept (free-free) and diagonal entries of fixed DOF (set to 1)
         col = grid.indices
-        keep = ~(fx[grid.row_of] | fx[col])
         diag_fixed = np.flatnonzero((grid.row_of == col) & fx[grid.row_of])
-        self._keep = xp.asarray(keep.astype(np.float64))
-        self._diag_fixed = xp.asarray(diag_fixed)
-        self._pos_blk = xp.asarray(grid.pos_blk.reshape(grid.Ne, 64))
-        self._perm = xp.asarray(grid.perm)
-        self._dofs = xp.asarray(grid.dofs)
+        # Memory (continuous/research/gpu_memory/REPORT.md, option 1): int32 index arrays where they fit, and the entries
+        # removed by the clamps kept as a short index list instead of an nnz-long float mask.
+        ix = np.int32 if grid.nnz < 2 ** 31 else np.int64
+        self._drop = xp.asarray(np.flatnonzero(fx[grid.row_of] | fx[col]).astype(ix))
+        self._diag_fixed = xp.asarray(diag_fixed.astype(ix))
+        self._pos_blk = xp.asarray(grid.pos_blk.reshape(grid.Ne, 64).astype(ix))
+        self._perm = xp.asarray(grid.perm.astype(ix))
+        self._dofs = xp.asarray(grid.dofs.astype(ix))
+        self._fixed_x = xp.asarray(fx)
+        self._n_indptr = xp.asarray(grid.bptr.astype(ix))                   # node-level block pattern (buckling G)
+        self._n_indices = xp.asarray(grid.blk_col.astype(ix))
         self._Khat = xp.asarray(self.Khat)
         B_all, Bg_all, detJ = gpu_analysis.hex_reference_data(self.h, self.h, self.h)   # 2x2x2 Gauss, weights 1
         self._Bg_np, self._detJ = Bg_all, float(detJ)
@@ -213,6 +218,8 @@ class SparseFE:
         self._K = None
         self._solver = None
         self.hybrid = bool(hybrid)
+        self.nrhs = max(int(nrhs), 1)                 # right-hand sides per cuDSS solve call (batched block solves)
+        self.hybrid_device_GiB = float(hybrid_device_GiB)
         self.precision = precision                    # "fp64", "fp32" (fp32 factor preconditions fp64 CG) or "auto"
         self._Kf = None
         self.stats = dict(Ne=grid.Ne, ndof=grid.ndof, nnz=grid.nnz, backend=backend)
@@ -233,7 +240,7 @@ class SparseFE:
                 cupyx.scatter_add(blocks, self._pos_blk[:, ab], contrib)
         data = xp.empty(g.nnz)
         data[self._perm] = blocks.reshape(-1)
-        data *= self._keep
+        data[self._drop] = 0.0
         data[self._diag_fixed] = 1.0
         return data
 
@@ -248,27 +255,11 @@ class SparseFE:
         t1 = time.time()
         g = self.g
         if self.backend == "gpu":
-            from nvmath.sparse.advanced import DirectSolver, DirectSolverMatrixType, DirectSolverOptions
             cp = self.xp
             if self._K is None:
                 self._K = self._sp.csr_matrix((data, cp.asarray(g.indices.astype(np.int32)),
                                                cp.asarray(g.indptr.astype(np.int32))), shape=(g.ndof, g.ndof))
-                if self.precision == "auto":
-                    free = cp.cuda.runtime.memGetInfo()[0]
-                    need = FP64_BYTES_PER_DOF * g.ndof
-                    self.precision = "fp64" if need < 0.8 * free else "fp32"
-                    if self.precision == "fp32":
-                        print(f"fe_sparse: fp64 factor needs ~{need / 2**30:.0f} GiB of {free / 2**30:.0f} GiB free "
-                              f"({g.ndof} DOF): using an fp32 factor as preconditioner of fp64 CG", flush=True)
-                self.stats["precision"] = self.precision
-                dt = np.float32 if self.precision == "fp32" else np.float64
-                self._Kf = self._K if dt == np.float64 else self._sp.csr_matrix(
-                    (data.astype(dt), self._K.indices, self._K.indptr), shape=self._K.shape)
-                self._b = cp.asfortranarray(cp.zeros((g.ndof, 1), dtype=dt))
-                opts = DirectSolverOptions(sparse_system_type=DirectSolverMatrixType.SPD,
-                                           multithreading_lib=_cudss_mtlayer())          # threaded host planning
-                self._solver = DirectSolver(self._Kf, self._b, options=opts, execution=self._execution())
-                self._solver.plan()
+                self._plan(data)
                 self.stats["plan_s"] = time.time() - t1
             else:
                 self._K.data[...] = data                     # same buffers -> numeric refactorisation only
@@ -301,12 +292,51 @@ class SparseFE:
         self.stats.update(assemble_s=t1 - t0, factor_s=time.time() - t1)
         return self
 
+    def _plan(self, data):
+        """Create and plan the cuDSS solver for K. With precision "auto" the factor mode follows cuDSS's own plan-time
+        memory estimate (it matched the measured factor, research/gpu_memory): fp64 in device memory if it fits, else
+        hybrid memory (factor partly in host memory; exact, slower solves), else an fp32 factor preconditioning fp64
+        CG. Every switch is logged."""
+        from nvmath.sparse.advanced import DirectSolver, DirectSolverMatrixType, DirectSolverOptions
+        cp, g = self.xp, self.g
+        auto = self.precision == "auto"
+        modes = [("fp64", False), ("fp64", True), ("fp32", False)] if auto else [(self.precision, self.hybrid)]
+        opts = DirectSolverOptions(sparse_system_type=DirectSolverMatrixType.SPD,
+                                   multithreading_lib=_cudss_mtlayer())                  # threaded host planning
+        for i, (prec, hyb) in enumerate(modes):
+            dt = np.float32 if prec == "fp32" else np.float64
+            Kf = self._K if dt == np.float64 else self._sp.csr_matrix(
+                (data.astype(dt), self._K.indices, self._K.indptr), shape=self._K.shape)
+            nrhs = 1 if prec == "fp32" else self.nrhs         # fp32 path solves one PCG column at a time
+            b = cp.asfortranarray(cp.zeros((g.ndof, nrhs), dtype=dt))
+            self.hybrid = hyb
+            s = DirectSolver(Kf, b, options=opts, execution=self._execution())
+            s.plan()
+            est = s.plan_info.memory_estimates
+            need = float(est["hybrid_min_device_memory"] if hyb else est["peak_device_memory"])
+            pool = cp.get_default_memory_pool()
+            free = cp.cuda.runtime.memGetInfo()[0] + pool.free_bytes()
+            if not auto or need < 0.9 * free or i == len(modes) - 1:
+                break
+            nxt = modes[i + 1]
+            print(f"fe_sparse: {prec}{' hybrid' if hyb else ''} factor needs {need / 2**30:.1f} GiB, "
+                  f"{free / 2**30:.1f} GiB free ({g.ndof} DOF): switching to {nxt[0]}{' hybrid' if nxt[1] else ''}",
+                  flush=True)
+            s.free()
+            del s, b, Kf
+            pool.free_all_blocks()
+        self.precision, self._Kf, self._b, self._solver = prec, Kf, b, s
+        self.stats.update(precision=prec, hybrid=hyb, factor_estimate_GiB=need / 2 ** 30)
+
     def _execution(self):
-        """cuDSS execution space: device memory only, or hybrid (factor spills to host memory) when it does not fit."""
+        """cuDSS execution space: device memory only, or hybrid (factor partly in host memory, device share capped at
+        hybrid_device_GiB) when it does not fit."""
         from nvmath.sparse.advanced import ExecutionCUDA, HybridMemoryModeOptions
         if not self.hybrid:
             return ExecutionCUDA()
-        return ExecutionCUDA(hybrid_memory_mode_options=HybridMemoryModeOptions(hybrid_memory_mode=True))
+        return ExecutionCUDA(hybrid_memory_mode_options=HybridMemoryModeOptions(
+            hybrid_memory_mode=True, register_cuda_memory=True,
+            hybrid_device_memory_limit=int(self.hybrid_device_GiB * 2 ** 30)))
 
     def solve(self, rhs):
         """K x = rhs for (ndof,) or (ndof, k) right-hand sides; fixed DOF of rhs are zeroed (x = 0 there)."""
@@ -318,8 +348,13 @@ class SparseFE:
         b[xp.asarray(self.fixed)] = 0.0
         if self.backend == "gpu":
             x = xp.empty_like(b)
-            for j in range(b.shape[1]):
-                x[:, j] = self._direct(b[:, j]) if self.precision == "fp64" else self._pcg(b[:, j])
+            if self.precision == "fp64":                    # batched: one cuDSS call per nrhs columns
+                for j0 in range(0, b.shape[1], self.nrhs):
+                    j1 = min(j0 + self.nrhs, b.shape[1])
+                    x[:, j0:j1] = self._direct_block(b[:, j0:j1])
+            else:
+                for j in range(b.shape[1]):
+                    x[:, j] = self._pcg(b[:, j])
         else:
             x = np.column_stack([self._solver.solve(b[:, j]) for j in range(b.shape[1])])
         return x[:, 0] if one else x
@@ -327,7 +362,15 @@ class SparseFE:
     def _direct(self, r):
         """One cuDSS solve; nvmath operands must keep the planned buffer and strides, so copy into it in place."""
         self._b[:, 0] = r
-        return self.xp.asarray(self._solver.solve()).reshape(-1).astype(self.xp.float64)
+        return self.xp.asarray(self._solver.solve())[:, 0].astype(self.xp.float64)
+
+    def _direct_block(self, R):
+        """Up to nrhs columns in one cuDSS call (unused columns zeroed)."""
+        k = R.shape[1]
+        if k < self._b.shape[1]:
+            self._b[:, k:] = 0.0
+        self._b[:, :k] = R
+        return self.xp.asarray(self._solver.solve())[:, :k].astype(self.xp.float64)
 
     def _pcg(self, b, tol: float = 1e-11, maxit: int = 40):
         """fp64 CG on the exact K, preconditioned by the fp32 Cholesky factor: converges in a few iterations to an
@@ -466,11 +509,7 @@ def buckling(fe: SparseFE, primal: Primal, num_modes: int = 6, p: float = 8.0, m
     for ab in range(64):
         a, b = divmod(ab, 8)
         _scatter_add(xp, blocks, fe._pos_blk[:, ab], H[:, a, b])
-    eye = xp.eye(3).reshape(-1)
-    data = xp.empty(g.nnz)
-    data[fe._perm] = (blocks[:, None] * eye[None, :]).reshape(-1)
-    data *= fe._keep
-    Gm = fe._sp.csr_matrix((-data, fe._K.indices, fe._K.indptr), shape=fe._K.shape)    # G = −K_σ
+    Gm = _NodeBlockOp(fe, fe._sp.csr_matrix((-blocks, fe._n_indices, fe._n_indptr), shape=(g.Nn, g.Nn)))  # G = −K_σ
     # LOBPCG, largest μ, B = K, preconditioner K⁻¹
     m = num_modes + extra
     rng = np.random.default_rng(seed)
@@ -529,6 +568,23 @@ def buckling(fe: SparseFE, primal: Primal, num_modes: int = 6, p: float = 8.0, m
                           iterations=len(hist), seconds=time.time() - t0)
 
 
+class _NodeBlockOp:
+    """G = P (Gₙ ⊗ I₃) P, P zeroing the clamped DOF. K_σ has identity 3×3 node blocks, so it is stored per node pair
+    (1/9 of the DOF-level CSR entries) and applied by a reshape (DOF 3n+p, node-major)."""
+
+    def __init__(self, fe: SparseFE, Gn):
+        self.Gn, self.fixed = Gn, fe._fixed_x
+
+    def __matmul__(self, V):
+        one = V.ndim == 1
+        W = V.reshape(-1, 1).copy() if one else V.copy()       # C order: row n of the reshape = DOF 3n..3n+2
+        k = W.shape[1]
+        W[self.fixed] = 0.0
+        Y = (self.Gn @ W.reshape(-1, 3 * k)).reshape(-1, k)
+        Y[self.fixed] = 0.0
+        return Y[:, 0] if one else Y
+
+
 def _scatter_add(xp, out, idx, vals):
     if xp is np:
         np.add.at(out, idx, vals)
@@ -553,14 +609,22 @@ def _gamma_voigt(xp, grad):
     return xp.stack([G[..., 0, 0], G[..., 1, 1], G[..., 2, 2], 2 * G[..., 1, 2], 2 * G[..., 0, 2], 2 * G[..., 0, 1]], -1)
 
 
-def _k_orthonormalise(xp, Q, KQ, drop=1e-10):
-    """Q ← Q W with (QW)ᵀK(QW) = I, dropping directions whose K-norm² is below drop·max (rank-revealing)."""
-    M = Q.T @ KQ
-    M = 0.5 * (M + M.T)
-    w, U = xp.linalg.eigh(M)
-    keep = w > drop * w.max()
-    W = U[:, keep] / xp.sqrt(w[keep])[None, :]
-    return Q @ W, KQ @ W
+def _gram(Q, A, cols: int = 8):
+    """Qᵀ A Q (symmetrised), A applied to `cols` columns at a time so no n × k product is stored."""
+    xp = np if isinstance(Q, np.ndarray) else __import__("cupy")
+    k = Q.shape[1]
+    M = xp.empty((k, k))
+    for j in range(0, k, cols):
+        M[:, j:j + cols] = Q.T @ (A @ Q[:, j:j + cols])
+    return 0.5 * (M + M.T)
+
+
+def _rmul_inplace(Q, W, rows: int = 1 << 18):
+    """Q[:, :k] ← Q W in row blocks (rows are independent), k = W.shape[1]; returns that view."""
+    k = W.shape[1]
+    for i in range(0, Q.shape[0], rows):
+        Q[i:i + rows, :k] = Q[i:i + rows] @ W
+    return Q[:, :k]
 
 
 def _block_krylov_largest(fe: SparseFE, G, X, nev: int, tol: float, maxiter: int, steps: int = 3,
@@ -574,33 +638,37 @@ def _block_krylov_largest(fe: SparseFE, G, X, nev: int, tol: float, maxiter: int
     the wanted end towards the rest of the spectrum). Convergence: dual-norm residual ‖Gφ − μKφ‖_{K⁻¹}/|μ| ≤ tol for
     the nev wanted pairs (eigenvalue error ≈ tol²)."""
     xp = fe.xp
-    m = X.shape[1]
+    n, m = X.shape
     res = np.full(nev, np.inf)
-    it = 0
-    Xn = None
+    it, Xn, th = 0, None, None
     for it in range(1, maxiter + 1):
         X0 = X if Xn is None else xp.concatenate([X, Xn], 1)
-        blocks, V = [X0], X0
-        for _ in range(steps):
+        c0 = X0.shape[1]
+        Q = xp.empty((n, c0 * (steps + 1)), order="F")            # one basis buffer; column slices contiguous
+        Q[:, :c0] = X0
+        V = X0
+        del X0, X, Xn
+        for s_ in range(steps):
             V = fe.solve(G @ V)
-            V = V / xp.linalg.norm(V, axis=0)[None, :]
-            blocks.append(V)
-        Q = xp.concatenate(blocks, 1)
-        KQ = fe._K @ Q
-        Q, KQ = _k_orthonormalise(xp, Q, KQ)
-        Q, KQ = _k_orthonormalise(xp, Q, KQ)               # twice is enough (Cholesky-QR style)
-        GQ = G @ Q
-        Hs = Q.T @ GQ
-        theta, Y = xp.linalg.eigh(0.5 * (Hs + Hs.T))      # ascending
+            V /= xp.linalg.norm(V, axis=0)[None, :]
+            Q[:, (s_ + 1) * c0:(s_ + 2) * c0] = V
+        del V
+        for _ in range(2):                                         # K-orthonormalise twice (rank-revealing)
+            w, U = xp.linalg.eigh(_gram(Q, fe._K))
+            keep = w > 1e-10 * w.max()
+            Q = _rmul_inplace(Q, U[:, keep] / xp.sqrt(w[keep])[None, :])
+        theta, Y = xp.linalg.eigh(_gram(Q, G))                     # ascending
         Y_pos, th = Y[:, ::-1][:, :m], theta[::-1][:m]
-        Xn = Q @ Y[:, :n_neg]                               # most negative Ritz vectors, kept for deflation
+        Xn = Q @ Y[:, :n_neg]                                      # most negative Ritz vectors, kept for deflation
         X = Q @ Y_pos
-        R = (GQ @ Y_pos[:, :nev]) - (KQ @ Y_pos[:, :nev]) * th[None, :nev]
-        del Q, KQ, GQ, blocks, V
+        del Q
         if xp is not np:
             xp.get_default_memory_pool().free_all_blocks()
+        Xv = X[:, :nev]
+        R = G @ Xv - (fe._K @ Xv) * th[None, :nev]
         # dual-norm residual ‖r‖_{K⁻¹}/|μ| (φ K-normalised): bounds the eigenvalue error by ≈ res² (THEORY §4.4(c))
         res = _host(xp.sqrt(xp.abs(xp.einsum("ij,ij->j", R, fe.solve(R)))) / (xp.abs(th[:nev]) + 1e-300))
+        del R
         if _EIG_VERBOSE:
             print(f"  eig it {it}: mu {np.round(_host(th[:nev]), 6).tolist()} res {np.max(res[:nev]):.2e} "
                   f"min-theta {float(theta[0]):.3e}", flush=True)

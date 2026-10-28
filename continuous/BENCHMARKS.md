@@ -46,3 +46,19 @@ than the direct solve and vshell: OPEN_QUESTIONS B5.
 
 Refactor 2.4–7.8 s + primal and stress-adjoint solves (< 0.2 s) + buckling (≈ 3 outer iterations × ~45 block solves) +
 geometry (band ψ/χ on GPU, seconds). Expected ≈ 10–20 s per iteration, i.e. phase B (80 iterations) ≈ 15–30 min per start.
+
+## FE memory option 1 (lean eigensolver, node-level G, int32 indices, 14-RHS solves; `research/gpu_memory/REPORT.md`)
+
+MBB solid, h_e = 0.4 mm, 4.86 M DOF, same script and job type as the table above (job 7800841 vs 7794574-era run
+`bench_mbb_04c.json`; tests 7800843 GPU 21 passed, 7800844 CPU 14 passed).
+
+| Quantity | Before | Option 1 |
+| --- | --- | --- |
+| GPU used after factor (GiB) | 71.5 | 67.1 |
+| GPU used after buckling (GiB) | 86.5 | 77.1 |
+| Peak GPU (nvidia-smi, 0.5 s sampling, GiB) | ≈ 89 (study) | 77.4 |
+| Buckling (s, 4 outer iterations) | 11.5 | 5.7 |
+| Single-RHS solve (s) | 0.13 | 0.27 (solves the 14-column block) |
+| Refactor (s) | 7.8 | 7.8 |
+| Compliance | 85.617328601565 | 85.617328601560 |
+| μ (6 modes), max relative difference | — | 3.4e-12 |
