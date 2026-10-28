@@ -292,121 +292,141 @@ class Run:
         for ph in phases:
             if ph < rs.phase:
                 continue
-            model = PhaseModel(ctx, ph, rs.D_comp, self.log)
-            dm, disc = model.dm, model.disc
-            act = np.concatenate([~model.ds.passive, ~model.ds.passive])
-            n_act = int(act.sum())
-            st0 = model.settings(0.0)
-            base = model.baseline(st0)
-            self.log(f"[cshell] phase {ph} solid: C0 {base['C0']:.4f} N·mm, K0 {ctx.F @ ctx.F / base['C0']:.2f} N/mm, "
-                     f"λ_s0 {base['lam_s0']}, λ_b0 {base['lam_b0']}, c {base['c']:.3f}")
-            c_norm = base["c"] if rs.it == 0 or ph != rs.phase else rs.c_norm
+            pending_d = None
+            while True:                                          # restarts after an outward-extent extension
+                model = PhaseModel(ctx, ph, rs.D_comp, self.log)
+                if pending_d is not None:                        # §3.5 step 2: keep d unchanged on the new d^hi
+                    tgt = np.clip(pending_d / np.maximum(model.ds.d_hi, 1e-12), 0.0, 1.0)
+                    xd = np.clip(model.ds.filt.invert(tgt), 0.0, 1.0)
+                    rs.xi[:nv] = xd
+                    pending_d = None
+                dm, disc = model.dm, model.disc
+                act = np.concatenate([~model.ds.passive, ~model.ds.passive])
+                n_act = int(act.sum())
+                st0 = model.settings(0.0)
+                base = model.baseline(st0)
+                self.log(f"[cshell] phase {ph} solid: C0 {base['C0']:.4f} N·mm, K0 {ctx.F @ ctx.F / base['C0']:.2f} N/mm, "
+                         f"λ_s0 {base['lam_s0']}, λ_b0 {base['lam_b0']}, c {base['c']:.3f}")
+                c_norm = base["c"] if rs.it == 0 or ph != rs.phase else rs.c_norm
 
-            def vol(x):
-                return dm.volume(dm.forward(x[:nv], x[nv:], as_built=False))
+                def vol(x):
+                    return dm.volume(dm.forward(x[:nv], x[nv:], as_built=False))
 
-            def vol_grad(x):
-                gd, ga = dm.volume_grad(dm.forward(x[:nv], x[nv:], as_built=False))
-                return np.concatenate([gd, ga])
+                def vol_grad(x):
+                    gd, ga = dm.volume_grad(dm.forward(x[:nv], x[nv:], as_built=False))
+                    return np.concatenate([gd, ga])
 
-            xi = rs.xi.copy()
-            # passive vertices carry their imposed values in ξ itself, so the filter blends them into active
-            # neighbours consistently (THEORY §3.4); otherwise a start value bleeds through F and caps V.
-            xi[:nv][model.ds.passive] = 0.0
-            xi[nv:][model.ds.passive] = 1.0
-            xi, eta, nres = restore_mass(xi, vol, vol_grad, model.V0, act, tol=opt["mass_tol"])
-            Cls = MMA if opt["method"] == "mma" else ProjectedLBFGSB
-            optimiser = Cls(n_act, 2, move=opt["move"], con_scale=1.0)
-            if rs.opt_state is not None and ph == rs.phase and rs.it > 0:
-                optimiser.load_state_dict(rs.opt_state)
-            it0 = rs.it if ph == rs.phase else 0
-            max_it = ccfg.phase_value(opt["max_iter"], ph)
-            s_J = rs.s_J if ph == rs.phase else None
-            tau = 5e-4
-            calm, J_prev, prev_modes = 0, None, None
-            for it in range(it0, max_it):
-                frac = it / max(max_it - 1, 1)
-                st = model.settings(frac)
-                w_s = ccfg.phase_value(opt["sliver_weight"], ph, frac)
-                t0 = time.time()
-                sab = dm.forward(xi[:nv], xi[nv:], as_built=True)
-                rho = dm.rho(sab)
-                t_geo = time.time() - t0
-                t0 = time.time()
-                base_c = dict(base)
-                if st.w_P > 0:                                   # λ0 with the current c (strength ∝ 1/c)
-                    lam_s0 = cfg["material"]["strength_MPa"] / (c_norm * base["sigma_pn0"])
-                    from .objective import capacity
-                    base_c["lam0"] = capacity(lam_s0, base["mu0"], st.knockdown, st.beta)[0]
-                fe = model.fe_eval(rho, st, base_c, c_norm, prev_modes)
-                t_fe = time.time() - t0
-                if not np.isfinite(fe["J"]):
-                    raise FloatingPointError(f"non-finite objective at phase {ph} iteration {it}")
-                t0 = time.time()
-                g_rho = np.zeros(disc.n_elem)
-                g_rho[model.grid_fe.elem_dense] = fe["dJ"]
-                gJd, gJa = dm.pull_rho_hat(sab, g_rho)
-                snom = dm.forward(xi[:nv], xi[nv:], as_built=False)
-                V = dm.volume(snom)
-                gVd, gVa = dm.volume_grad(snom)
-                Gs, _ = dm.sliver(snom)
-                gGd, gGa = dm.sliver_grad(snom)
-                gJ = np.concatenate([gJd, gJa])[act]
-                gG = np.concatenate([gGd, gGa])[act]
-                gV = np.concatenate([gVd, gVa])[act] / model.V0
-                if s_J is None:
-                    s_J = 10.0 / max(np.abs(gJ).max() * opt["move"] * 10, 1e-12)   # |Δf0| ~ 10 per full move
-                f0 = s_J * (-fe["J"] + w_s * Gs)
-                df0 = s_J * (-gJ + w_s * gG)
-                e = V / model.V0 - 1.0
-                g = np.array([e - tau, -e - tau]) / tau
-                dg = np.vstack([gV, -gV]) / tau
-                x_act = xi[act]
-                x_new = optimiser.step(x_act, f0, df0, g, dg)
-                xi_new = xi.copy()
-                xi_new[act] = x_new
-                t_mma = time.time() - t0
-                t0 = time.time()
-                xi_new, eta, nres = restore_mass(xi_new, vol, vol_grad, model.V0, act, tol=opt["mass_tol"])
-                t_res = time.time() - t0
-                dxi = float(np.abs(xi_new - xi).max())
-                xi = xi_new
-                mass_err = vol(xi) / model.V0 - 1.0
-                prev_modes = fe["modes"]
-                if st.w_P > 0 and np.isfinite(fe["quantile"]):            # Le et al. (2010) normalisation update
-                    c_norm = float(np.sqrt(c_norm) * np.sqrt(fe["quantile"] / fe["sigma_pn"]))
-                if hasattr(optimiser, "note_objective"):
-                    optimiser.note_objective(fe["J"])
-                hours = hours0 + (time.time() - self.t_begin) / 3600
-                row = dict(start=self.start, phase=ph, iter=it, J=fe["J"], C_C0=fe["C"] / base["C0"],
-                           lam_s_ratio=fe["lam_s"] / base["lam_s0"] if st.w_P > 0 else np.nan,
-                           lam_b_ratio=fe["lam_b"] / base["lam_b0"] if st.w_P > 0 and np.isfinite(base["lam_b0"]) else np.nan,
-                           lam_ratio=fe["lam"] / base_c["lam0"] if st.w_P > 0 else np.nan, governing=fe["governing"],
-                           mass_err=mass_err, G_s=Gs, max_dxi=dxi,
-                           move=float(np.ravel(getattr(getattr(optimiser, "state", None), "move", opt["move"]))[0]),
-                           n_restore=nres, eig_iters=fe["eig_iters"], eig_converged=fe["eig_converged"],
-                           active_dof=model.grid_fe.ndof, t_geometry=t_geo, t_fe=t_fe, t_mma=t_mma, t_restore=t_res,
-                           gpu_mem_GiB=_gpu_mem(), c_norm=c_norm, sliver_w=w_s, stress_p=st.stress_p, beta=st.beta)
-                self._history(row)
-                self.log(f"[{self.start}] ph {ph} it {it:3d}  J {fe['J']:+.5f}  C/C0 {row['C_C0']:.4f}  "
-                         f"V/V0-1 {mass_err:+.1e}  Gs {Gs:.3f}  |dξ| {dxi:.3f}  FE {t_fe:.1f}s geo {t_geo:.1f}s")
-                if abs(mass_err) > opt["mass_tol"] * 1.0001:
-                    raise RuntimeError(f"R1 violated after restoration: V/V0 - 1 = {mass_err:.2e}")
-                rs = RunState(self.start, ph, it + 1, xi, c_norm, s_J,
-                              optimiser.state_dict() if hasattr(optimiser, "state_dict") else None, rs.D_comp, hours)
-                self.save(rs)
-                if J_prev is not None and dxi < opt["tol_x"] and abs(fe["J"] - J_prev) < opt["tol_f"]:
-                    calm += 1
-                else:
-                    calm = 0
-                J_prev = fe["J"]
-                if calm >= 5:
-                    self.log(f"[cshell] phase {ph} converged at iteration {it}")
-                    break
-                if self.max_hours and (time.time() - self.t_begin) / 3600 >= self.max_hours:
-                    self.log(f"[cshell] --max-hours reached; checkpoint written, resume with --resume")
-                    return dict(status="paused", phase=ph, iteration=it + 1)
-                self._check_extension(model, xi, nv)
+                xi = rs.xi.copy()
+                # passive vertices carry their imposed values in ξ itself, so the filter blends them into active
+                # neighbours consistently (THEORY §3.4); otherwise a start value bleeds through F and caps V.
+                xi[:nv][model.ds.passive] = 0.0
+                xi[nv:][model.ds.passive] = 1.0
+                xi, eta, nres = restore_mass(xi, vol, vol_grad, model.V0, act, tol=opt["mass_tol"])
+                extended = False
+                Cls = MMA if opt["method"] == "mma" else ProjectedLBFGSB
+                optimiser = Cls(n_act, 2, move=opt["move"], con_scale=1.0)
+                if rs.opt_state is not None and ph == rs.phase and rs.it > 0:
+                    optimiser.load_state_dict(rs.opt_state)
+                it0 = rs.it if ph == rs.phase else 0
+                max_it = ccfg.phase_value(opt["max_iter"], ph)
+                s_J = rs.s_J if ph == rs.phase else None
+                tau = 5e-4
+                calm, J_prev, prev_modes = 0, None, None
+                for it in range(it0, max_it):
+                    frac = it / max(max_it - 1, 1)
+                    st = model.settings(frac)
+                    w_s = ccfg.phase_value(opt["sliver_weight"], ph, frac)
+                    t0 = time.time()
+                    sab = dm.forward(xi[:nv], xi[nv:], as_built=True)
+                    rho = dm.rho(sab)
+                    t_geo = time.time() - t0
+                    t0 = time.time()
+                    base_c = dict(base)
+                    if st.w_P > 0:                                   # λ0 with the current c (strength ∝ 1/c)
+                        lam_s0 = cfg["material"]["strength_MPa"] / (c_norm * base["sigma_pn0"])
+                        from .objective import capacity
+                        base_c["lam0"] = capacity(lam_s0, base["mu0"], st.knockdown, st.beta)[0]
+                    fe = model.fe_eval(rho, st, base_c, c_norm, prev_modes)
+                    t_fe = time.time() - t0
+                    if not np.isfinite(fe["J"]):
+                        raise FloatingPointError(f"non-finite objective at phase {ph} iteration {it}")
+                    t0 = time.time()
+                    g_rho = np.zeros(disc.n_elem)
+                    g_rho[model.grid_fe.elem_dense] = fe["dJ"]
+                    gJd, gJa = dm.pull_rho_hat(sab, g_rho)
+                    snom = dm.forward(xi[:nv], xi[nv:], as_built=False)
+                    V = dm.volume(snom)
+                    gVd, gVa = dm.volume_grad(snom)
+                    Gs, _ = dm.sliver(snom)
+                    gGd, gGa = dm.sliver_grad(snom)
+                    gJ = np.concatenate([gJd, gJa])[act]
+                    gG = np.concatenate([gGd, gGa])[act]
+                    gV = np.concatenate([gVd, gVa])[act] / model.V0
+                    if s_J is None:
+                        s_J = 10.0 / max(np.abs(gJ).max() * opt["move"] * 10, 1e-12)   # |Δf0| ~ 10 per full move
+                    f0 = s_J * (-fe["J"] + w_s * Gs)
+                    df0 = s_J * (-gJ + w_s * gG)
+                    e = V / model.V0 - 1.0
+                    g = np.array([e - tau, -e - tau]) / tau
+                    dg = np.vstack([gV, -gV]) / tau
+                    x_act = xi[act]
+                    x_new = optimiser.step(x_act, f0, df0, g, dg)
+                    xi_new = xi.copy()
+                    xi_new[act] = x_new
+                    t_mma = time.time() - t0
+                    t0 = time.time()
+                    xi_new, eta, nres = restore_mass(xi_new, vol, vol_grad, model.V0, act, tol=opt["mass_tol"])
+                    t_res = time.time() - t0
+                    dxi = float(np.abs(xi_new - xi).max())
+                    xi = xi_new
+                    mass_err = vol(xi) / model.V0 - 1.0
+                    prev_modes = fe["modes"]
+                    if st.w_P > 0 and np.isfinite(fe["quantile"]):            # Le et al. (2010) normalisation update
+                        c_norm = float(np.sqrt(c_norm) * np.sqrt(fe["quantile"] / fe["sigma_pn"]))
+                    if hasattr(optimiser, "note_objective"):
+                        optimiser.note_objective(fe["J"])
+                    hours = hours0 + (time.time() - self.t_begin) / 3600
+                    row = dict(start=self.start, phase=ph, iter=it, J=fe["J"], C_C0=fe["C"] / base["C0"],
+                               lam_s_ratio=fe["lam_s"] / base["lam_s0"] if st.w_P > 0 else np.nan,
+                               lam_b_ratio=fe["lam_b"] / base["lam_b0"] if st.w_P > 0 and np.isfinite(base["lam_b0"]) else np.nan,
+                               lam_ratio=fe["lam"] / base_c["lam0"] if st.w_P > 0 else np.nan, governing=fe["governing"],
+                               mass_err=mass_err, G_s=Gs, max_dxi=dxi,
+                               move=float(np.ravel(getattr(getattr(optimiser, "state", None), "move", opt["move"]))[0]),
+                               n_restore=nres, eig_iters=fe["eig_iters"], eig_converged=fe["eig_converged"],
+                               active_dof=model.grid_fe.ndof, t_geometry=t_geo, t_fe=t_fe, t_mma=t_mma, t_restore=t_res,
+                               gpu_mem_GiB=_gpu_mem(), c_norm=c_norm, sliver_w=w_s, stress_p=st.stress_p, beta=st.beta)
+                    self._history(row)
+                    self.log(f"[{self.start}] ph {ph} it {it:3d}  J {fe['J']:+.5f}  C/C0 {row['C_C0']:.4f}  "
+                             f"V/V0-1 {mass_err:+.1e}  Gs {Gs:.3f}  |dξ| {dxi:.3f}  FE {t_fe:.1f}s geo {t_geo:.1f}s")
+                    if abs(mass_err) > opt["mass_tol"] * 1.0001:
+                        raise RuntimeError(f"R1 violated after restoration: V/V0 - 1 = {mass_err:.2e}")
+                    rs = RunState(self.start, ph, it + 1, xi, c_norm, s_J,
+                                  optimiser.state_dict() if hasattr(optimiser, "state_dict") else None, rs.D_comp, hours)
+                    self.save(rs)
+                    if J_prev is not None and dxi < opt["tol_x"] and abs(fe["J"] - J_prev) < opt["tol_f"]:
+                        calm += 1
+                    else:
+                        calm = 0
+                    J_prev = fe["J"]
+                    if calm >= 5:
+                        self.log(f"[cshell] phase {ph} converged at iteration {it}")
+                        break
+                    if self.max_hours and (time.time() - self.t_begin) / 3600 >= self.max_hours:
+                        self.log(f"[cshell] --max-hours reached; checkpoint written, resume with --resume")
+                        return dict(status="paused", phase=ph, iteration=it + 1)
+                    if self._check_extension(model, xi, nv):
+                        extended = True
+                        break
+                if extended:                                     # §3.5: double D_comp, rebuild, re-map, restore, reset MMA
+                    _, _, pending_d, _, _, _ = model.dm.vertex_fields(xi[:nv], xi[nv:])
+                    if model.fe is not None:
+                        model.fe.free()
+                    D_new = 2.0 * rs.D_comp
+                    self.log(f"[cshell] outward extent extended {rs.D_comp:.1f} -> {D_new:.1f} mm at phase {ph} "
+                             f"iteration {rs.it}")
+                    rs = RunState(self.start, ph, rs.it, xi, c_norm, s_J, None, D_new, rs.hours_used)
+                    continue
+                break
             stats = phase_stats(model, xi, nv)
             self.log(f"[cshell] phase {ph} design: " + json.dumps(stats))
             result[f"phase_{ph}"] = dict(J=J_prev, xi=xi, **stats)
@@ -416,14 +436,13 @@ class Run:
                 model.fe.free()
         return dict(status="done", **{k: {kk: vv for kk, vv in v.items() if kk != "xi"} for k, v in result.items()})
 
-    def _check_extension(self, model: PhaseModel, xi, nv):
-        """THEORY §3.5: flag vertices whose d is limited by D_comp and exceeds 0.8 D_comp. The rebuild with doubled
-        D_comp is applied at the next phase boundary (logged; immediate rebuild is a TODO)."""
+    def _check_extension(self, model: PhaseModel, xi, nv) -> bool:
+        """THEORY §3.5: True if an active vertex whose d^hi is set by D_comp has d > 0.8 D_comp."""
         _, _, d, _, _, _ = model.dm.vertex_fields(xi[:nv], xi[nv:])
         hit = model.d_hi_by_comp & ~model.ds.passive & (d > 0.8 * model.D_comp)
         if hit.any():
-            self.log(f"[cshell] WARNING: {int(hit.sum())} vertices reach 0.8 D_comp = {0.8 * model.D_comp:.2f} mm; "
-                     f"outward extent extension (§3.5) needed")
+            self.log(f"[cshell] {int(hit.sum())} vertices reach 0.8 D_comp = {0.8 * model.D_comp:.2f} mm (§3.5)")
+        return bool(hit.any())
 
 
 def phase_stats(model: PhaseModel, xi, nv) -> dict:

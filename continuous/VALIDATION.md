@@ -67,7 +67,7 @@ errors, now fixed.
 
 | ID | Test | Result | Pass |
 | --- | --- | --- | --- |
-| B1 | Stub rod L/D = 0.5 from all-hollow S1 | J −0.011 → −0.0003 (≈ solid), G_s → 0, converged at it 44 (job 7795325); closed-area share: pending (job 7795487). Note: only 189 of 1109 vertices are free (mount zones of 1.5 mm at both ends of a 5 mm rod plus the thin rule). | ◐ |
-| B2 | Slender rod L/D = 8 | first run (pre-fix passive values): J 1.044, C/C₀ 0.352 (uniform shell with a ≥ t_min: 0.514 analytic); rerun with fix pending (job 7795488) | … |
+| B1 | Stub rod L/D = 0.5 from all-hollow S1 | J −0.011 → −0.0003 ≤ ln 1.02, G_s → 0, converged at it 44 (job 7795325); **closed area 100 %** of the active area, d_max 0.05 mm (job 7795487). Caveat: only 189 of 1109 vertices are free (1.5 mm mount zones at both ends of a 5 mm rod plus the thin rule). | ✅ |
+| B2 | Slender rod L/D = 8 | J = 1.178, C/C₀ = 0.308, hollow everywhere (closed 0.1 %), D_comp extended 4 → 8 mm once (§3.5) (job 7795581). **Tapered**: wall 4.4 mm at the root → 1.5 mm mid-span (1.8 at the load pad), outer radius 6.8 → 5.1 mm (`research/bench/wall_profile.py`, job 7795953). Constant-mass uniform shell, analytic: C/C₀ ≈ 0.35 (wall wholly outside, D1) / 0.514 (a ≥ t_min). FE uniform-shell sweep: pending (export). | ✅ |
 | B3 | Column | pending | … |
 | B4 | MMA on Svanberg's problems | reference optima (`test_mma.py`) | ✅ |
