@@ -166,7 +166,7 @@ class SparseFE:
     """K(ρ̂) on an ActiveGrid, factorised once per design; solves for any number of right-hand sides."""
 
     def __init__(self, grid: ActiveGrid, fixed_dof: np.ndarray, nodal_load: np.ndarray, h_mm: float, E_MPa: float,
-                 nu: float, backend: str = "auto", element_type: str = "q1_im"):
+                 nu: float, backend: str = "auto", element_type: str = "q1_im", hybrid: bool = False):
         self.g, self.h, self.E, self.nu = grid, float(h_mm), float(E_MPa), float(nu)
         self.element_type = element_type
         if backend == "auto":
@@ -210,6 +210,7 @@ class SparseFE:
         self._Bg = xp.asarray(Bg_all)                                                    # (8, 3, 8) dN_a/dx_i
         self._K = None
         self._solver = None
+        self.hybrid = bool(hybrid)
         self.stats = dict(Ne=grid.Ne, ndof=grid.ndof, nnz=grid.nnz, backend=backend)
 
     # -- assembly and factorisation --------------------------------------------------------------------------------
@@ -251,12 +252,23 @@ class SparseFE:
                 self._b = cp.asfortranarray(cp.zeros((g.ndof, 1)))
                 opts = DirectSolverOptions(sparse_system_type=DirectSolverMatrixType.SPD,
                                            multithreading_lib=_cudss_mtlayer())          # threaded host planning
-                self._solver = DirectSolver(self._K, self._b, options=opts)
+                self._solver = DirectSolver(self._K, self._b, options=opts, execution=self._execution())
                 self._solver.plan()
                 self.stats["plan_s"] = time.time() - t1
             else:
                 self._K.data[...] = data                     # same buffers -> numeric refactorisation only
-            self._solver.factorize()
+            try:
+                self._solver.factorize()
+            except Exception as e:                       # no silent fallback: log, switch to hybrid memory, re-plan
+                if "ALLOC_FAILED" not in repr(e) or self.hybrid:
+                    raise
+                print(f"fe_sparse: WARNING: cuDSS factor does not fit in GPU memory ({g.ndof} DOF); retrying in "
+                      f"hybrid memory mode (factor partly in host memory)", flush=True)
+                self.free()
+                self._K = None
+                self.hybrid = True
+                self.stats["hybrid_fallback"] = True
+                return self.factor(rho_hat_active)
             cp.cuda.Device().synchronize()
         else:
             import analysis
@@ -266,6 +278,13 @@ class SparseFE:
             self._solver = analysis.HostCholesky().factor(self._K)
         self.stats.update(assemble_s=t1 - t0, factor_s=time.time() - t1)
         return self
+
+    def _execution(self):
+        """cuDSS execution space: device memory only, or hybrid (factor spills to host memory) when it does not fit."""
+        from nvmath.sparse.advanced import ExecutionCUDA, HybridMemoryModeOptions
+        if not self.hybrid:
+            return ExecutionCUDA()
+        return ExecutionCUDA(hybrid_memory_mode_options=HybridMemoryModeOptions(hybrid_memory_mode=True))
 
     def solve(self, rhs):
         """K x = rhs for (ndof,) or (ndof, k) right-hand sides; fixed DOF of rhs are zeroed (x = 0 there)."""
@@ -485,7 +504,8 @@ def _k_orthonormalise(xp, Q, KQ, drop=1e-10):
     return Q @ W, KQ @ W
 
 
-def _block_krylov_largest(fe: SparseFE, G, X, nev: int, tol: float, maxiter: int, steps: int = 4):
+def _block_krylov_largest(fe: SparseFE, G, X, nev: int, tol: float, maxiter: int, steps: int = 3,
+                          n_neg: int = 4):
     """Largest eigenpairs of G φ = μ K φ (K SPD, G symmetric indefinite).
 
     Each outer iteration builds the block Krylov space [X, AX, …, A^s X] of A = K⁻¹G (exact factor), K-orthonormalises
@@ -514,9 +534,12 @@ def _block_krylov_largest(fe: SparseFE, G, X, nev: int, tol: float, maxiter: int
         Hs = Q.T @ GQ
         theta, Y = xp.linalg.eigh(0.5 * (Hs + Hs.T))      # ascending
         Y_pos, th = Y[:, ::-1][:, :m], theta[::-1][:m]
-        Xn = Q @ Y[:, :m]                                   # most negative Ritz vectors, kept for deflation
+        Xn = Q @ Y[:, :n_neg]                               # most negative Ritz vectors, kept for deflation
         X = Q @ Y_pos
-        R = GQ @ Y_pos[:, :nev] - (KQ @ Y_pos[:, :nev]) * th[None, :nev]
+        R = (GQ @ Y_pos[:, :nev]) - (KQ @ Y_pos[:, :nev]) * th[None, :nev]
+        del Q, KQ, GQ, blocks, V
+        if xp is not np:
+            xp.get_default_memory_pool().free_all_blocks()
         # dual-norm residual ‖r‖_{K⁻¹}/|μ| (φ K-normalised): bounds the eigenvalue error by ≈ res² (THEORY §4.4(c))
         res = _host(xp.sqrt(xp.abs(xp.einsum("ij,ij->j", R, fe.solve(R)))) / (xp.abs(th[:nev]) + 1e-300))
         if _EIG_VERBOSE:

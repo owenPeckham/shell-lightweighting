@@ -28,7 +28,7 @@ directional finite differences show a constant ≈ 5.8 % bias (spec reproducer, 
 cshell's production engine (`cshell/fe_sparse.py`, `buckling`) does not use this code: its sensitivity uses
 K⁰_e = E·K̂ (q1_im) throughout and is verified by `tests/cshell/test_buckling.py::test_directional_sensitivity_q1im`
 (same set-up as THEORY §6.4). Suggested fix in the reference: for `element_type in ("q1", "q1_im")`, set
-`self.K0 = 2·mu_s·(1 + nu_run)·Khat`. Status of the in-cshell wrapper test of that fix: pending.
+`self.K0 = 2·mu_s·(1 + nu_run)·Khat`. **Fix proven** without editing the reference: `cshell.fea.ShellCG.run_buckling` substitutes a subclass of `ElementData` with that K0 for the duration of the call. Reproducer and proof: `tests/cshell/test_buckling.py::test_reference_q1im_fix` (THEORY §6.4 set-up, host fast engine `cpu_cholesky_lobpcg`, h = 0.1): unfixed relative error **5.3e-2**, fixed **1.2e-4**.
 
 ### B2. Reference GPU path is float32
 

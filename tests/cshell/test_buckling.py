@@ -49,3 +49,33 @@ def test_directional_sensitivity_q1im(backend):
         err = abs(fd / pred - 1)
         print(f"h={h}: fd={fd:.6e} pred={pred:.6e} rel={err:.2e}")
     assert err < tol
+
+
+@pytest.mark.parametrize("fix", [False, True])
+def test_reference_q1im_fix(fix):
+    """THEORY §6.4 reproducer on the reference code (fast host engine): bias ≈ 5.8 % unfixed, < 1e-3 with the fix."""
+    rng = np.random.default_rng(7)
+    rho = rng.uniform(0.5, 1.0, (30, 4, 5))
+    nn = tuple(n + 1 for n in rho.shape)
+    fixed = np.zeros(nn + (3,), bool); fixed[0] = True
+    load = np.zeros(nn + (3,)); load[-1] = np.array([-40.0, 0.0, -3.0]) / (nn[1] * nn[2])
+    cg = ShellCG(fixed, load, 1.0, E, NU, rel_tol=1e-12, engine="cpu_direct", warm_start=False)
+
+    def mu(r, sens=False):
+        cg.solve(r.astype(np.float32))
+        b = cg.run_buckling(num_modes=4, aggregation_p=8.0, engine="cpu_cholesky_lobpcg", lobpcg_tol=1e-10,
+                            fix_q1im_sensitivity=fix)
+        return (b.mu_tilde, np.asarray(b.sensitivity)) if sens else b.mu_tilde
+
+    m0, s0 = mu(rho, True)
+    x = (np.arange(30) + 0.5) / 30
+    d = 0.05 * np.sin(np.pi * x)[:, None, None] * (1 + 0.3 * rng.standard_normal(rho.shape))
+    pred = float((s0 * d).sum())
+    h = 0.1
+    fd = (mu(rho + h * d) - mu(rho - h * d)) / (2 * h)
+    err = abs(fd / pred - 1)
+    print(f"fix={fix}: fd={fd:.6e} pred={pred:.6e} rel={err:.2e}")
+    if fix:
+        assert err < 1e-3
+    else:
+        assert err > 1e-2          # documents the reference bias (THEORY §6.4: ≈ 5.8 %)

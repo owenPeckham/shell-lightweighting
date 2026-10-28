@@ -172,3 +172,32 @@ def build_bcs(origin, h: float, node_shape, V, T, TF, support_faces, loads):
     clash = int(np.count_nonzero(fixed_dof & (load != 0)))
     info = dict(n_fixed_nodes=int(fixed.size), n_load_nodes=n_load, loaded_clamped_dof=clash)
     return fixed_dof.reshape(tuple(node_shape) + (3,)), load.reshape(tuple(node_shape) + (3,)), info
+
+
+# ---------------------------------------------------------------------------------------------------------------
+# Reference-code fix: q1_im buckling sensitivity (THEORY §6.4, OPEN_QUESTIONS B1)
+# ---------------------------------------------------------------------------------------------------------------
+class _ElementDataConsistent(analysis.ElementData):
+    """`analysis.ElementData` with the solid stiffness K0 = E_s·Khat (E_s = 2μ_s(1 + ν)) for q1 / q1_im, i.e. the
+    ∂K/∂ρ̂ of the matrix actually assembled. The reference uses the Gauss K0 = λ_s Klam + μ_s Kmu in Term A and in
+    the explicit adjoint term, which biases ∂μ̃/∂ρ̂ by ≈ 5.8 % for q1_im."""
+
+    def __init__(self, xp, grid, E_elem, nu_elem, u, rho_flat, threshold, lam_s, mu_s, element_type, nu_run, Khat):
+        super().__init__(xp, grid, E_elem, nu_elem, u, rho_flat, threshold, lam_s, mu_s, element_type, nu_run, Khat)
+        if element_type in ("q1", "q1_im"):
+            self.K0 = analysis._to(xp, 2.0 * float(mu_s) * (1.0 + float(nu_run)) * np.asarray(Khat, np.float64))
+
+
+def _run_buckling_fixed(self, *args, fix_q1im_sensitivity: bool = True, **kw):
+    """`ConjugateGradient.run_buckling` with the q1_im sensitivity fix applied for the duration of the call."""
+    if not fix_q1im_sensitivity:
+        return analysis.ConjugateGradient.run_buckling(self, *args, **kw)
+    orig = analysis.ElementData
+    analysis.ElementData = _ElementDataConsistent
+    try:
+        return analysis.ConjugateGradient.run_buckling(self, *args, **kw)
+    finally:
+        analysis.ElementData = orig
+
+
+ShellCG.run_buckling = _run_buckling_fixed
