@@ -1,0 +1,36 @@
+# cshell environment (aarch64 / GH200, Isambard-AI). THEORY §10.4.
+# Create: mamba env create -p $PROJECTDIR/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell -f continuous/environment.yml
+name: cshell
+channels: [conda-forge]
+dependencies:
+  - python=3.12
+  - cuda-version=12.9
+  - numpy
+  - scipy
+  - numba
+  - numba-cuda
+  - cupy
+  - cuda-nvcc
+  - scikit-image
+  - skan
+  - pyamg
+  - trimesh
+  - rtree
+  - matplotlib
+  - pytest
+  - pyvista
+  - tetgen
+  - gmsh
+  - python-gmsh
+  - calculix
+  - pip
+  - pip:
+      - cadquery-ocp
+      - build123d
+      - libigl
+      - warp-lang
+      - mmapy
+      - nvmath-python[cu12]   # cuDSS sparse direct (fe_sparse.py)
+      - nvidia-cudss-cu12
+      - scikit-fem
+      - tetgen                # python bindings (pyvista); conda tetgen is the CLI
