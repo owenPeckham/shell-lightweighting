@@ -438,7 +438,11 @@ def buckling(fe: SparseFE, primal: Primal, num_modes: int = 6, p: float = 8.0, m
         ej = fe.element_bilinear(vecs[:, j], vecs[:, j], solid=False)
         frac[j] = float((_host(r) * ej).sum() / max(ej.sum(), 1e-300))
     keep = (vals > 0) & (frac >= min_energy_fraction)
-    idx = np.flatnonzero(keep)[:num_modes]
+    idx = np.flatnonzero(keep)
+    n_ret = min(num_modes, idx.size)
+    while n_ret < idx.size and abs(vals[idx[n_ret]] - vals[idx[n_ret - 1]]) <= 1e-3 * abs(vals[idx[n_ret - 1]]):
+        n_ret += 1                     # never cut a degenerate cluster: the p-norm gradient is basis-dependent otherwise
+    idx = idx[:n_ret]
     mu = vals[idx]
     if mu.size == 0:
         return BucklingResult(mu=mu, mu_tilde=0.0, modes=vecs[:, :0], dmu_tilde=np.zeros(g.Ne), energy_fraction=frac,

@@ -19,11 +19,17 @@ def model():
     return ctx, PhaseModel(ctx, 0, 4.0)
 
 
-def test_dJ_dxi_directional(model):
+@pytest.mark.parametrize("terms", ["compliance", "stress", "full"])
+def test_dJ_dxi_directional(model, terms):
+    import dataclasses
     ctx, m = model
     nv = ctx.surf.n_vertices
     dm = m.dm
     st = m.settings(0.5)
+    if terms == "compliance":
+        st = dataclasses.replace(st, w_P=0.0)
+    elif terms == "stress":
+        st = dataclasses.replace(st, buckling=False)
     base = m.baseline(st)
     c = base["c"]
     rng = np.random.default_rng(0)
@@ -46,10 +52,10 @@ def test_dJ_dxi_directional(model):
     J0, g = J(xi, True)
     pred = float(g @ d)
     errs = []
-    for h in (1.0, 0.5):
+    for h in (1.0, 0.5, 0.25, 0.125):
         fd = (J(xi + h * d) - J(xi - h * d)) / (2 * h)
         errs.append(abs(fd / pred - 1))
-        print(f"h={h}: J0={J0:.6f} fd={fd:.6e} pred={pred:.6e} rel={errs[-1]:.2e}")
+        print(f"[{terms}] h={h}: J0={J0:.6f} fd={fd:.6e} pred={pred:.6e} rel={errs[-1]:.2e}")
     assert min(errs) < 0.02
     # volume gradient along the same direction (nominal geometry)
     V = lambda x: dm.volume(dm.forward(x[:nv], x[nv:], as_built=False))

@@ -310,6 +310,10 @@ class Run:
                 return np.concatenate([gd, ga])
 
             xi = rs.xi.copy()
+            # passive vertices carry their imposed values in ξ itself, so the filter blends them into active
+            # neighbours consistently (THEORY §3.4); otherwise a start value bleeds through F and caps V.
+            xi[:nv][model.ds.passive] = 0.0
+            xi[nv:][model.ds.passive] = 1.0
             xi, eta, nres = restore_mass(xi, vol, vol_grad, model.V0, act, tol=opt["mass_tol"])
             Cls = MMA if opt["method"] == "mma" else ProjectedLBFGSB
             optimiser = Cls(n_act, 2, move=opt["move"], con_scale=1.0)
@@ -403,12 +407,14 @@ class Run:
                     self.log(f"[cshell] --max-hours reached; checkpoint written, resume with --resume")
                     return dict(status="paused", phase=ph, iteration=it + 1)
                 self._check_extension(model, xi, nv)
-            result[f"phase_{ph}"] = dict(J=J_prev, xi=xi)
+            stats = phase_stats(model, xi, nv)
+            self.log(f"[cshell] phase {ph} design: " + json.dumps(stats))
+            result[f"phase_{ph}"] = dict(J=J_prev, xi=xi, **stats)
             np.save(os.path.join(self.out, f"xi_{self.start}_phase{ph}.npy"), xi)
             rs = RunState(self.start, ph + 1, 0, xi, c_norm, None, None, rs.D_comp, rs.hours_used)
             if model.fe is not None:
                 model.fe.free()
-        return dict(status="done", **{k: dict(J=v["J"]) for k, v in result.items()})
+        return dict(status="done", **{k: {kk: vv for kk, vv in v.items() if kk != "xi"} for k, v in result.items()})
 
     def _check_extension(self, model: PhaseModel, xi, nv):
         """THEORY §3.5: flag vertices whose d is limited by D_comp and exceeds 0.8 D_comp. The rebuild with doubled
@@ -418,6 +424,22 @@ class Run:
         if hit.any():
             self.log(f"[cshell] WARNING: {int(hit.sum())} vertices reach 0.8 D_comp = {0.8 * model.D_comp:.2f} mm; "
                      f"outward extent extension (§3.5) needed")
+
+
+def phase_stats(model: PhaseModel, xi, nv) -> dict:
+    """Area-weighted design statistics on the active vertices: closed share (a ≥ r_MA), ξ̃ᵃ ≥ 0.98 share,
+    wall w = a + d where open, outward offset d (THEORY §3.8, §8.2)."""
+    _, xt_a, d, a, _, _ = model.dm.vertex_fields(xi[:nv], xi[nv:])
+    act = ~model.ds.passive
+    A = model.ctx.surf.A * act
+    At = float(A.sum())
+    closed = a >= model.ctx.r_ma
+    opened = act & ~closed
+    w = (a + d)[opened]
+    return dict(active_vertices=int(act.sum()), closed_area_frac=float((A * closed).sum() / At),
+                snap_closed_area_frac=float((A * (xt_a >= 0.98)).sum() / At),
+                d_max=float(d[act].max()), d_mean=float((A * d).sum() / At),
+                wall_open_min=float(w.min()) if w.size else None, wall_open_max=float(w.max()) if w.size else None)
 
 
 def _gpu_mem() -> float:

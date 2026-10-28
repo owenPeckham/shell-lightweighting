@@ -47,10 +47,11 @@ def tube(size, h, quarter=True):
     zmin, zmax = zs[np.nonzero(act.any((0, 1)))[0][[0, -1]]]
     fixed = np.zeros(nn + (3,), bool); load = np.zeros(nn + (3,))
     on = lambda c, v: np.isclose(X[..., c], v, atol=1e-9)
-    # roller contacts as fixed-width patches, identical at every h (a single node line is a singular line load
-    # whose local indentation compliance grows as h -> 0): load pin 4 mm, supports 3 mm wide, 0.5 mm deep
+    # load pin as a fixed-width patch, identical at every h (a single node line is a singular line load whose local
+    # indentation compliance grows as h -> 0): 4 mm wide, 0.5 mm deep
     patch = lambda x0, w, zsel: act & (np.abs(X[..., 0] - x0) <= w / 2 + 1e-9) & zsel
-    sup = patch(SPAN / 2, 3.0, X[..., 2] <= zmin + 0.5)
+    # supports: one node plane (rotation-free, a 3 mm-wide uz = 0 patch acts as a partial clamp), 0.5 mm deep band
+    sup = patch(SPAN / 2, 1e-6, X[..., 2] <= zmin + 0.5)
     fixed[sup, 2] = True
     top = patch(0.0, 4.0, X[..., 2] >= zmax - 0.5)
     if quarter:
@@ -60,7 +61,7 @@ def tube(size, h, quarter=True):
         w = np.where(on(1, 0.0), 0.5, 1.0) * np.where(on(0, 0.0), 0.5, 1.0)    # mirror multiplicity 1/(copies)
         load[top, 2] = -F * w[top] / (4 * float(w[top].sum()))    # full-model node count = 4 Σ w; total F/4
     else:
-        supl = patch(-SPAN / 2, 3.0, X[..., 2] <= zmin + 0.5)
+        supl = patch(-SPAN / 2, 1e-6, X[..., 2] <= zmin + 0.5)
         fixed[supl, 2] = True
         fixed[supl, 0] = True
         for s in (sup, supl):
