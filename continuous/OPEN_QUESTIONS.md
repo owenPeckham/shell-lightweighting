@@ -49,3 +49,12 @@ needs. cshell computes centre stress itself (`fe_sparse.SparseFE.centre_stress`)
 | --- | --- |
 | A1 | Elements outside the active set carry ρ̂ = ρ_min in the dense model; dropping them changes K by O(ρ_min) and no design derivative (STATUS §2.2, 0.3). Tested against the dense reference (`test_fe_sparse.py`). |
 | A2 | Owen's D1: inset bound a ≥ (t_min − d)⁺, smoothed. |
+
+### B5. Dense reference solve reads 2–7 % stiffer than an exact solve (h_e = 0.8 mm, solid Study 1 parts)
+
+`ConjugateGradient.run_analysis` (GMG-PCG, float32, `pcg_rel_tol = 1e-6`) gave K₀ = 263.9 / 51.87 / 482.6 N/mm for the
+cantilever / L-bracket / MBB, against 257.8 / 48.60 / 473.5 from the fp64 sparse direct solve on the same elements, BCs
+and ρ̂ (and 256.8 / 48.3 / 473 from vshell's independent AMG solver). Compliance from an unconverged CG under-estimates
+the energy, so K comes out high; with ρ_min = 1e-6 void the relative residual does not bound the energy error.
+Reproducer: `continuous/research/stage0/bench_solid.py` (dense run at 0.8 mm). Not used by cshell; worth a look for
+PCLS runs that rely on absolute compliance.

@@ -30,6 +30,8 @@ import gpu_analysis
 # local corner order of the reference kernels (gpu_analysis.xi_arr/eta_arr/zeta_arr, hex_dof_map n0..n7)
 CORNERS = np.array([[0, 0, 0], [1, 0, 0], [1, 1, 0], [0, 1, 0],
                     [0, 0, 1], [1, 0, 1], [1, 1, 1], [0, 1, 1]], np.int64)
+import os as _os
+_EIG_VERBOSE = bool(_os.environ.get("CSHELL_EIG_VERBOSE"))
 _SELF = 13                                    # stencil slot of offset (0, 0, 0) in 13 + 9 dx + 3 dy + dz
 
 
@@ -365,7 +367,7 @@ def _ramp(rho, t):
 
 
 def buckling(fe: SparseFE, primal: Primal, num_modes: int = 6, p: float = 8.0, min_density: float = 0.1,
-             min_energy_fraction: float = 0.5, tol: float = 1e-8, maxiter: int = 200, X0=None,
+             min_energy_fraction: float = 0.5, tol: float = 1e-6, maxiter: int = 100, X0=None,
              extra: int = 4, seed: int = 0) -> BucklingResult:
     """Inverse load factors of (−K_σ) φ = μ K φ and the sensitivity of μ̃ (THEORY §4.4(c), §6.4).
 
@@ -483,20 +485,25 @@ def _k_orthonormalise(xp, Q, KQ, drop=1e-10):
     return Q @ W, KQ @ W
 
 
-def _block_krylov_largest(fe: SparseFE, G, X, nev: int, tol: float, maxiter: int, steps: int = 3):
+def _block_krylov_largest(fe: SparseFE, G, X, nev: int, tol: float, maxiter: int, steps: int = 4):
     """Largest eigenpairs of G φ = μ K φ (K SPD, G symmetric indefinite).
 
     Each outer iteration builds the block Krylov space [X, AX, …, A^s X] of A = K⁻¹G (exact factor), K-orthonormalises
-    it and does Rayleigh-Ritz on G; the m best Ritz vectors restart the next one. Convergence of μ_j goes as
-    (μ_{m+1}/μ_j)^{(s+1)·it}. Relative residual ‖Gφ − μKφ‖ / (|μ|‖Kφ‖) per pair."""
+    it and does Rayleigh-Ritz on G. The restart block keeps the m most positive Ritz vectors **and** the m most
+    negative ones: the negative end of K⁻¹G (tensile or surface-element modes) can dominate |μ|, and keeping it in
+    the basis deflates it instead of letting it absorb the power steps. No shift is used (a shift by |μ_min| compresses
+    the wanted end towards the rest of the spectrum). Convergence: dual-norm residual ‖Gφ − μKφ‖_{K⁻¹}/|μ| ≤ tol for
+    the nev wanted pairs (eigenvalue error ≈ tol²)."""
     xp = fe.xp
     m = X.shape[1]
-    res = np.full(m, np.inf)
-    it, sigma = 0, 0.0
+    res = np.full(nev, np.inf)
+    it = 0
+    Xn = None
     for it in range(1, maxiter + 1):
-        blocks, V = [X], X
+        X0 = X if Xn is None else xp.concatenate([X, Xn], 1)
+        blocks, V = [X0], X0
         for _ in range(steps):
-            V = fe.solve(G @ V) + sigma * V                  # shift so the most negative μ cannot dominate
+            V = fe.solve(G @ V)
             V = V / xp.linalg.norm(V, axis=0)[None, :]
             blocks.append(V)
         Q = xp.concatenate(blocks, 1)
@@ -505,16 +512,19 @@ def _block_krylov_largest(fe: SparseFE, G, X, nev: int, tol: float, maxiter: int
         Q, KQ = _k_orthonormalise(xp, Q, KQ)               # twice is enough (Cholesky-QR style)
         GQ = G @ Q
         Hs = Q.T @ GQ
-        theta, Y = xp.linalg.eigh(0.5 * (Hs + Hs.T))
-        sigma = max(0.0, -float(theta.min()))
-        order = xp.argsort(-theta)[:m]
-        theta, Y = theta[order], Y[:, order]
-        X = Q @ Y
-        R = GQ @ Y - (KQ @ Y) * theta[None, :]
-        res = _host(xp.linalg.norm(R, axis=0) / (xp.abs(theta) * xp.linalg.norm(KQ @ Y, axis=0) + 1e-300))
+        theta, Y = xp.linalg.eigh(0.5 * (Hs + Hs.T))      # ascending
+        Y_pos, th = Y[:, ::-1][:, :m], theta[::-1][:m]
+        Xn = Q @ Y[:, :m]                                   # most negative Ritz vectors, kept for deflation
+        X = Q @ Y_pos
+        R = GQ @ Y_pos[:, :nev] - (KQ @ Y_pos[:, :nev]) * th[None, :nev]
+        # dual-norm residual ‖r‖_{K⁻¹}/|μ| (φ K-normalised): bounds the eigenvalue error by ≈ res² (THEORY §4.4(c))
+        res = _host(xp.sqrt(xp.abs(xp.einsum("ij,ij->j", R, fe.solve(R)))) / (xp.abs(th[:nev]) + 1e-300))
+        if _EIG_VERBOSE:
+            print(f"  eig it {it}: mu {np.round(_host(th[:nev]), 6).tolist()} res {np.max(res[:nev]):.2e} "
+                  f"min-theta {float(theta[0]):.3e}", flush=True)
         if np.all(res[:nev] <= tol):
             break
-    return _host(theta), X, res, it
+    return _host(th), X, res, it
 
 
 def _cudss_mtlayer() -> str | None:

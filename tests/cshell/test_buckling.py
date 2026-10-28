@@ -19,7 +19,7 @@ def setup(rho, backend, element_type="q1_im"):
 
 def run(fe, g, rho, **kw):
     fe.factor(g.gather_elems(rho))
-    return buckling(fe, fe.primal(), num_modes=4, p=8.0, tol=1e-8, maxiter=100, **kw)
+    return buckling(fe, fe.primal(), num_modes=4, p=8.0, tol=1e-7, maxiter=100, **kw)
 
 
 def test_eigenvalues_match_reference():

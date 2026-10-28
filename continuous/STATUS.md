@@ -6,13 +6,14 @@ Stage log for `cshell` (THEORY_continuous.md §12). Newest entries at the top of
 
 | Date | Stage | Entry |
 | --- | --- | --- |
+| 2026-10-28 | 0.3–0.4 | **Sparse engine built and validated** (`cshell/fe_sparse.py`): active-set q1_im + cuDSS fp64 Cholesky; buckling on the same factor with q1_im-consistent sensitivity (block-Krylov eigensolver, both spectrum ends kept in the restart, dual-norm residual). Tests pass CPU and GPU: matches dense `ShellCG` (full set 2e-6, partial set 1e-5), compliance gradient FD, buckling eigenvalues = reference model, directional ∂μ̃ 3.4e-5 (reference code: 5.8 % bias), stress adjoint < 1e-3, J gradient with buckling < 1e-3. **V2-a passes** at 0.8 mm (K₀ vs vshell: +0.4 %, +0.6 %, +0.1 %). Per-solve costs in `BENCHMARKS.md`: at 0.4 mm refactor 2.4–7.8 s, solve 0.03–0.06 s, 39–77 GiB. Dense reference at 0.8 mm reads 2–7 % stiffer than both vshell and the direct solve (float32 PCG stopped on residual; OPEN_QUESTIONS B5). Also built in parallel (agents): `mma.py` (V5-B4, V4-7 pass), `band.py` (Warp band, P, cache; tests pass; cantilever h_g = 0.1 band 220 M cells in 26 s), `design.py` (D1 chain; V4-1 directional < 1e-6 + Taylor, V1-c volume), `objective.py`. Manuscript numbers in `research/manuscript_numbers.md` (discrepancies → OPEN_QUESTIONS Q4–Q9). |
 | 2026-10-28 | 0.2 | FE-engine research done (`continuous/research/fe_engine/REPORT.md`). Measured on one GH200, thin-wall Q1 hex, fp64 cuDSS Cholesky: 3.3 M DOF factor 1.8 s, solve 0.024 s, 33 GiB; 7.6 M DOF factor 5.5 s, 75 GiB; 13.6 M DOF does not fit (≈ 9 kB/DOF). Symbolic `plan()` 13–32 s on CPU, only when the sparsity pattern changes. nvmath-python/cuDSS available (pip aarch64, and the `sa-gpu` container). Recommendation put to Owen: material-only active-set grid + assembled q1_im + cuDSS (§2.2, 0.3). `ShellCG` adapter and its tests written (`cshell/fea.py`, `tests/cshell/`); env `cshell` building. |
 | 2026-10-28 | pre-0 | Owen: D1 adopted (a ≥ (t_min − d)⁺); plan re-ordered so fast/sparse FE is researched and built first (§2.2); MMA vs L-BFGS-B comparison added to Stage 1. |
 | 2026-10-28 | pre-0 | Spec read in full. Reference code checked selectively (ElementData, stress kernel, memory models located). Environment survey done. Plan, risks and disagreements written (this file). No code yet. |
 
-**Done:** reading of the spec; dependency survey (§2.1); location of the q1_im buckling-sensitivity bug (§4, item D6).
-**Next:** Stage 0.1 (env, `ShellCG`, dense baseline costs) and 0.2 (fast/sparse FE research) in parallel.
-**Blockers:** none.
+**Done:** env; `ShellCG`; sparse cuDSS engine with buckling; V2-a; design chain, objective, MMA, band (surface.py in progress).
+**Next:** finish Stage 0 gate (V2-b tubes 0.8/0.4/0.2, V2-c, V3-a, V3-b); 0.2 mm route (does not fit as one fp64 factor); then `optimise.py` and Stage 1 runs.
+**Blockers:** none. Watch: MBB at 0.4 mm uses 94 GiB of 95.6 with buckling (K11).
 
 ---
 
@@ -83,8 +84,8 @@ Gate: V1, V4 (1–3, 6, 7), V5-B1/B2/B4, three compliance-only runs meeting R1.
 
 ### 2.4 Stage 2: capacity, robustness, manufacture, decision
 
-1. Stress p-norm with my own centre-strain (B(0)) material-stress kernel and a matching bilinear ηᵀK⁰u kernel; adjoint via `matrix_free_pcg` with the primal's operator (`q1_im`, ν, `gmg`, `tol=0`, `rel_tol=1e-8`); host path for CPU tests. V4-4.
-2. Buckling wrapper: separate 0.8 mm `ShellCG` instance fed the 2³-block-averaged ρ̂; corrected q1_im sensitivity (D6 below); chain back by /8. V4-5 (< 10⁻³ for q1 and corrected q1_im), V3-a, V3-b.
+1. ~~Stress p-norm and adjoint~~ **done on the sparse engine** (centre-strain material stress, adjoint on the same factor; V4-4 passes).
+2. ~~Buckling wrapper on a 0.8 mm grid~~ **superseded**: buckling on the same 0.4 mm factor (`fe_sparse.buckling`), q1_im-consistent sensitivity (V4-5 passes for q1_im). Remaining: V3-a, V3-b; the D6 write-up of the reference fix for Owen.
 3. As-built erosion, soft-min capacity, Le normalisation c, sliver penalty with continuation, full J; S2 (vshell) start.
 4. `export.py` (tiled ψ at 0.05 mm, closure snap, v_min opening, small-void fill, largest component, escape holes, δ mass correction, marching cubes, R1 mesh check, wall histogram), `validate.py` (TetGen/gmsh C3D10 + ccx static and `*BUCKLE`), resolution check (grid shift + 0.5 mm), decision rule, `report.py` (15 pages, rebuildable), `summary.json/.txt`, provenance.
 5. Full runs of the three parts (3 starts each), V2-c, V5-B3, V6, V7; `VALIDATION.md`; honest comparison with solid / uniform shell / vshell / manuscript.
@@ -113,6 +114,10 @@ Gate: V2-c, V3, V4 (4–5), V5-B3, V6, V7; reports for all three parts.
 | K8 | aarch64 gaps (gpytoolbox, maybe ccx/tetgen). | Missing remesher or validator. | Fallbacks in §2.1; any fallback logged and reported. |
 | K9 | V7 (identical rerun to 10⁻⁴) with non-deterministic GPU reductions and LOBPCG starts. | Could fail by chance. | Fixed seeds, float64 reductions, deterministic LOBPCG init; state tolerance. |
 | K10 | Full runs vs 24 h limit and slot cap 8: 3 parts × 3 starts = 9 runs. | Queueing. | `--max-hours` + dependent resubmission; run 8 at once, ninth after. |
+| K11 | **GPU memory at 0.4 mm for the MBB**: 77 GiB after factor, 94 GiB with buckling (of 95.6), before any outward growth enlarges the active set. | OOM in phase B. | In order: smaller eigensolver basis (Krylov blocks dominate the 17 GiB buckling overhead); cuDSS hybrid memory mode (factor partly in host memory); fp32 factor + iterative refinement. Decide when phase B runs. |
+| K12 | 0.2 mm (16–32 M DOF) does not fit as one fp64 factor (≈ 9 kB/DOF). | No direct solve at 0.2 mm. | Resolution checks only: PCG preconditioned by the 0.4 mm cuDSS factor (two-grid) or hybrid mode; decide at V2-c. |
+
+K1–K3 (dense-box cost, buckling at 0.8 mm, mixed resolutions) are **resolved** by the sparse engine: buckling runs on the same 0.4 mm factor as the elastic solve.
 
 ## 4. Disagreements and inconsistencies with the spec
 

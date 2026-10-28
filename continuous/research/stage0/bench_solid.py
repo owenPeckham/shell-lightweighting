@@ -54,7 +54,7 @@ def main(cfg_path, out_path, hs):
         r.update(solve_s=p.seconds["solve"], compliance_Nmm=p.compliance, K0=float(F @ F / p.compliance))
         try:
             t0 = time.time()
-            b = buckling(fe, p, num_modes=6, p=8.0, tol=1e-6, maxiter=200)
+            b = buckling(fe, p, num_modes=6, p=8.0, tol=1e-3, maxiter=100)
             r.update(buckling_s=time.time() - t0, mu=b.mu.tolist(), lambda1=float(1 / b.mu.max()) if b.mu.size else None,
                      P_buckle_N=float(np.linalg.norm(F) / b.mu.max()) if b.mu.size else None,
                      lobpcg_iters=b.iterations, buckling_converged=b.converged, energy_fraction=b.energy_fraction.tolist(),

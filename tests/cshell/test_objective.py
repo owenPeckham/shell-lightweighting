@@ -57,7 +57,7 @@ def test_J_gradient_directional(backend):
     nn = g.node_shape
     rng = np.random.default_rng(6)
     rho = rng.uniform(0.6, 1.0, g.Ne)
-    st = Settings(knockdown=0.85, beta=12.0, eig_tol=1e-9, num_modes=4)
+    st = Settings(knockdown=0.85, beta=12.0, eig_tol=1e-7, num_modes=4)
     # compressive tip load so buckling and strength both matter
     load = np.zeros(nn + (3,)); load[-1] = np.array([-400.0, 0.0, -20.0]) / (nn[1] * nn[2])
     fe.f = fe.xp.asarray(g.gather_nodes(load).reshape(-1))

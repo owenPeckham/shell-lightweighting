@@ -88,7 +88,7 @@ class Settings:
     num_modes: int = 6
     buckling_p: float = 8.0
     min_density: float = 0.1
-    eig_tol: float = 1e-6
+    eig_tol: float = 1e-3                 # dual-norm residual; eigenvalue error ≈ 1e-6 (THEORY §4.4(c))
     rho_min: float = 1e-6
 
 
