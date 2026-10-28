@@ -247,7 +247,8 @@ class SparseFE:
                 self._K = self._sp.csr_matrix((data, cp.asarray(g.indices.astype(np.int32)),
                                                cp.asarray(g.indptr.astype(np.int32))), shape=(g.ndof, g.ndof))
                 self._b = cp.asfortranarray(cp.zeros((g.ndof, 1)))
-                opts = DirectSolverOptions(sparse_system_type=DirectSolverMatrixType.SPD)
+                opts = DirectSolverOptions(sparse_system_type=DirectSolverMatrixType.SPD,
+                                           multithreading_lib=_cudss_mtlayer())          # threaded host planning
                 self._solver = DirectSolver(self._K, self._b, options=opts)
                 self._solver.plan()
                 self.stats["plan_s"] = time.time() - t1
@@ -514,3 +515,15 @@ def _block_krylov_largest(fe: SparseFE, G, X, nev: int, tol: float, maxiter: int
         if np.all(res[:nev] <= tol):
             break
     return _host(theta), X, res, it
+
+
+def _cudss_mtlayer() -> str | None:
+    """Path of cuDSS's OpenMP threading layer (speeds up plan() on the 72-core Grace host), if installed."""
+    import glob
+    import os
+    import sys
+    for d in sys.path:
+        hits = glob.glob(os.path.join(d, "nvidia", "cu12", "lib", "libcudss_mtlayer_gomp.so*"))
+        if hits:
+            return sorted(hits)[0]
+    return None
