@@ -421,6 +421,8 @@ def buckling(fe: SparseFE, primal: Primal, num_modes: int = 6, p: float = 8.0, m
     # LOBPCG, largest μ, B = K, preconditioner K⁻¹
     m = num_modes + extra
     rng = np.random.default_rng(seed)
+    if X0 is not None and X0.shape[0] != g.ndof:
+        X0 = None
     X = xp.asarray(rng.standard_normal((g.ndof, m))) if X0 is None else xp.asarray(X0)
     if X.shape[1] < m:
         X = xp.concatenate([X, xp.asarray(rng.standard_normal((g.ndof, m - X.shape[1])))], 1)

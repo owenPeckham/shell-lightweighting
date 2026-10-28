@@ -175,7 +175,8 @@ class PhaseModel:
 
     def fe_eval(self, rho: np.ndarray, st: Settings, base, c_norm: float, prev_modes=None):
         """FE responses for element densities ρ (dense element box)."""
-        self.ensure_active(rho)
+        if self.ensure_active(rho):
+            prev_modes = None                                # new DOF numbering: warm-start modes no longer apply
         g = self.grid_fe
         r = g.gather_elems(rho)
         rho_hat = self.disc.rho_min + (1 - self.disc.rho_min) * r
