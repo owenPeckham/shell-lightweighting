@@ -1,0 +1,3 @@
+twogrid.py cantilever tg02_mf 0.2 --matfree-only
+twogrid.py mbb tg04_tol1e-2 0.4 --buckling --inner-tol 1e-2
+twogrid.py mbb tg02_mf 0.2 --matfree-only

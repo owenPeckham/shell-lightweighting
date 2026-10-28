@@ -1,0 +1,114 @@
+{
+ "part": "MBB",
+ "h_e": 0.4,
+ "hollow": 0,
+ "Ne": 1460058,
+ "ndof": 4860336,
+ "nnz": 367575300,
+ "setup_s": 34.385024547576904,
+ "context_GiB": 0.55133056640625,
+ "F_N": 200.0,
+ "mem_after_engine_init": {
+  "tag": "engine_init",
+  "device_used": 7.02935791015625,
+  "over_base": 6.47802734375,
+  "cupy_used": 6.470961570739746,
+  "cupy_held": 6.470961570739746
+ },
+ "_stem": "mbb_h04_fp32only",
+ "fp32": {
+  "precision": "fp32",
+  "first_factor_s": 20.14375376701355,
+  "plan_s": 13.006827354431152,
+  "mem_after_factor": {
+   "tag": "after_factor",
+   "device_used": 46.857666015625,
+   "over_base": 46.30633544921875,
+   "cupy_used": 11.99535322189331,
+   "cupy_held": 13.535157203674316
+  },
+  "mem_after_factor_poolfreed": {
+   "tag": "after_factor_poolfreed",
+   "device_used": 46.746337890625,
+   "over_base": 46.19500732421875,
+   "cupy_used": 11.99535322189331,
+   "cupy_held": 13.426369667053223
+  },
+  "engine_arrays_GiB": {
+   "_keep": 2.738649398088455,
+   "_perm": 2.738649398088455,
+   "_pos_blk": 0.6962099075317383,
+   "_dofs": 0.26107871532440186,
+   "_diag_fixed": 0.00014600157737731934,
+   "f": 0.03621232509613037,
+   "K": 4.126080263406038,
+   "Kf32": 1.3693246990442276
+  },
+  "lu_nnz": 6949054139,
+  "refactor_s": 6.708511829376221,
+  "primal_s": 0.8060176372528076,
+  "pcg_its_primal": 16,
+  "compliance": 85.61732859858543,
+  "resid_rel": 5.8093773620421665e-11,
+  "random_rhs_solve_s": 0.5769445896148682,
+  "pcg_its_random": 16,
+  "random_resid_rel": 4.193297351746676e-12,
+  "buckling": {
+   "lean": {
+    "lean": true,
+    "seconds": 93.92040491104126,
+    "iters": 4,
+    "converged": true,
+    "mu": [
+     0.13621202507396285,
+     0.13381622922797048,
+     0.11994891803677041,
+     0.11632067913827837,
+     0.06716555882265668,
+     0.0668563318591021
+    ],
+    "mu_tilde": 0.15288619286077876,
+    "peak_extra_GiB": 14.091585636138916,
+    "eig_peak_extra_GiB": 4.671422958374023,
+    "device_before": 46.797119140625,
+    "inner": "default",
+    "pcg_its": 2546,
+    "mem_after": 61.959228515625,
+    "lambda1": 7.3414957266585095,
+    "P_buckle_N": 1468.299145331702
+   },
+   "lean_pcg1e-4inner": {
+    "lean": true,
+    "seconds": 33.97886848449707,
+    "iters": 4,
+    "converged": true,
+    "mu": [
+     0.1362120230780399,
+     0.1338162229875909,
+     0.11994891774732673,
+     0.11632067547001634,
+     0.06716553071740632,
+     0.06685632073052876
+    ],
+    "mu_tilde": 0.15288618879850813,
+    "peak_extra_GiB": 14.091585636138916,
+    "eig_peak_extra_GiB": 4.200679779052734,
+    "device_before": 47.877197265625,
+    "inner": "direct32",
+    "pcg_its": 774,
+    "mem_after": 61.95916748046875,
+    "lambda1": 7.341495834233887,
+    "P_buckle_N": 1468.2991668467776
+   }
+  },
+  "device_peak_cupy_GiB": 26.340425491333008,
+  "mem_after_free": {
+   "tag": "after_free",
+   "device_used": 40.96307373046875,
+   "over_base": 40.4117431640625,
+   "cupy_used": 6.717220783233643,
+   "cupy_held": 7.352102756500244
+  }
+ },
+ "total_s": 193.05546736717224
+}
