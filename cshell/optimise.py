@@ -29,7 +29,7 @@ from .objective import Settings, evaluate
 from .surface import DesignSurface, medial_depth, mount_face_ids, mount_vertices, outward_clearance
 
 HIST_COLS = ["start", "phase", "iter", "J", "C_C0", "lam_s_ratio", "lam_b_ratio", "lam_ratio", "governing",
-             "mass_err", "G_s", "max_dxi", "move", "n_restore", "eig_iters", "eig_converged", "active_dof",
+             "mass_err", "G_s", "max_dxi", "max_dxi_raw", "move", "n_restore", "eig_iters", "eig_converged", "active_dof",
              "t_geometry", "t_fe", "t_mma", "t_restore", "gpu_mem_GiB", "c_norm", "sliver_w", "stress_p", "beta"]
 
 
@@ -378,7 +378,10 @@ class Run:
                     t0 = time.time()
                     xi_new, eta, nres = restore_mass(xi_new, vol, vol_grad, model.V0, act, tol=opt["mass_tol"])
                     t_res = time.time() - t0
-                    dxi = float(np.abs(xi_new - xi).max())
+                    dxi_raw = float(np.abs(xi_new - xi).max())
+                    filt = model.ds.filt                         # convergence on the physical (filtered) design: raw ξ
+                    dxi = float(max(np.abs(filt.apply(xi_new[:nv] - xi[:nv])).max(),   # 2-cycles in the filter's
+                                    np.abs(filt.apply(xi_new[nv:] - xi[nv:])).max()))  # near-null space are harmless
                     xi = xi_new
                     mass_err = vol(xi) / model.V0 - 1.0
                     prev_modes = fe["modes"]
@@ -391,14 +394,14 @@ class Run:
                                lam_s_ratio=fe["lam_s"] / base["lam_s0"] if st.w_P > 0 else np.nan,
                                lam_b_ratio=fe["lam_b"] / base["lam_b0"] if st.w_P > 0 and np.isfinite(base["lam_b0"]) else np.nan,
                                lam_ratio=fe["lam"] / base_c["lam0"] if st.w_P > 0 else np.nan, governing=fe["governing"],
-                               mass_err=mass_err, G_s=Gs, max_dxi=dxi,
+                               mass_err=mass_err, G_s=Gs, max_dxi=dxi, max_dxi_raw=dxi_raw,
                                move=float(np.ravel(getattr(getattr(optimiser, "state", None), "move", opt["move"]))[0]),
                                n_restore=nres, eig_iters=fe["eig_iters"], eig_converged=fe["eig_converged"],
                                active_dof=model.grid_fe.ndof, t_geometry=t_geo, t_fe=t_fe, t_mma=t_mma, t_restore=t_res,
                                gpu_mem_GiB=_gpu_mem(), c_norm=c_norm, sliver_w=w_s, stress_p=st.stress_p, beta=st.beta)
                     self._history(row)
                     self.log(f"[{self.start}] ph {ph} it {it:3d}  J {fe['J']:+.5f}  C/C0 {row['C_C0']:.4f}  "
-                             f"V/V0-1 {mass_err:+.1e}  Gs {Gs:.3f}  |dξ| {dxi:.3f}  FE {t_fe:.1f}s geo {t_geo:.1f}s")
+                             f"V/V0-1 {mass_err:+.1e}  Gs {Gs:.3f}  |dξ̃| {dxi:.4f} (raw {dxi_raw:.2f})  FE {t_fe:.1f}s geo {t_geo:.1f}s")
                     if abs(mass_err) > opt["mass_tol"] * 1.0001:
                         raise RuntimeError(f"R1 violated after restoration: V/V0 - 1 = {mass_err:.2e}")
                     rs = RunState(self.start, ph, it + 1, xi, c_norm, s_J,
