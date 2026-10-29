@@ -85,3 +85,14 @@ Two-grid targets (plan): MBB ≤ 30 s/iteration, ≤ 30 GiB GPU, default `--mem`
 - `examples/cshell/*.json` use relative `output_dir`; check where runs land.
 - Two-grid scratch includes `research/twogrid/debug_nan.py`: a NaN was being chased — check `STATUS_twogrid.md` (may be missing if the developer stopped first) and the tg_* logs.
 - STATUS.md log needs entries for 2026-10-29 (this hand-over summarises them).
+
+## Late update (two-grid developer, after the WIP commit) — see `research/twogrid/STATUS_twogrid.md`
+- MBB phase B (8.4 M DOF): two-grid FE 24.9 s/iteration vs 58 s direct hybrid; peak GPU 26.4 vs 52.8 GiB; host RSS
+  29.6 vs 167 GB — targets met. Cantilever phase B 32 s vs 41.5 s, 19.6 vs 42.6 GiB. Phase A: same time, ⅓ memory.
+- Accuracy: J ≤ 9e-9 vs direct on 3 of 4 checks; MBB design 3 differs by 3e-7 (plan: 1e-7) — suspected eigen-solver
+  tolerance; jobs 7809224/7809226 (eig_tol 1e-5) decide it.
+- Not done: dJ comparison, acceptance 3 (history of the MBB 3-iteration run 7809227 to compare), one CPU test hang
+  (cause unknown), BENCHMARKS.md/notes.md, final test runs.
+- Deviation: a coarse DOF is fixed if **any** fine DOF it interpolates to is clamped (plan said all; that made the MBB
+  phase-A coarse matrix singular). `buckling()` now builds G via `fe._geometric_op(H)`; the `ksig_mask` line is in
+  `ensure_active`.
