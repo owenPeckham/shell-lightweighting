@@ -36,7 +36,15 @@ checked equal to the full model; load pin as a 4 mm patch, supports one node pla
 | E | 2.5 | 0.0351 | 0.03697, +5.3 % | 0.03673, +4.6 % | 4.195 / 4.081 (+2.8 %) |
 
 A–D pass at both resolutions; **E misses the 4 % absolute gate** (+4.6 % at 0.4 mm) but its stiffness ratio is within
-2.8 %. **Investigated (job 7800269, `research/tubeE/`):** E converges to 0.03677 kN/mm at 0.2 mm (6.9 M DOF), i.e. the voxel limit is +4.8 % vs Abaqus — refinement does not close the gap; the load-patch width (2/4/6/10 mm) moves k by ±0.5 % only. Voxel is 8 % below Euler–Bernoulli (0.0400), Abaqus 12 % below: the gap is extra local compliance (indentation/ovalisation) in Abaqus's load/BC treatment, a model difference, not discretisation. Gate not met in absolute terms; ratio passes. vshell's own E result was +4.5 % (OPEN_QUESTIONS Q4); Abaqus itself is 12 % below Euler–Bernoulli at E and
+2.8 %. **Investigated (job 7800269, `research/tubeE/`):** E converges to 0.03677 kN/mm at 0.2 mm (6.9 M DOF), i.e. the voxel limit is +4.8 % vs Abaqus — refinement does not close the gap; the load-patch width (2/4/6/10 mm) moves k by ±0.5 % only. Voxel is 8 % below Euler–Bernoulli (0.0400), Abaqus 12 % below: the gap is extra local compliance (indentation/ovalisation) in Abaqus's load/BC treatment, a model difference, not discretisation. Gate not met in absolute terms; ratio passes.
+**CalculiX C3D8I, mesh-converged (`research/tubeE_ccx/`, jobs 7800452, 7800523, 7808290):** with the voxel model's
+own BCs (4 mm patch, node-plane supports) ccx gives E 0.03685, A 0.008743 kN/mm — **voxel agrees within 0.2 %**, so
+the voxel thin-wall stiffness is not the issue. Rigid rollers in frictionless contact (as in Abaqus) give E 0.03629
+(−1.5 %, local indentation/ovalisation; footprint ≈ 2.2 × 1.2 mm at 100 N), and with NLGEOM 0.03592 (−2.5 % in all);
+for the solid rod A rollers + NLGEOM stiffen by 1.0 % (support contact moves inward). This explains the wall-thickness
+trend of the gap. A uniform residual of 2.3–2.6 % (Abaqus softer than the full ccx roller model, equal for A and E)
+remains unexplained; a candidate is circumferential faceting of the Abaqus mesh (24 elements round: −1.7 % in our model).
+No change to cshell's FE or BC model: Study 1 parts load through bolt/pad faces, not rollers. vshell's own E result was +4.5 % (OPEN_QUESTIONS Q4); Abaqus itself is 12 % below Euler–Bernoulli at E and
 over-predicts the measured tubes by 35–60 % (Q6). Earlier runs with a one-node-line load gave E −11 % at 0.4 mm
 (singular line load); with a 3 mm-wide clamped support patch the beam was partially clamped (+41 %): both modelling
 errors, now fixed.
