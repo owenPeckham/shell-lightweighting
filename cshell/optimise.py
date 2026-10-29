@@ -316,7 +316,9 @@ class Run:
                         None if np.isnan(sJ) else sJ, opt or None, float(z["D_comp"]), float(z["hours_used"]))
 
     def _history(self, row: dict):
-        path = os.path.join(self.out, "history.csv")
+        """Append to this start's own history_<start>.csv (starts run as concurrent jobs in one run dir), then rebuild
+        the merged history.csv atomically."""
+        path = os.path.join(self.out, f"history_{self.start}.csv")
         new = not os.path.exists(path)
         cols = HIST_COLS
         if not new:                                      # keep an existing file's columns (runs resumed across versions)
@@ -327,6 +329,7 @@ class Run:
             if new:
                 w.writeheader()
             w.writerow(row)
+        merge_history(self.out)
 
     # -- main loop -----------------------------------------------------------------------------------------------
     def run(self, ctx: Context, resume: bool = False, only_phase: int | None = None) -> dict:
@@ -602,9 +605,42 @@ def _gpu_mem() -> float:
         return float("nan")
 
 
+def merge_history(out_dir: str) -> None:
+    """history.csv = all history_<start>.csv (columns unioned, rows in start then file order), written to a temporary
+    file and renamed, so concurrent writers never interleave and readers never see a partial file."""
+    files = sorted(glob.glob(os.path.join(out_dir, "history_*.csv")))
+    if not files:
+        return
+    rows, cols = [], list(HIST_COLS)
+    for fn in files:
+        with open(fn, newline="") as f:
+            r = csv.DictReader(f)
+            cols += [c for c in (r.fieldnames or []) if c not in cols]
+            rows += list(r)
+    tmp = os.path.join(out_dir, f".history.csv.{os.getpid()}")
+    with open(tmp, "w", newline="") as f:
+        w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")
+        w.writeheader()
+        w.writerows(rows)
+    os.replace(tmp, os.path.join(out_dir, "history.csv"))
+
+
 def run_info(out_dir: str, extra: dict):
-    path = os.path.join(out_dir, "run_info.json")
-    info = json.load(open(path)) if os.path.exists(path) else dict(allocations=[])
-    info["allocations"].append(dict(host=socket.gethostname(), slurm_job=os.environ.get("SLURM_JOB_ID"),
-                                    time=time.strftime("%Y-%m-%d %H:%M:%S"), **extra))
-    json.dump(info, open(path, "w"), indent=1)
+    """Record one allocation in run_info.d/<host>_<job>_<pid>.json and rebuild run_info.json from all of them (atomic
+    rename; concurrent jobs of one run never lose each other's entries)."""
+    d = os.path.join(out_dir, "run_info.d")
+    old = os.path.join(out_dir, "run_info.json")
+    if not os.path.isdir(d):
+        os.makedirs(d, exist_ok=True)
+        if os.path.exists(old):                          # allocations recorded before run_info.d existed
+            json.dump(json.load(open(old)).get("allocations", []), open(os.path.join(d, "_legacy.json"), "w"))
+    rec = dict(host=socket.gethostname(), slurm_job=os.environ.get("SLURM_JOB_ID"),
+               time=time.strftime("%Y-%m-%d %H:%M:%S"), **extra)
+    json.dump(rec, open(os.path.join(d, f"{rec['host']}_{rec['slurm_job']}_{os.getpid()}.json"), "w"), indent=1)
+    leg = os.path.join(d, "_legacy.json")
+    allocs = json.load(open(leg)) if os.path.exists(leg) else []
+    for fn in sorted(glob.glob(os.path.join(d, "[!_]*.json")), key=os.path.getmtime):
+        allocs.append(json.load(open(fn)))
+    tmp = os.path.join(out_dir, f".run_info.json.{os.getpid()}")
+    json.dump(dict(allocations=allocs), open(tmp, "w"), indent=1)
+    os.replace(tmp, old)

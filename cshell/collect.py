@@ -172,6 +172,8 @@ def vshell_start_xi(ctx, cfg: dict | None = None, log=print, vs: dict | None = N
 # Run-directory reading
 # =====================================================================================================================
 def read_history(run_dir) -> list[dict]:
+    from .optimise import merge_history
+    merge_history(run_dir)                               # per-start files -> history.csv (atomic)
     p = os.path.join(run_dir, "history.csv")
     if not os.path.exists(p):
         return []
