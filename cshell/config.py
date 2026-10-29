@@ -30,8 +30,15 @@ DEFAULTS = {
              "rho_min": 1e-6, "tessellation_mm": 0.02, "active_margin_mm": 0.5,    # FE active-set dilation
              "geometry_device": "auto",     # band chain ψ → χ → ρ, V, pull-backs: "auto" (GPU if CUDA) | "cpu" | "gpu"
              "geometry_offload": True},     # GPU chain: release the band from the device during each FE evaluation
-    "fe": {"engine": "sparse", "element_type": "q1_im", "backend": "auto",
-           "precision": "auto"},                            # cuDSS factor: "auto" | "fp64" | "fp32" (fe_sparse)
+    "fe": {"engine": "auto",      # "auto" (direct fp64 if it fits and DOF <= auto_direct_max_dof, else twogrid)
+                                  # | "direct" (fe_sparse, cuDSS) | "twogrid" (fe_twogrid, matrix-free two-grid PCG)
+           "auto_direct_max_dof": 2_000_000,
+           "element_type": "q1_im", "backend": "auto",
+           "precision": "auto",                             # direct cuDSS factor: "auto" | "fp64" | "fp32" (fe_sparse)
+           "twogrid": {"coarse_precision": "auto",           # fp32 coarse factor, fp64 if fp32 breaks down
+                       "degree": 5, "smoothing_range": 30.0,      # Chebyshev(Jacobi) smoother on [λmax/r, λmax]
+                       "tol": 1e-10, "krylov_tol": 1e-2,          # PCG: exact solves / buckling Krylov expansion
+                       "maxiter": 100, "nrhs": 7}},               # PCG block width (work memory ∝ nrhs)
     "capacity": {"stress_p": [6, 8, 10], "stress_q": 2, "stress_quantile": 0.995, "exclude_bc_mm": 2.0,
                  "include_mounts": False, "buckling": True, "buckling_modes": 6, "buckling_p": 8,
                  "knockdown": 0.85, "softmin_beta": [8, 12, 16], "eig_tol": 1e-3, "min_density_geometric": 0.1},
@@ -115,6 +122,8 @@ def validate(cfg: dict) -> None:
             raise ValueError(f"grid phase {ph}: h_e must be an integer multiple of h_g")
     if cfg["optimiser"]["method"] not in ("mma", "lbfgsb"):
         raise ValueError("optimiser.method must be 'mma' or 'lbfgsb'")
+    if cfg["fe"]["engine"] not in ("auto", "direct", "sparse", "twogrid"):
+        raise ValueError("fe.engine must be 'auto', 'direct' ('sparse') or 'twogrid'")
     if cfg["fe"]["element_type"] != "q1_im":
         print("config: warning: element_type != q1_im is not a production setting (THEORY §4.1)")
 

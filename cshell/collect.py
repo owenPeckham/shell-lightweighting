@@ -726,24 +726,41 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
         try:
             t0 = time.time()
             vd = os.path.join(run_dir, "validation")
-            h_val = _get(cfg, "validation.h_mm", 0.5)
+            h_val = _get(cfg, "validation.h_mm", 0.5)       # coarse level; the finer is h/sqrt(2) (>= 2 tets per wall)
             kw = dict(h=h_val, h_bc=res_list[0]["h_e"], n_modes=4, nproc=int(_get(cfg, "validation.nproc", min(
                 32, len(os.sched_getaffinity(0))))), want_stress=True, E=cfg["material"]["E_MPa"], nu=cfg["material"]["nu"],
-                fallback="skfem", timeout=_get(cfg, "validation.timeout_s", None))
+                fallback=None, timeout=_get(cfg, "validation.timeout_s", None))
             bf, dec, errs, used = {}, {}, {}, {}
             VE, TE, _ = meshes["best"]
-            edge = float(_get(cfg, "validation.surface_edge_mm", 0.5 * h_val))
+            # Same mesher for solid and design (ratios cancel mesher bias): isotropic surface remesh to h, gmsh volume
+            # inside that triangulation, quality gate; solved on the GPU (cuDSS, C3D10-identical). Two levels
+            # (h, h/sqrt(2)) give the mesh-convergence estimate; the finer level is compared. No tetgen fallback:
+            # its sliver mesh moved lambda_b by -46 % on B2 (research/b2_bodyfit).
+            kw.update(engine=_get(cfg, "validation.engine", "gpu"))
             for nm, (Vs, Ts) in (("solid", (ctx.V, ctx.T)), ("design", (VE, TE))):
-                Vs, Ts, dec[nm] = decimate_for_validation(Vs, Ts, edge, log=log)
-                for backend in ("gmsh", "tetgen"):            # tetgen keeps the (decimated) surface if gmsh rejects it
-                    try:
-                        bf[nm] = cval.validate_design(Vs, Ts, ctx.V, ctx.T, ctx.TF, ctx.support, ctx.loads, vd, nm,
-                                                      backend=backend, **kw)
-                        used[nm] = backend
-                        break
-                    except Exception as e:                    # recorded; a failed check blocks acceptance below
-                        errs[f"{nm}/{backend}"] = repr(e)[:300]
-                        log(f"[collect] body-fitted {nm} with {backend} FAILED: {e!r}")
+                levels = [h_val, h_val / 2 ** 0.5]
+                dec[nm] = dict(remesh="isotropic", levels=levels)
+                try:
+                    lv = []
+                    for i_l, hh in enumerate(levels):
+                        # the coarse level is reported (gate numbers included) but only the finer one must pass the gate
+                        lv.append(cval.validate_design(Vs, Ts, ctx.V, ctx.T, ctx.TF, ctx.support, ctx.loads, vd,
+                                                       f"{nm}_h{hh:.3f}", backend="keep", enforce_gate=(i_l == len(levels) - 1),
+                                                       **dict(kw, h=hh)))
+                    bf[nm] = lv[-1]
+                    dec[nm]["level_change"] = dict(C=lv[1].compliance / lv[0].compliance - 1,
+                                                   lam=lv[1].lambda_b / lv[0].lambda_b - 1)
+                    dec[nm]["converged_C"] = bool(abs(dec[nm]["level_change"]["C"]) <= 0.02)
+                    dec[nm]["gate"] = [x.info.get("mesh_quality") for x in lv]
+                    dec[nm]["lambda_unexcl"] = [x.info.get("lam_unexcl") for x in lv]
+                    dec[nm]["seconds"] = [dict(mesh=x.seconds_mesh, solve=x.seconds_ccx) for x in lv]
+                    used[nm] = "keep"
+                    if not dec[nm]["converged_C"]:
+                        errs[f"{nm}/convergence"] = f"compliance changes {dec[nm]['level_change']['C']:+.2%} between levels"
+                        log(f"[collect] WARNING {nm}: {errs[f'{nm}/convergence']} (> 2 %)")
+                except Exception as e:                        # recorded; a failed check blocks acceptance below
+                    errs[f"{nm}/keep"] = repr(e)[:600]
+                    log(f"[collect] body-fitted {nm} FAILED: {e!r}")
             if len(bf) < 2:
                 raise _ValidationFailed(errs)
             d_opt = raws["opt"][0]

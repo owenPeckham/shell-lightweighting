@@ -8,12 +8,12 @@ import pytest
 ROOT = Path(__file__).resolve().parents[2]
 
 
-@pytest.fixture(scope="module")
-def model():
+@pytest.fixture(scope="module", params=["direct", "twogrid"])
+def model(request):
     from cshell import config
     from cshell.optimise import Context, PhaseModel
     cfg = config.load(str(ROOT / "examples/cshell/bench/B3_column.json"),
-                      {"grid": {"phases": [{"h_e": 0.8, "h_g": 0.2}]}, "fe": {"backend": "auto"},
+                      {"grid": {"phases": [{"h_e": 0.8, "h_g": 0.2}]}, "fe": {"backend": "auto", "engine": request.param},
                        "capacity": {"eig_tol": 1e-7}})
     ctx = Context(cfg)
     return ctx, PhaseModel(ctx, 0, 4.0)

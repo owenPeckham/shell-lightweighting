@@ -7,6 +7,18 @@ from cshell.fea import ShellCG
 
 E, NU, RHO_MIN = 1760.0, 0.42, 1e-6
 BACKENDS = [pytest.param("cpu", id="cpu"), pytest.param("gpu", id="gpu", marks=pytest.mark.gpu)]
+ENGINES = [pytest.param("direct", "cpu", id="direct-cpu"), pytest.param("direct", "gpu", id="direct-gpu", marks=pytest.mark.gpu),
+           pytest.param("twogrid", "cpu", id="twogrid-cpu"),
+           pytest.param("twogrid", "gpu", id="twogrid-gpu", marks=pytest.mark.gpu)]
+
+
+def make_fe(engine, mask, fixed, load, backend):
+    """(grid, engine) for the direct cuDSS/host-Cholesky engine or the two-grid PCG engine (fe_twogrid)."""
+    g = ActiveGrid(mask)
+    if engine == "direct":
+        return g, SparseFE(g, fixed, load, 1.0, E, NU, backend=backend)
+    from cshell.fe_twogrid import TwoGridFE
+    return g, TwoGridFE(g, fixed, load, 1.0, E, NU, backend=backend)
 
 
 def column(shape_e, P=(-3.0, 2.0, -10.0)):
@@ -51,13 +63,12 @@ def test_partial_set_matches_rho_min_box(backend):
     assert abs(p.compliance / r.compliance - 1) < 1e-5
 
 
-@pytest.mark.parametrize("backend", BACKENDS)
-def test_compliance_gradient_fd(backend):
+@pytest.mark.parametrize("engine,backend", ENGINES)
+def test_compliance_gradient_fd(engine, backend):
     rng = np.random.default_rng(2)
     rho = rng.uniform(0.5, 1.0, (30, 4, 4))
     fixed, load = column(rho.shape)
-    g = ActiveGrid(np.ones(rho.shape, bool))
-    fe = SparseFE(g, fixed, load, 1.0, E, NU, backend=backend)
+    g, fe = make_fe(engine, np.ones(rho.shape, bool), fixed, load, backend)
     r = g.gather_elems(rho)
     grad = fe.dC_drho_hat(fe.factor(r).primal())
     for e in [5, 200, 470]:

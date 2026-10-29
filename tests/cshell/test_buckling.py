@@ -9,11 +9,19 @@ E, NU = 1760.0, 0.42
 BACKENDS = [pytest.param("cpu", id="cpu"), pytest.param("gpu", id="gpu", marks=pytest.mark.gpu)]
 
 
-def setup(rho, backend, element_type="q1_im"):
+ENGINES = [pytest.param("direct", "cpu", id="direct-cpu"), pytest.param("direct", "gpu", id="direct-gpu", marks=pytest.mark.gpu),
+           pytest.param("twogrid", "cpu", id="twogrid-cpu"),
+           pytest.param("twogrid", "gpu", id="twogrid-gpu", marks=pytest.mark.gpu)]
+
+
+def setup(rho, backend, element_type="q1_im", engine="direct"):
     nn = tuple(n + 1 for n in rho.shape)
     fixed = np.zeros(nn + (3,), bool); fixed[0] = True
     load = np.zeros(nn + (3,)); load[-1] = np.array([-40.0, 0.0, -3.0]) / (nn[1] * nn[2])   # axial + transverse
     g = ActiveGrid(np.ones(rho.shape, bool))
+    if engine == "twogrid":
+        from cshell.fe_twogrid import TwoGridFE
+        return g, TwoGridFE(g, fixed, load, 1.0, E, NU, backend=backend, element_type=element_type), fixed, load
     return g, SparseFE(g, fixed, load, 1.0, E, NU, backend=backend, element_type=element_type), fixed, load
 
 
@@ -34,12 +42,12 @@ def test_eigenvalues_match_reference():
     np.testing.assert_allclose(np.sort(mine.mu)[::-1][:3], np.sort(ref.mu_values)[::-1][:3], rtol=2e-4)
 
 
-@pytest.mark.parametrize("backend", BACKENDS)
-def test_directional_sensitivity_q1im(backend):
+@pytest.mark.parametrize("engine,backend", ENGINES)
+def test_directional_sensitivity_q1im(engine, backend):
     """THEORY §6.4 set-up: smooth δρ̂ = 0.05 sin(πx)(1 + 0.3 noise), central differences, < 1e-3."""
     rng = np.random.default_rng(4)
     rho = rng.uniform(0.5, 1.0, (30, 4, 5))
-    g, fe, _, _ = setup(rho, backend)
+    g, fe, _, _ = setup(rho, backend, engine=engine)
     base = run(fe, g, rho)
     x = (np.arange(30) + 0.5) / 30
     d = 0.05 * np.sin(np.pi * x)[:, None, None] * (1 + 0.3 * rng.standard_normal(rho.shape))
@@ -49,6 +57,28 @@ def test_directional_sensitivity_q1im(backend):
         err = abs(fd / pred - 1)
         print(f"h={h}: fd={fd:.6e} pred={pred:.6e} rel={err:.2e}")
     assert err < tol
+
+
+@pytest.mark.parametrize("engine,backend", ENGINES)
+def test_directional_sensitivity_ksig_mask(engine, backend):
+    """K_σ excluded near the clamp (first 3 element layers): μ̃ changes, and ∂μ̃ stays exact (< 1e-3 directional)."""
+    rng = np.random.default_rng(5)
+    rho = rng.uniform(0.5, 1.0, (30, 4, 5))
+    g, fe, _, _ = setup(rho, backend, engine=engine)
+    mask = np.ones(rho.shape); mask[:3] = 0.0
+    km = g.gather_elems(mask)
+    full = run(fe, g, rho)
+    base = run(fe, g, rho, ksig_mask=km)
+    assert base.mu_tilde < full.mu_tilde                      # less geometric stiffness -> lower μ (higher λ_b)
+    x = (np.arange(30) + 0.5) / 30
+    d = 0.05 * np.sin(np.pi * x)[:, None, None] * (1 + 0.3 * rng.standard_normal(rho.shape))
+    pred = float(base.dmu_tilde @ g.gather_elems(d))
+    h = 0.1
+    fd = (run(fe, g, rho + h * d, X0=base.modes, ksig_mask=km).mu_tilde
+          - run(fe, g, rho - h * d, X0=base.modes, ksig_mask=km).mu_tilde) / (2 * h)
+    err = abs(fd / pred - 1)
+    print(f"masked: mu {base.mu_tilde:.6e} (unmasked {full.mu_tilde:.6e}) fd={fd:.6e} pred={pred:.6e} rel={err:.2e}")
+    assert err < 1e-3
 
 
 @pytest.mark.parametrize("fix", [False, True])

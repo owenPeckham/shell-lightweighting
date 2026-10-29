@@ -777,7 +777,8 @@ def wall_thickness(Vm: np.ndarray, Fm: np.ndarray, n_samples: int, rng, void_sid
     hit, t = np.asarray(res[0]), np.asarray(res[1], np.float64)
     ok = (hit >= 0) & np.isfinite(t)
     t = t[ok] + 1e-4
-    return dict(t=t, P=P[ok], N=N[ok], n_miss=int((~ok).sum()))
+    cos = np.einsum("ij,ij->i", nrm[hit[ok]], N[ok])
+    return dict(t=t, P=P[ok], N=N[ok], cos=cos, n_miss=int((~ok).sum()))
 
 
 # =====================================================================================================================
@@ -910,6 +911,50 @@ class Exporter:
         self.log(f"[export] cleanup: {rep}")
         return tids
 
+    def _codes_at(self, X):
+        """Cell code (0 material, 1 void, 2 outside, 3 dead) at points X (k, 3); 255 outside the grid."""
+        cell = self.grid.cell_of(X)
+        n = self.grid.n
+        out = np.full(len(X), 255, np.uint8)
+        ok = np.all((cell >= 0) & (cell < self.grid.shape), 1)
+        tile, loc = cell // n, cell % n
+        for i in np.flatnonzero(ok):
+            tid = tuple(int(x) for x in tile[i])
+            if tid in self.store.codes:
+                c = self.store.codes[tid]
+                out[i] = c if isinstance(c, (int, np.integer)) else c[tuple(loc[i])]
+        return out
+
+    def _hole_extent(self, p, nv, wall, r, s_max_in: float = 3.0):
+        """Axial extent (s0, s1) of an escape hole at void-wall point p with outward axis nv such that the inner end
+        cap lies wholly in the void and the outer cap wholly outside the part. A flat cap at a fixed s0 = -0.5 mm cut
+        the curved void wall at grazing incidence and left films down to 0.0015 mm (B2, research/b2_bodyfit).
+        Returns None when no such extent exists within s_max_in (the void is narrower than the hole): reject the site."""
+        h = self.cfg.h_x
+        e1 = np.cross(nv, [1.0, 0, 0]) if abs(nv[0]) < 0.9 else np.cross(nv, [0, 1.0, 0])
+        e1 /= np.linalg.norm(e1)
+        e2 = np.cross(nv, e1)
+        ang = np.linspace(0, 2 * np.pi, 48, endpoint=False)
+        disk = np.concatenate([[[0.0, 0.0]], np.column_stack([np.cos(ang), np.sin(ang)]) * (r + h),
+                               np.column_stack([np.cos(ang[::2]), np.sin(ang[::2])]) * 0.5 * r])
+        D = disk[:, :1] * e1 + disk[:, 1:] * e2
+        s0 = None
+        for s in np.arange(-0.5, -s_max_in, -h):
+            c = self._codes_at(p + s * nv + D)
+            if np.all(c == 1):
+                s0 = s - h
+                break
+            if np.any(c == 2):          # reached the far side: the hole would cut through the opposite wall
+                break
+        if s0 is None:
+            return None
+        s1 = None
+        for s in np.arange(wall + 0.5, wall + 0.5 + s_max_in, h):
+            if np.all(self._codes_at(p + s * nv + D) == 2):
+                s1 = s + h
+                break
+        return None if s1 is None else (float(s0), float(s1))
+
     # -- stage C ---------------------------------------------------------------------------------------------------
     def stage_c(self, tids):
         cfg, dz, h = self.cfg, self.dz, self.cfg.h_x
@@ -991,12 +1036,27 @@ class Exporter:
             if len(set(chosen)) < len(chosen):
                 chosen = list(dict.fromkeys(chosen))
             sc = dict(zip(cand.tolist(), np.asarray(score).tolist()))
+            n_added = 0
             for hi_, j in enumerate(chosen):
                 v = vid[low[j]]
+                ext_ = self._hole_extent(site[v], N[v], wall[v], 0.5 * cfg.hole_d)
+                if ext_ is None:                    # try the next-best candidates of this void (same score order)
+                    for j2 in np.argsort(np.abs(proj - proj[j])):
+                        if int(j2) in chosen:
+                            continue
+                        ext_ = self._hole_extent(site[vid[low[j2]]], N[vid[low[j2]]], wall[vid[low[j2]]], 0.5 * cfg.hole_d)
+                        if ext_ is not None:
+                            j, v = int(j2), vid[low[j2]]
+                            break
+                if ext_ is None:
+                    self.log(f"[export] void {c}: no escape-hole site with a clean extent (hole {hi_} dropped)")
+                    continue
                 holes_p.append(site[v]); holes_n.append(N[v])
-                holes_s0.append(-0.5); holes_s1.append(wall[v] + 0.5)
+                holes_s0.append(ext_[0]); holes_s1.append(ext_[1])
                 rows.append([c, hi_, *site[v], *N[v], wall[v], sc[int(low[j])], kind, voids[c]["volume_mm3"]])
-            voids[c]["holes"] = len(chosen)
+                n_added += 1
+            voids[c]["holes"] = n_added
+            n_without += int(n_added == 0)
         self.holes = dict(p=np.array(holes_p).reshape(-1, 3), n=np.array(holes_n).reshape(-1, 3),
                           s0=np.array(holes_s0), s1=np.array(holes_s1), r=np.full(len(holes_p), 0.5 * cfg.hole_d))
         self.holes_rows = rows
@@ -1124,7 +1184,14 @@ class Exporter:
             Vm, Fm = np.concatenate(pos), np.concatenate(faces)
         rng = np.random.default_rng(0)
         w = wall_thickness(Vm, Fm, cfg.wall_samples, rng)
+        # a ray that leaves through an adjacent face (rims, hole bores, MC creases) is not a wall: keep opposite-wall
+        # hits only (cos(n_hit, n) < -0.7). On B2 79 % of the sub-0.5 mm samples were such grazing exits.
+        opp = w["cos"] < -0.7
+        self.summary["wall_grazing_dropped"] = int((~opp).sum())
+        w = {k: (v[opp] if isinstance(v, np.ndarray) and len(v) == len(opp) else v) for k, v in w.items()}
         t = w["t"]
+        i_min = int(np.argmin(t))
+        self.summary["wall_min_at"] = [float(x) for x in w["P"][i_min]]
         dz = self.dz
         # as-built: − b_v for every side that faces a void
         if dz.has_void:
@@ -1150,6 +1217,20 @@ class Exporter:
             wr.writerow(["bin_lo_mm", "bin_hi_mm", "count_nominal", "count_as_built"])
             for i in range(len(hist)):
                 wr.writerow([edges[i], edges[i + 1], int(hist[i]), int(hist_ab[i])])
+        # samples on a hole bore / rim (within r + 2 h of a hole axis segment) are flagged and reported separately:
+        # the rim of a hole through a thin wall is a legitimate sub-t_min feature (the hole itself), not a film
+        rim = np.zeros(len(t), bool)
+        H = getattr(self, "holes", None)
+        if H is not None and len(H["p"]):
+            for p_, n_, s0_, s1_, r_ in zip(H["p"], H["n"], H["s0"], H["s1"], H["r"]):
+                d_ = w["P"] - p_
+                sax = d_ @ n_
+                rad = np.linalg.norm(d_ - sax[:, None] * n_, axis=1)
+                rim |= (sax > s0_ - 2 * h) & (sax < s1_ + 2 * h) & (rad < r_ + 2 * h)
+        off = ~rim
+        self.summary["wall_off_rims"] = dict(
+            n_rim=int(rim.sum()), min_as_built=float(t_ab[off].min()) if off.any() else None,
+            n_below_t_min_minus_b_v=int((t_ab[off] < cfg.t_min - cfg.b_v).sum()))
         self.summary["wall"] = dict(samples=int(len(t)), miss=w["n_miss"], mesh_stride=stride, min_nominal=float(t.min()),
                                     p1_nominal=float(np.quantile(t, 0.01)), median_nominal=float(np.median(t)),
                                     min_as_built=float(t_ab.min()), p1_as_built=float(np.quantile(t_ab, 0.01)),

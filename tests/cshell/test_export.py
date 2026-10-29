@@ -86,6 +86,37 @@ def test_escape_holes(hollow, sphere):
     assert s["mesh"]["euler"] == 0
 
 
+def test_escape_hole_caps_clear_walls(hollow, sphere):
+    """Each hole's inner cap lies wholly in the void and its outer cap wholly outside the part (no grazing cut of the
+    curved void wall: B2 had films down to 0.0015 mm there); wall statistics have no sub-(t_min - b_v) sample off the rims."""
+    s, out, e = hollow
+    H = e.holes
+    assert len(H["p"]) == 2
+    r = H["r"][0]
+    for p, n, s0, s1 in zip(H["p"], H["n"], H["s0"], H["s1"]):
+        e1 = np.cross(n, [1.0, 0.3, 0.2]); e1 /= np.linalg.norm(e1)
+        e2 = np.cross(n, e1)
+        ang = np.linspace(0, 2 * np.pi, 24, endpoint=False)
+        ring = r * (np.cos(ang)[:, None] * e1 + np.sin(ang)[:, None] * e2)
+        assert np.all(np.linalg.norm(p + s0 * n + ring, axis=1) < 6.0)          # inner cap in the void (radius 6)
+        assert np.all(np.linalg.norm(p + s1 * n + ring, axis=1) > 6.0 + 3.0)    # outer cap beyond the outer skin
+    w = s["wall_off_rims"]
+    assert w["n_below_t_min_minus_b_v"] == 0 and w["min_as_built"] > e.cfg.t_min - e.cfg.b_v
+
+
+def test_b2_validation_export_has_no_films():
+    """Re-exported B2 design (runs_cshell/VF_B2, written by the validation-fix collect): no wall below t_min - b_v away
+    from the flagged hole rims, and every void is connected to the exterior (one body)."""
+    import json
+    f = ROOT / "runs_cshell/VF_B2/best_candidate_export.json"
+    if not f.exists():
+        pytest.skip("runs_cshell/VF_B2 not generated")
+    s = json.load(open(f))
+    assert s["voids"]["without_hole"] == 0 and s["mesh"]["bodies"] == 1
+    w = s["wall_off_rims"]
+    assert w["n_below_t_min_minus_b_v"] == 0, w
+
+
 def test_mass_correction_clip_and_bracket(sphere, tmp_path):
     """d + δ is clipped at d_hi: a too-small d_hi cannot restore V; the result is flagged, never silently wrong."""
     V, T, N, V0 = sphere

@@ -31,7 +31,7 @@ from .surface import DesignSurface, medial_depth, mount_face_ids, mount_vertices
 HIST_COLS = ["start", "phase", "iter", "J", "C_C0", "lam_s_ratio", "lam_b_ratio", "lam_ratio", "governing",
              "mass_err", "G_s", "max_dxi", "max_dxi_raw", "move", "n_restore", "eig_iters", "eig_converged", "active_dof",
              "t_geometry", "t_fe", "t_mma", "t_restore", "gpu_mem_GiB", "c_norm", "sliver_w", "stress_p", "beta",
-             "t_pull", "t_mmasub", "t_upload", "gpu_peak_GiB"]    # t_mma = t_pull + t_mmasub (+ bookkeeping)
+             "t_pull", "t_mmasub", "t_upload", "gpu_peak_GiB", "fe_engine"]    # t_mma = t_pull + t_mmasub (+ bookkeeping)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -131,9 +131,11 @@ class PhaseModel:
         self.fixed, self.load, self.bc_info = fea.build_bcs(self.origin, self.h_e, self.node_shape, ctx.V, ctx.T, ctx.TF,
                                                             ctx.support, ctx.loads)
         self.stress_mask_dense = self._stress_mask()
+        self.ksig_mask_dense = self._ksig_mask()
         self.t_setup = time.time() - t0
         self.grid_fe = None
         self.fe = None
+        self.fe_engine = None
         log(f"[cshell] phase {phase}: h_e {self.h_e} h_g {self.h_g}, band {band.n / 1e6:.1f} M cells, element box "
             f"{eshape}, passive {self.passive_parts}, V0 {self.V0:.1f} mm³, {self.t_setup:.0f} s")
         if self.geometry_device == "gpu":
@@ -141,6 +143,17 @@ class PhaseModel:
                 + (", released from the device during each FE evaluation" if self.geometry_offload else ""))
         else:
             log("[cshell]   geometry chain on the CPU (NumPy/SciPy)")
+
+    def _ksig_mask(self) -> np.ndarray | None:
+        """1 where an element keeps its geometric stiffness, 0 within exclude_bc_mm of a clamped node (Owen 2026-10-29:
+        the clamp idealisation leaves a singular concave corner where the design meets a support, and a local mode
+        there is mesh-dependent in both voxel and body-fitted models). `capacity.ksigma_exclude_bc` = false disables."""
+        cap = self.ctx.cfg["capacity"]
+        if not cap.get("ksigma_exclude_bc", True):
+            return None
+        r = int(np.ceil(cap["exclude_bc_mm"] / self.h_e))
+        near = ndimage.binary_dilation(self.fixed.any(-1), iterations=r)[:-1, :-1, :-1]
+        return (~near).ravel().astype(np.float64)
 
     def _stress_mask(self) -> np.ndarray:
         """m_e = 0 within exclude_bc_mm of a fixed or loaded node and in mounts unless include_mounts (THEORY §4.4(b))."""
@@ -170,13 +183,57 @@ class PhaseModel:
             self.fe.free()
             self.fe = None
         free_device_memory()          # old factor and cached blocks go back before the new plan sizes itself
-        self.grid_fe = ActiveGrid(mask)
-        c = self.ctx.cfg
-        self.fe = SparseFE(self.grid_fe, self.fixed, self.load, self.h_e, c["material"]["E_MPa"], c["material"]["nu"],
-                           backend=c["fe"]["backend"], precision=c["fe"].get("precision", "auto"))
-        self.log(f"[cshell]   active set rebuilt: {self.grid_fe.Ne} elements, {self.grid_fe.ndof} DOF, "
-                 f"{_gpu_free():.1f} GiB device memory free")
+        self.grid_fe, self.fe, self.fe_engine = self._build_engine(mask, rho)
+        if self.ksig_mask_dense is not None:
+            self.fe.ksig_mask = self.fe.xp.asarray(self.grid_fe.gather_elems(self.ksig_mask_dense))
+        st = self.fe.stats
+        extra = (f", coarse {st['coarse_ndof']} DOF ({st['coarse_precision']})" if self.fe_engine == "twogrid"
+                 else f", {st.get('precision', '')}{' hybrid' if st.get('hybrid') else ''}")
+        self.log(f"[cshell]   active set rebuilt: {self.grid_fe.Ne} elements, {self.grid_fe.ndof} DOF, engine "
+                 f"{self.fe_engine}{extra}, {_gpu_free():.1f} GiB device memory free")
         return True
+
+    def _build_engine(self, mask: np.ndarray, rho: np.ndarray):
+        """FE engine for the active set `mask` (config `fe.engine`). "auto": the direct cuDSS fp64 factor when the
+        problem is small (≤ fe.auto_direct_max_dof) and cuDSS's plan-time estimate fits in device memory with margin
+        (checked by planning and factorising the current design: fe_sparse switches to hybrid/fp32 otherwise, and
+        then the two-grid engine is used instead); else the matrix-free two-grid PCG engine (fe_twogrid)."""
+        from .fe_twogrid import LeanGrid, TwoGridFE
+        c = self.ctx.cfg
+        fc = c["fe"]
+        E, nu = c["material"]["E_MPa"], c["material"]["nu"]
+        engine = {"sparse": "direct"}.get(fc.get("engine", "auto"), fc.get("engine", "auto"))
+        lean = None
+        if engine == "auto":
+            lean = LeanGrid(mask)
+            engine = "direct" if lean.ndof <= int(fc.get("auto_direct_max_dof", 2_000_000)) else "twogrid"
+            if engine == "direct":
+                lean = None
+                g = ActiveGrid(mask)
+                fe = SparseFE(g, self.fixed, self.load, self.h_e, E, nu, backend=fc["backend"], precision="auto")
+                if fe.backend == "cpu":
+                    return g, fe, "direct"
+                fe.factor(self.disc.rho_min + (1 - self.disc.rho_min) * g.gather_elems(rho))
+                if fe.stats.get("precision") == "fp64" and not fe.stats.get("hybrid"):
+                    return g, fe, "direct"
+                self.log(f"[cshell]   fe auto: fp64 cuDSS factor does not fit in device memory "
+                         f"({fe.stats.get('factor_estimate_GiB', float('nan')):.1f} GiB): two-grid engine instead")
+                fe.free()
+                del fe, g
+                free_device_memory()
+                engine = "twogrid"
+        if engine == "direct":
+            g = ActiveGrid(mask)
+            return g, SparseFE(g, self.fixed, self.load, self.h_e, E, nu, backend=fc["backend"],
+                               precision=fc.get("precision", "auto")), "direct"
+        tg = fc.get("twogrid", {})
+        g = lean if lean is not None else LeanGrid(mask)
+        fe = TwoGridFE(g, self.fixed, self.load, self.h_e, E, nu, backend=fc["backend"],
+                       coarse_precision=tg.get("coarse_precision", "auto"), degree=tg.get("degree", 5),
+                       smoothing_range=tg.get("smoothing_range", 30.0),
+                       tol=tg.get("tol", 1e-10), krylov_tol=tg.get("krylov_tol", 1e-2),
+                       maxiter=tg.get("maxiter", 100), nrhs=tg.get("nrhs", 7))
+        return g, fe, "twogrid"
 
     def settings(self, frac: float) -> Settings:
         c = self.ctx.cfg
@@ -462,7 +519,7 @@ class Run:
                                mass_err=mass_err, G_s=Gs, max_dxi=dxi, max_dxi_raw=dxi_raw,
                                move=float(np.ravel(getattr(getattr(optimiser, "state", None), "move", opt["move"]))[0]),
                                n_restore=nres, eig_iters=fe["eig_iters"], eig_converged=fe["eig_converged"],
-                               active_dof=model.grid_fe.ndof, t_geometry=t_geo, t_fe=t_fe, t_mma=t_mma, t_restore=t_res,
+                               active_dof=model.grid_fe.ndof, fe_engine=model.fe_engine, t_geometry=t_geo, t_fe=t_fe, t_mma=t_mma, t_restore=t_res,
                                gpu_mem_GiB=_gpu_mem(), gpu_peak_GiB=gpu_peak, t_pull=t_pull, t_mmasub=t_mmasub,
                                t_upload=getattr(model, "t_upload", 0.0), c_norm=c_norm, sliver_w=w_s, stress_p=st.stress_p, beta=st.beta)
                     self._history(row)

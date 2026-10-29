@@ -405,6 +405,15 @@ class SparseFE:
     def matvec(self, x):
         return self._K @ x
 
+    def _geometric_op(self, H):
+        """G = −K_σ from the element matrices H_e (Ne, 8, 8) (K_σ,e = H_e ⊗ I₃), assembled per node pair."""
+        xp, g = self.xp, self.g
+        blocks = xp.zeros((g.nblk,))
+        for ab in range(64):
+            a, b = divmod(ab, 8)
+            _scatter_add(xp, blocks, self._pos_blk[:, ab], H[:, a, b])
+        return _NodeBlockOp(self, self._sp.csr_matrix((-blocks, self._n_indices, self._n_indptr), shape=(g.Nn, g.Nn)))
+
     # -- responses -------------------------------------------------------------------------------------------------
     def primal(self) -> Primal:
         t0 = time.time()
@@ -525,7 +534,7 @@ def _ramp(rho, t):
 
 def buckling(fe: SparseFE, primal: Primal, num_modes: int = 6, p: float = 8.0, min_density: float = 0.1,
              min_energy_fraction: float = 0.5, tol: float = 1e-6, maxiter: int = 100, X0=None,
-             extra: int = 4, seed: int = 0) -> BucklingResult:
+             extra: int = 4, seed: int = 0, ksig_mask=None) -> BucklingResult:
     """Inverse load factors of (−K_σ) φ = μ K φ and the sensitivity of μ̃ (THEORY §4.4(c), §6.4).
 
     Same discrete model as the reference (`analysis.ElementData`): K = Σ E ρ̂ K̂ (q1_im); stress σ_g = ρ̂ E D B_g u at
@@ -542,16 +551,18 @@ def buckling(fe: SparseFE, primal: Primal, num_modes: int = 6, p: float = 8.0, m
     t0 = time.time()
     rho = fe.rho_hat
     r, rp = _ramp(rho, min_density)
+    km = ksig_mask if ksig_mask is not None else getattr(fe, "ksig_mask", None)
+    if km is not None:            # no geometric stiffness within exclude_bc_mm of clamps (THEORY §4.4(c)); constant,
+        km = xp.asarray(km, dtype=xp.float64)                     # so it scales r and r′ alike and ∂μ stays exact
+        r, rp = r * km, rp * km
     u_e = primal.u[fe._dofs]                                                    # (Ne, 24)
     sig = fe.E * xp.einsum("gij,ej->egi", fe._DB, u_e) * rho[:, None, None]    # actual stress (Ne, 8, 6)
     sig_r = sig * r[:, None, None]
     S = _voigt_to_tensor(xp, sig_r)                                             # (Ne, 8, 3, 3)
     H = fe._detJ * xp.einsum("gia,egij,gjb->eab", fe._Bg, S, fe._Bg)           # (Ne, 8, 8)
-    blocks = xp.zeros((g.nblk,))
-    for ab in range(64):
-        a, b = divmod(ab, 8)
-        _scatter_add(xp, blocks, fe._pos_blk[:, ab], H[:, a, b])
-    Gm = _NodeBlockOp(fe, fe._sp.csr_matrix((-blocks, fe._n_indices, fe._n_indptr), shape=(g.Nn, g.Nn)))  # G = −K_σ
+    del S, sig, sig_r
+    Gm = fe._geometric_op(H)                                                    # G = −K_σ
+    del H
     # LOBPCG, largest μ, B = K, preconditioner K⁻¹
     m = num_modes + extra
     rng = np.random.default_rng(seed)
@@ -682,6 +693,8 @@ def _block_krylov_largest(fe: SparseFE, G, X, nev: int, tol: float, maxiter: int
     xp = fe.xp
     n, m = X.shape
     res = np.full(nev, np.inf)
+    inner = getattr(fe, "solve_inner", None)                       # iterative engines: Krylov-expansion solves to a
+    solve = fe.solve if inner is None else (lambda B: inner(B, float(np.max(res))))   # tolerance tied to the residual
     it, Xn, th = 0, None, None
     for it in range(1, maxiter + 1):
         X0 = X if Xn is None else xp.concatenate([X, Xn], 1)
@@ -691,7 +704,7 @@ def _block_krylov_largest(fe: SparseFE, G, X, nev: int, tol: float, maxiter: int
         V = X0
         del X0, X, Xn
         for s_ in range(steps):
-            V = fe.solve(G @ V)
+            V = solve(G @ V)
             V /= xp.linalg.norm(V, axis=0)[None, :]
             Q[:, (s_ + 1) * c0:(s_ + 2) * c0] = V
         del V
@@ -709,7 +722,7 @@ def _block_krylov_largest(fe: SparseFE, G, X, nev: int, tol: float, maxiter: int
         Xv = X[:, :nev]
         R = G @ Xv - (fe._K @ Xv) * th[None, :nev]
         # dual-norm residual ‖r‖_{K⁻¹}/|μ| (φ K-normalised): bounds the eigenvalue error by ≈ res² (THEORY §4.4(c))
-        res = _host(xp.sqrt(xp.abs(xp.einsum("ij,ij->j", R, fe.solve(R)))) / (xp.abs(th[:nev]) + 1e-300))
+        res = _host(xp.sqrt(xp.abs(xp.einsum("ij,ij->j", R, solve(R)))) / (xp.abs(th[:nev]) + 1e-300))
         del R
         if _EIG_VERBOSE:
             print(f"  eig it {it}: mu {np.round(_host(th[:nev]), 6).tolist()} res {np.max(res[:nev]):.2e} "

@@ -9,7 +9,12 @@ E, NU = 1760.0, 0.42
 BACKENDS = [pytest.param("cpu", id="cpu"), pytest.param("gpu", id="gpu", marks=pytest.mark.gpu)]
 
 
-def notched_bar(backend):
+ENGINES = [pytest.param("direct", "cpu", id="direct-cpu"), pytest.param("direct", "gpu", id="direct-gpu", marks=pytest.mark.gpu),
+           pytest.param("twogrid", "cpu", id="twogrid-cpu"),
+           pytest.param("twogrid", "gpu", id="twogrid-gpu", marks=pytest.mark.gpu)]
+
+
+def notched_bar(backend, engine="direct"):
     """40×6×6 bar (h = 1 mm), clamped at x = 0, tip shear + axial; a notch of empty elements at mid-length."""
     shape = (40, 6, 6)
     mask = np.ones(shape, bool)
@@ -18,14 +23,18 @@ def notched_bar(backend):
     fixed = np.zeros(nn + (3,), bool); fixed[0] = True
     load = np.zeros(nn + (3,)); load[-1] = np.array([5.0, 0.0, -10.0]) / (nn[1] * nn[2])
     g = ActiveGrid(mask)
-    fe = SparseFE(g, fixed, load, 1.0, E, NU, backend=backend)
+    if engine == "twogrid":
+        from cshell.fe_twogrid import TwoGridFE
+        fe = TwoGridFE(g, fixed, load, 1.0, E, NU, backend=backend)
+    else:
+        fe = SparseFE(g, fixed, load, 1.0, E, NU, backend=backend)
     m = np.ones(g.Ne); m[g.gather_elems(np.indices(shape)[0]) < 3] = 0.0     # exclusion zone at the clamp
     return g, fe, m
 
 
-@pytest.mark.parametrize("backend", BACKENDS)
-def test_stress_adjoint_directional(backend):
-    g, fe, m = notched_bar(backend)
+@pytest.mark.parametrize("engine,backend", ENGINES)
+def test_stress_adjoint_directional(engine, backend):
+    g, fe, m = notched_bar(backend, engine)
     rng = np.random.default_rng(5)
     rho = rng.uniform(0.6, 1.0, g.Ne)
     x = g.gather_elems(np.indices(g.elem_shape)[0]) / 40
@@ -49,10 +58,10 @@ def test_capacity_softmin_limits():
     assert 1.69 < lam <= 1.7 and w[1] > 0.99
 
 
-@pytest.mark.parametrize("backend", BACKENDS)
-def test_J_gradient_directional(backend):
+@pytest.mark.parametrize("engine,backend", ENGINES)
+def test_J_gradient_directional(engine, backend):
     """∂J/∂ρ̂ along a smooth direction, with buckling active (axial compression); < 1e-3."""
-    g, fe, m = notched_bar(backend)
+    g, fe, m = notched_bar(backend, engine)
     fe.f[:] = 0
     nn = g.node_shape
     rng = np.random.default_rng(6)

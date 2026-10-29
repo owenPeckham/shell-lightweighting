@@ -420,6 +420,14 @@ $$\lambda_{b,k} = \kappa_b / \tilde\mu_k$$
 
 κ_b = 0.85 is a single imperfection knock-down, configurable. The report must show the decision's sensitivity to κ_b over 0.6–1.0 (§9).
 
+**Geometric stiffness excluded next to clamps (v1.3, Owen 2026-10-29).** Elements within `capacity.exclude_bc_mm`
+(2 mm) of a clamped node carry no K_σ (their ramp r and r′ are multiplied by a constant 0/1 mask, so ∂μ̃/∂ρ̂ stays the
+exact derivative of the model solved). Reason: where the design flares outward next to a support, the all-DOF clamp
+(R3) leaves a concave corner with a singular stress, and a local mode there is mesh-dependent in both the voxel and
+the body-fitted model (B2: body-fitted λ₁ 23.9 → 19.3 from h = 0.5 to 0.35 mm, `research/b2_bodyfit/diagnosis.md`).
+The same rule as the stress exclusion zone (§4.4(b)); the body-fitted check (§8.6) applies it identically. It can hide
+genuine local buckling within 2 mm of a support; `capacity.ksigma_exclude_bc = false` turns it off.
+
 The eigen-analysis captures, in one model:
 
 - global Euler modes of struts;

@@ -15,6 +15,7 @@ C3D10, equal weight V_e/4), excluding elements whose centroid lies within `exclu
 node. Buckling: `*BUCKLE` returns λ in  (K + λ K_σ) φ = 0  for the unit reference load of the static step; the
 returned first factor is λ_1 (the load factor, not its inverse).
 
+Engines: `engine="gpu"` (default; cshell.bodyfit_gpu, cuDSS, same C3D10 model, ccx-identical to 1e-6) or `"ccx"`.
 There is no silent fallback: if `ccx` fails, `validate_design(..., fallback="skfem")` logs a warning, solves the
 compliance with scikit-fem P2 tets and marks the result `engine="skfem-P2"` (no buckling, no stress); the default
 `fallback=None` re-raises.
@@ -41,6 +42,14 @@ E_MPA, NU = 1760.0, 0.42
 _CCX_EDGES = np.array([[0, 1], [1, 2], [2, 0], [0, 3], [1, 3], [2, 3]])
 # §8.6 tolerances: compliance, first buckling factor, 0.995 stress quantile (relative); ratios (absolute)
 TOLERANCES = dict(compliance=0.05, buckling=0.10, stress=0.15, ratio=0.05)
+# Ratio rows are RELATIVE (|r_bf / r_vox - 1| <= 5 %): §8.6 "within 5 %" of K/K0 = 3.2 means +-0.16, not +-0.05
+# (an absolute 0.05 is 1.5 % of K/K0 = 3.2 but 5 % of K/K0 = 1, i.e. it tightens as the design improves).
+# Body-fitted mesh gate (research/b2_bodyfit): the tetgen mesh of B2 had 24 % of tets below 5 deg dihedral and a
+# median 1.2 tets through the 1.5 mm wall; it moved lambda_b by -46 %.
+# Gate numbers: the corrected B2 meshes have 0.4-1.5 deg minimum and <= 8e-5 of tets below 5 deg; the sliver mesh had
+# 0.06 deg and 24 %. 0.25 deg rejects degenerate tets, 1e-3 allows isolated surface-corner slivers (a few of 6e5 tets
+# moved nothing at the 1e-6 level), 2 layers is the C3D10 minimum for bending, 2.5 h bounds the edge (gmsh MeshSizeMax).
+MESH_GATE = dict(min_layers_p01=2.0, max_frac_dihedral_lt_5=1e-3, min_dihedral_deg=0.25, max_edge_over_h=2.5)
 
 
 # ---------------------------------------------------------------------------------------------------------------
@@ -122,7 +131,11 @@ def tetrahedralise(V: np.ndarray, T: np.ndarray, h: float, layers: float = 2.0, 
     V = np.ascontiguousarray(V, float)
     T = np.ascontiguousarray(T, np.int64)
     h_min = h / 8 if h_min is None else h_min
+    if backend == "keep":
+        return _gmsh_inside(*remesh_surface(V, T, h)[:2], h, workdir)
     if backend == "tetgen":
+        # tetgen's maxvolume bound does not bound edge length: on a 0.25 mm decimated MC surface it produced flat
+        # slivers with 7 mm edges (B2). Kept for tests only; validate_design rejects such meshes via mesh_gate().
         import tetgen
         tg = tetgen.TetGen(V, T)
         nodes, tets = tg.tetrahedralize(order=1, mindihedral=10, minratio=1.5, maxvolume=h ** 3 / (6 * np.sqrt(2)),
@@ -177,6 +190,140 @@ def tetrahedralise(V: np.ndarray, T: np.ndarray, h: float, layers: float = 2.0, 
     remap[used] = np.arange(len(used))
     nodes, tets = nodes[used], remap[tets]
     return nodes, _orient(nodes, tets)
+
+
+def remesh_surface(V: np.ndarray, T: np.ndarray, h: float, max_dev: float = 0.02, repair_iters: int = 4,
+                   max_vol_rel: float = 5e-3):
+    """Isotropic remesh (pymeshlab) of a closed surface to edge h, after quadric pre-decimation of very fine
+    (marching-cubes) input to edge h/3, then repair of self-intersections and projection back onto the input.
+
+    Repair (B2, research/b2_bodyfit/mesh2.py): faces that self-intersect (sub-h films) are deleted with 3 rings, the hole
+    is closed and re-remeshed; every vertex is then projected onto the INPUT surface (removes the flat hole-fill
+    deviation), and where the projection re-creates a self-intersection the unprojected vertices of those faces are kept.
+    Checks: watertight, no self-intersections, |dV/V| <= max_vol_rel (5e-3: remeshing shrinks curved surfaces by
+    ~h^2 kappa^2, B2 solid -1.2e-3 at h = 0.5 and -2.8e-3 at 0.35, the same bias in solid and design), longest edge <= 2.5 h; raises otherwise (a failed gate, never a silent fallback).
+    Returns (V1, T1, info)."""
+    import igl
+    import pymeshlab
+    import trimesh
+    t_in = trimesh.Trimesh(np.asarray(V, float), np.asarray(T, np.int64), process=False)
+    t_in.merge_vertices()                    # duplicated vertices (unwelded STL) make the remesher a silent no-op
+    V, T = np.ascontiguousarray(t_in.vertices, float), np.ascontiguousarray(t_in.faces, np.int64)
+    t0 = trimesh.Trimesh(V, T, process=False)
+    ms = pymeshlab.MeshSet()
+    ms.add_mesh(pymeshlab.Mesh(V, T.astype(np.int32)))
+    if len(T) > 50 * t0.area / h ** 2:
+        ms.meshing_decimation_quadric_edge_collapse(targetfacenum=int(t0.area / (0.433 * (h / 3) ** 2)),
+                                                    preservenormal=True, preservetopology=True, qualitythr=0.5,
+                                                    planarquadric=True)
+    ms.meshing_isotropic_explicit_remeshing(targetlen=pymeshlab.PureValue(h), iterations=8, featuredeg=60,
+                                            checksurfdist=True, maxsurfdist=pymeshlab.PureValue(max_dev))
+    repairs = []
+    for it in range(repair_iters):
+        ms.compute_selection_by_self_intersections_per_face()
+        nsi = int(ms.current_mesh().selected_face_number())
+        if nsi == 0:
+            break
+        repairs.append(nsi)
+        for _ in range(3):
+            ms.compute_selection_transfer_face_to_vertex(inclusive=False)
+            ms.compute_selection_transfer_vertex_to_face(inclusive=False)
+            ms.apply_selection_dilatation()
+        ms.meshing_remove_selected_faces()
+        ms.meshing_remove_unreferenced_vertices()
+        ms.meshing_close_holes(maxholesize=2000, newfaceselected=True)
+        ms.meshing_isotropic_explicit_remeshing(targetlen=pymeshlab.PureValue(h), iterations=4, featuredeg=60,
+                                                selectedonly=True, checksurfdist=False)
+    m = ms.current_mesh()
+    V1, T1 = m.vertex_matrix().astype(float), m.face_matrix().astype(np.int64)
+    if repairs:
+        Vt = igl.point_mesh_squared_distance(V1, V, T)[2]
+        for it in range(5):
+            m2 = pymeshlab.MeshSet()
+            m2.add_mesh(pymeshlab.Mesh(Vt, T1.astype(np.int32)))
+            m2.compute_selection_by_self_intersections_per_face()
+            sel = m2.current_mesh().face_selection_array()
+            if not sel.any():
+                break
+            vs = np.unique(T1[sel])
+            ring = np.unique(T1[np.isin(T1, vs).any(1)])
+            Vt[ring] = V1[ring]
+        V1 = Vt
+    m3 = pymeshlab.MeshSet()
+    m3.add_mesh(pymeshlab.Mesh(V1, T1.astype(np.int32)))
+    m3.compute_selection_by_self_intersections_per_face()
+    nsi = int(m3.current_mesh().selected_face_number())
+    t1 = trimesh.Trimesh(V1, T1, process=False)
+    e_max = float(np.linalg.norm(V1[T1[:, [1, 2, 0]]] - V1[T1], axis=2).max())
+    info = dict(faces=len(T1), watertight=bool(t1.is_watertight), self_intersections=nsi, repairs=repairs, edge_max=e_max,
+                vol_rel=float(t1.volume / t0.volume - 1),
+                hausdorff=float(np.sqrt(igl.point_mesh_squared_distance(V1, V, T)[0].max())))
+    if not info["watertight"] or nsi or abs(info["vol_rel"]) > max_vol_rel or e_max > 2.5 * h:
+        raise RuntimeError(f"surface remesh check failed: {info}")
+    return V1, T1, info
+
+
+def _gmsh_inside(V: np.ndarray, T: np.ndarray, h: float, workdir=None):
+    """gmsh Delaunay + Netgen optimisation inside the GIVEN triangulation (no reparametrisation, so no
+    'Wrong topology of boundary mesh for parametrization' on marching-cubes surfaces)."""
+    import gmsh
+    import trimesh
+    tmp = Path(tempfile.mkdtemp(prefix="vtmp_", dir=workdir))
+    trimesh.Trimesh(V, T, process=False).export(tmp / "s.stl")
+    gmsh.initialize()
+    try:
+        gmsh.option.setNumber("General.Terminal", 0)
+        gmsh.merge(str(tmp / "s.stl"))
+        loop = gmsh.model.geo.addSurfaceLoop([e[1] for e in gmsh.model.getEntities(2)])
+        gmsh.model.geo.addVolume([loop])
+        gmsh.model.geo.synchronize()
+        gmsh.option.setNumber("Mesh.MeshSizeMax", h)
+        gmsh.option.setNumber("Mesh.Algorithm3D", 1)
+        gmsh.option.setNumber("Mesh.Optimize", 1)
+        gmsh.option.setNumber("Mesh.OptimizeNetgen", 1)
+        gmsh.model.mesh.generate(3)
+        tags, xyz, _ = gmsh.model.mesh.getNodes()
+        types, _, en = gmsh.model.mesh.getElements(3)
+        en = en[list(types).index(4)].reshape(-1, 4)
+    finally:
+        gmsh.finalize()
+        shutil.rmtree(tmp, ignore_errors=True)
+    lut = np.zeros(int(tags.max()) + 1, np.int64)
+    lut[tags] = np.arange(len(tags))
+    nodes, tets = xyz.reshape(-1, 3), lut[en]
+    used = np.unique(tets)
+    remap = -np.ones(len(nodes), np.int64)
+    remap[used] = np.arange(len(used))
+    nodes, tets = nodes[used], remap[tets]
+    return nodes, _orient(nodes, tets)
+
+
+def mesh_gate(nodes: np.ndarray, tets: np.ndarray, V: np.ndarray, T: np.ndarray, gate: dict | None = None,
+              h: float | None = None, enforce: bool = True) -> dict:
+    """Quality gate of a body-fitted mesh (§8.6.2). Measures: minimum dihedral angle, fraction of tets below 5 deg,
+    longest edge / h, and tet layers through the wall (opposite-wall ray samples, 1 % quantile). Raises RuntimeError on a
+    miss when `enforce`; always returns the numbers (`passed`, `failures`)."""
+    from .bodyfit_gpu import dihedral_min, layers
+    g = {**MESH_GATE, **(gate or {})}
+    dm = dihedral_min(nodes, tets)
+    L = layers(np.asarray(V, float), np.asarray(T, np.int64), nodes, tets)
+    X4 = nodes[tets[:, :4]]
+    emax = float(max(np.linalg.norm(X4[:, i] - X4[:, j], axis=1).max() for i in range(4) for j in range(i + 1, 4)))
+    q = dict(dihedral_min=float(dm.min()), frac_dihedral_lt_5=float((dm < 5).mean()), n_dihedral_lt_5=int((dm < 5).sum()),
+             edge_max=emax, edge_max_over_h=None if h is None else emax / h, layers=L, layers_p01=float(L["layers_q"][1]))
+    fails = []
+    if q["dihedral_min"] < g["min_dihedral_deg"]:
+        fails.append(f"min dihedral {q['dihedral_min']:.3f} < {g['min_dihedral_deg']} deg")
+    if q["frac_dihedral_lt_5"] > g["max_frac_dihedral_lt_5"]:
+        fails.append(f"fraction of tets below 5 deg {q['frac_dihedral_lt_5']:.2e} > {g['max_frac_dihedral_lt_5']}")
+    if q["layers_p01"] < g["min_layers_p01"]:
+        fails.append(f"tets through the wall (1 % quantile) {q['layers_p01']:.2f} < {g['min_layers_p01']}")
+    if h is not None and q["edge_max_over_h"] > g["max_edge_over_h"]:
+        fails.append(f"longest edge {q['edge_max_over_h']:.2f} h > {g['max_edge_over_h']} h")
+    q["passed"], q["failures"] = not fails, fails
+    if fails and enforce:
+        raise RuntimeError(f"body-fitted mesh fails the quality gate: {fails}; {q}")
+    return q
 
 
 def _orient(nodes: np.ndarray, tets: np.ndarray) -> np.ndarray:
@@ -518,8 +665,9 @@ def solve_skfem_p2(case: Case) -> float:
 def validate_design(V: np.ndarray, T: np.ndarray, ctx_V: np.ndarray, ctx_T: np.ndarray, ctx_TF: np.ndarray,
                     support, loads, workdir: str | Path, name: str = "design", h: float = 0.5, layers: float = 2.0,
                     h_bc: float | None = None, n_modes: int = 4, nproc: int = 8, want_stress: bool = True,
-                    E: float = E_MPA, nu: float = NU, backend: str = "gmsh", fallback: str | None = None, h_min: float | None = None,
-                    load_distribution: str = "area", timeout: float | None = None, exclude_bc_mm: float = 2.0) -> BodyFitted:
+                    E: float = E_MPA, nu: float = NU, backend: str = "keep", fallback: str | None = None, h_min: float | None = None,
+                    load_distribution: str = "area", timeout: float | None = None, exclude_bc_mm: float = 2.0,
+                    engine: str = "gpu", enforce_gate: bool = True, gate: dict | None = None) -> BodyFitted:
     """Mesh the STL surface (V, T), write and run the deck, parse the result (§8.6.2-3).
 
     (ctx_V, ctx_T, ctx_TF) with `support` face ids and `loads` locate the BC nodes (original tessellation).
@@ -529,8 +677,19 @@ def validate_design(V: np.ndarray, T: np.ndarray, ctx_V: np.ndarray, ctx_T: np.n
     t0 = time.time()
     n4, t4 = tetrahedralise(V, T, h, layers=layers, h_min=h_min, backend=backend, workdir=wd)
     nodes, tets10 = to_quadratic(n4, t4)
+    q = mesh_gate(nodes, tets10, V, T, gate, h=h, enforce=enforce_gate)
     case = build_case(nodes, tets10, ctx_V, ctx_T, ctx_TF, support, loads, 0.75 * (h_bc or h), E, nu, load_distribution)
+    case.info["mesh_quality"] = q
     t_mesh = time.time() - t0
+    if engine == "gpu":     # same C3D10 model on cuDSS: matched ccx to <1e-6 (C, lambda_1, sigma_q) at 14-30 s vs 410-480 s
+        from .bodyfit_gpu import solve as gsolve
+        t1 = time.time()
+        o = gsolve(case.nodes, case.tets10, case.fixed, case.load_nodes, case.load_vec, E, nu, max(n_modes, 4),
+                   exclude_bc_mm=exclude_bc_mm)
+        o.pop("_phi_nodes", None)
+        return BodyFitted(o["C"], np.asarray(o["lam"]), o["sigma_q"], o["volume"], len(nodes), len(tets10), t_mesh,
+                          time.time() - t1, "gpu-P2", dict(case.info, lam_unexcl=o["lam_unexcl"], n_ks_excluded=o["n_ks_excluded"],
+                                                       **{k: o[k] for k in ("ndof", "eig_res", "timings_s", "factor_GiB")}))
     inp = write_inp(wd / f"{name}.inp", case, n_modes, want_stress)
     run = run_ccx(inp, nproc, timeout)
     ok = run.returncode == 0 and run.dat.exists()
@@ -556,7 +715,7 @@ def compare(voxel: dict, bf: dict, tol: dict | None = None) -> list[dict]:
 
     `voxel`, `bf`: {"solid": {...}, "design": {...}} each with `compliance` (N·mm), `lambda_b`, `sigma_q` (MPa).
     Absolute rows: relative differences against compliance 5 %, buckling 10 %, stress 15 %. Ratio rows (design/solid):
-    K/K0 = C0/C, P/P0 = λ_b/λ_b0 and strength σ0/σ, absolute difference of the ratio <= 0.05; a ratio miss blocks
+    K/K0 = C0/C, P/P0 = λ_b/λ_b0 and strength σ0/σ, RELATIVE difference of the ratio <= 0.05; a ratio miss blocks
     acceptance (`blocking` True). Missing entries are skipped.
     """
     tol = {**TOLERANCES, **(tol or {})}
@@ -590,7 +749,7 @@ def compare(voxel: dict, bf: dict, tol: dict | None = None) -> list[dict]:
         rv, rb = ratios(voxel), ratios(bf)
         for k in rv:
             if k in rb:
-                add(k, "ratio", rv[k], rb[k], "abs", tol["ratio"], blocking=True)
+                add(k, "ratio", rv[k], rb[k], "rel", tol["ratio"], blocking=True)
     return rows
 
 
