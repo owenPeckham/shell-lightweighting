@@ -316,15 +316,17 @@ class SparseFE:
             need = float(est["hybrid_min_device_memory"] if hyb else est["peak_device_memory"])
             pool = cp.get_default_memory_pool()
             free = cp.cuda.runtime.memGetInfo()[0] + pool.free_bytes()
-            if not auto or need < 0.9 * free or i == len(modes) - 1:
+            host_need = float(est["peak_host_memory"]) if hyb else 0.0   # hybrid keeps the factor's rest in host RAM
+            host_free = _host_available()
+            if not auto or (need < 0.9 * free and host_need < 0.8 * host_free) or i == len(modes) - 1:
                 break
             nxt = modes[i + 1]
-            print(f"fe_sparse: {prec}{' hybrid' if hyb else ''} factor needs {need / 2**30:.1f} GiB, "
-                  f"{free / 2**30:.1f} GiB free ({g.ndof} DOF): switching to {nxt[0]}{' hybrid' if nxt[1] else ''}",
-                  flush=True)
+            print(f"fe_sparse: {prec}{' hybrid' if hyb else ''} factor needs {need / 2**30:.1f} GiB device "
+                  f"({free / 2**30:.1f} free) and {host_need / 2**30:.1f} GiB host ({host_free / 2**30:.1f} available) "
+                  f"for {g.ndof} DOF: switching to {nxt[0]}{' hybrid' if nxt[1] else ''}", flush=True)
             s.free()
             del s, b, Kf
-            pool.free_all_blocks()
+            _release_device_memory(cp)
         self.precision, self._Kf, self._b, self._solver = prec, Kf, b, s
         self.stats.update(precision=prec, hybrid=hyb, factor_estimate_GiB=need / 2 ** 30)
 
@@ -436,9 +438,49 @@ class SparseFE:
         return -2.0 * p.U_e / _host(self.rho_hat)
 
     def free(self):
+        """Release the factor and the matrices. nvmath gives cuDSS a stream-ordered memory pool that keeps freed
+        memory reserved (usable by cuDSS, not by CuPy), so it is trimmed explicitly; without this an active-set rebuild
+        loses the old factor's memory (research/gpu_memory/leak, jobs 7801117/7801123)."""
         if self._solver is not None and hasattr(self._solver, "free"):
             self._solver.free()
         self._solver = None
+        if self.backend == "gpu":
+            self._K = self._Kf = self._b = None
+            _release_device_memory(self.xp)
+
+
+def _release_device_memory(cp) -> None:
+    """Return freed cuDSS memory (nvmath's stream-ordered pool) and CuPy's cached blocks to the device."""
+    try:
+        from nvmath.internal.memory import free_reserved_memory
+        free_reserved_memory(True)
+    except ImportError:                                   # older nvmath: no async pool to trim
+        pass
+    cp.get_default_memory_pool().free_all_blocks()
+
+
+def _host_available() -> float:
+    """Host memory this process may still use (bytes): the tightest cgroup-v2 memory.max on the path of this process's
+    cgroup (the Slurm job/step limit) minus that cgroup's usage; else the node's available memory."""
+    import os
+    best = None
+    try:
+        rel = [ln.split("::", 1)[1].strip() for ln in open("/proc/self/cgroup") if ln.startswith("0::")][0]
+        parts = [q for q in rel.split("/") if q]
+        for k in range(len(parts), 0, -1):
+            d = os.path.join("/sys/fs/cgroup", *parts[:k])
+            try:
+                m = open(os.path.join(d, "memory.max")).read().strip()
+                if m == "max":
+                    continue
+                avail = int(m) - int(open(os.path.join(d, "memory.current")).read())
+                best = avail if best is None else min(best, avail)
+            except (OSError, ValueError):
+                continue
+    except (OSError, IndexError):
+        pass
+    node = float(os.sysconf("SC_AVPHYS_PAGES") * os.sysconf("SC_PAGE_SIZE"))
+    return node if best is None else float(min(best, node))
 
 
 def _host(a) -> np.ndarray:
