@@ -23,3 +23,6 @@ Tests added in tests/cshell/test_validate.py (gate, remesh, GPU vs ccx 1e-5, col
 2. sbatch continuous/research/vf_b2/xcheck.sh after VF_B2 exists; need rel diff <=1e-5.
 3. Rerun test_export (B2 films test reads runs_cshell/VF_B2).
 4. Fill the B2 table (C, lambda with/without exclusion, sigma_q, ratios, gate, times) into docs; update THEORY/VALIDATION.
+
+## Update
+- 7808904 finished: 25 passed, 1 skipped (B2 VF films test), 1 FAILED: test_collect.py::test_end_to_end_run_collect (RuntimeError, cause unread; see logs/cshell_cpu_test_7808904.out). test_export hole-cap test passed. 7809370 collect still running at last check.
