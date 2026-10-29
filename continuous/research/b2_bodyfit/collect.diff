@@ -1,0 +1,35 @@
+--- a/cshell/collect.py	2026-10-28 20:01:47.215513431 +0000
++++ b/cshell/collect.py	2026-10-29 03:50:05.601079518 +0000
+@@ -726,19 +726,27 @@
+         try:
+             t0 = time.time()
+             vd = os.path.join(run_dir, "validation")
+-            h_val = _get(cfg, "validation.h_mm", 0.5)
++            h_val = _get(cfg, "validation.h_mm", 0.5)       # <= t_min / 2 so that >= 2 (quadratic) tets span a wall
+             kw = dict(h=h_val, h_bc=res_list[0]["h_e"], n_modes=4, nproc=int(_get(cfg, "validation.nproc", min(
+                 32, len(os.sched_getaffinity(0))))), want_stress=True, E=cfg["material"]["E_MPa"], nu=cfg["material"]["nu"],
+                 fallback="skfem", timeout=_get(cfg, "validation.timeout_s", None))
+             bf, dec, errs, used = {}, {}, {}, {}
+             VE, TE, _ = meshes["best"]
+             edge = float(_get(cfg, "validation.surface_edge_mm", 0.5 * h_val))
++            # Same mesher for solid and design (ratios cancel mesher bias): isotropic surface remesh to h, gmsh volume
++            # inside that triangulation, quality gate; solved on the GPU (cuDSS, C3D10-identical). Two levels
++            # (h, h/sqrt(2)) give the mesh-convergence estimate; the finer level is compared. No tetgen fallback:
++            # its sliver mesh moved lambda_b by -46 % on B2 (research/b2_bodyfit).
++            kw.update(engine=_get(cfg, "validation.engine", "gpu"))
+             for nm, (Vs, Ts) in (("solid", (ctx.V, ctx.T)), ("design", (VE, TE))):
+-                Vs, Ts, dec[nm] = decimate_for_validation(Vs, Ts, edge, log=log)
+-                for backend in ("gmsh", "tetgen"):            # tetgen keeps the (decimated) surface if gmsh rejects it
++                dec[nm] = dict(remesh="isotropic", levels=[h_val, h_val / 2 ** 0.5])
++                for backend in ("keep",):
+                     try:
+-                        bf[nm] = cval.validate_design(Vs, Ts, ctx.V, ctx.T, ctx.TF, ctx.support, ctx.loads, vd, nm,
+-                                                      backend=backend, **kw)
++                        lv = [cval.validate_design(Vs, Ts, ctx.V, ctx.T, ctx.TF, ctx.support, ctx.loads, vd, nm,
++                                                   backend=backend, **dict(kw, h=hh)) for hh in dec[nm]["levels"]]
++                        bf[nm] = lv[-1]
++                        dec[nm]["level_change"] = dict(C=lv[1].compliance / lv[0].compliance - 1,
++                                                       lam=lv[1].lambda_b / lv[0].lambda_b - 1)
+                         used[nm] = backend
+                         break
+                     except Exception as e:                    # recorded; a failed check blocks acceptance below
