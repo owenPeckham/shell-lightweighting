@@ -348,6 +348,8 @@ Consequences:
 
 Measure the cost per iteration (one primal solve per load case, one stress adjoint per load case, buckling) early in Stage 0 and record it in `continuous/BENCHMARKS.md`. Estimate run times from that, not from guesses.
 
+**As built (2026-10-30; supersedes items 1–3 for the FE).** The FE runs on the **active set** only (elements within `active_margin_mm` of material), not the dense box, at h_e = 0.8 mm (phase A) and 0.4 mm (phase B): 0.9–1.3 M DOF and 6.1–8.7 M DOF for the hollow designs. Default engine `fe.engine = "twogrid"` (`cshell/fe_twogrid.py`) in every phase, on one GPU: matrix-free q1_im K at h_e (no assembled fine matrix), Galerkin coarse operator at 2h_e factorised by cuDSS (fp32), Chebyshev–Jacobi smoothing, fp64 block PCG to 10⁻¹⁰ relative residual; buckling (§4.4) by block-Krylov on K⁻¹G with the same PCG as K⁻¹, so buckling runs at h_e = 0.4 mm on the design grid, without the 0.8 mm averaging of item 2. Measured on MBB phase B (8.4 M DOF): 25–50 s per iteration, 26 GiB GPU, ≈ 34 GB host; agreement with the direct cuDSS fp64 engine (`fe.engine = "direct"`, kept for validation): dJ ≤ 5·10⁻¹⁰ without buckling, J ≤ 6·10⁻⁸ over run histories; the full dJ differs by ~10⁻⁴ through eigenvector truncation at eig_tol = 10⁻³ in either engine. Numbers: `continuous/BENCHMARKS.md` "Two-grid engine".
+
 ### 4.3 Boundary conditions, loads and the analysis adapter
 
 `cshell` defines its BCs exactly as vshell does (§1.3 R3):

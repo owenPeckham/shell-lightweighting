@@ -34,5 +34,6 @@ passes through the two-grid engine, so its eigen-gradient is consistent.
 ## Open
 - Eigen-solver: eig_tol 1e-5 is not reached in 100 outer iterations on the voided MBB/cantilever designs by either
   engine. Not needed at the production tolerance (1e-3); worth a look before tightening it.
-- Phase A stays on direct fp64 under `auto` (same time, 3× the GPU memory of two-grid: 15 vs 5 GiB MBB). Owen's call
-  whether to use two-grid everywhere (`fe.engine = twogrid`).
+- Decided (Owen, 2026-10-30): `fe.engine = "twogrid"` is the default in every phase (phase A: same time as direct
+  at 1/3 the GPU memory); `fe.backend = "cpu_direct"` still forces the SciPy direct solve. eig_tol stays 1e-3 (the
+  ~1e-4 dJ noise is acceptable).

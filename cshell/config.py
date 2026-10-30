@@ -30,8 +30,9 @@ DEFAULTS = {
              "rho_min": 1e-6, "tessellation_mm": 0.02, "active_margin_mm": 0.5,    # FE active-set dilation
              "geometry_device": "auto",     # band chain ψ → χ → ρ, V, pull-backs: "auto" (GPU if CUDA) | "cpu" | "gpu"
              "geometry_offload": True},     # GPU chain: release the band from the device during each FE evaluation
-    "fe": {"engine": "auto",      # "auto" (direct fp64 if it fits and DOF <= auto_direct_max_dof, else twogrid)
-                                  # | "direct" (fe_sparse, cuDSS) | "twogrid" (fe_twogrid, matrix-free two-grid PCG)
+    "fe": {"engine": "twogrid",   # "twogrid" (fe_twogrid, matrix-free two-grid PCG; default in every phase, Owen
+                                  # 2026-10-30: same speed as direct in phase A at 1/3 the GPU memory) | "direct"
+                                  # (fe_sparse, cuDSS) | "auto" (direct fp64 if it fits and DOF <= auto_direct_max_dof)
            "auto_direct_max_dof": 2_000_000,
            "element_type": "q1_im", "backend": "auto",
            "precision": "auto",                             # direct cuDSS factor: "auto" | "fp64" | "fp32" (fe_sparse)

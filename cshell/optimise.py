@@ -202,7 +202,9 @@ class PhaseModel:
         c = self.ctx.cfg
         fc = c["fe"]
         E, nu = c["material"]["E_MPa"], c["material"]["nu"]
-        engine = {"sparse": "direct"}.get(fc.get("engine", "auto"), fc.get("engine", "auto"))
+        engine = {"sparse": "direct"}.get(fc.get("engine", "twogrid"), fc.get("engine", "twogrid"))
+        if fc["backend"] == "cpu_direct":                        # explicit SciPy direct solve (CPU tests)
+            engine = "direct"
         lean = None
         if engine == "auto":
             lean = LeanGrid(mask)

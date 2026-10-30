@@ -6,6 +6,8 @@ import numpy as np
 import pytest
 
 ROOT = Path(__file__).resolve().parents[2]
+# GPU only: on 72 CPU cores the eig_tol 1e-7 block-Krylov through SciPy solves takes > 1.5 h (job 7860287).
+pytestmark = pytest.mark.gpu
 
 
 @pytest.fixture(scope="module", params=["direct", "twogrid"])
