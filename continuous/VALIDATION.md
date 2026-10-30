@@ -80,3 +80,14 @@ errors, now fixed.
 | B2 body-fitted (v1.3) | Voxel vs body-fitted (GPU C3D10 + cuDSS), levels h = 0.5, 0.354 mm, `runs_cshell/VF_B2` (job 7863412, 29 min, host RSS 21.6 GB) | Solid / design: C 77.84 / 24.12 vs 78.17 / 23.62 (+0.4 % / −2.1 %); λ_b (K_σ exclusion) 22.42 / 40.60 vs 22.31 / 43.12 (−0.5 % / +6.2 %), without exclusion (body-fitted) 22.28 / 23.88; σ_q 12.80 / 5.76 vs 13.24 / 5.98 (+3.4 % / +3.9 %). Ratios: K/K₀ 3.228 vs 3.309 (+2.5 %), P_b/P_b0 1.811 vs 1.932 (**+6.7 %, > 5 %**), P_s/P_s0 −0.5 %. Gate (finer): solid min dihedral 21.6°, design 0.33° (8 tets < 5°), ≥ 2.5 layers, edge ≤ 2.43 h. Level change in C 0.04 % / 0.20 %. GPU vs ccx on the design deck: C 8·10⁻⁹, σ_q 6·10⁻⁸, λ₁ 2·10⁻⁶ (job 7860914). | ❌ (P_b ratio) |
 | B3 | Clamped–free column, axial (w_K = w_P = 0.5) | cshell: λ_b/λ_b0 = **2.63**, J = 0.406, C/C₀ 1.17, hollow (closed 0.3 %), walls 1.6–4.8 mm (job 7795996). Best uniform tube, same FE (uniform ξ̃ᵃ sweep, constant mass, `research/bench/uniform_sweep.py`, job 7796260): λ_b 2.25, J 0.297 (s = 0). Analytic a = 0 tube ≈ 3.0 is not reachable because the 1.5 mm mount zones keep both ends solid. Not converged by max\|Δξ̃\| (0.01 at it 80; raw-ξ 2-cycles in the filter's near-null space, now measured on ξ̃). | ✅ |
 | B4 | MMA on Svanberg's problems | reference optima (`test_mma.py`) | ✅ |
+
+## V7 rerun reproducibility (criterion relaxed to final J within 1e-3, Owen 2026-10-30)
+
+| Part | Run (start uniform) | Final J (first / rerun) | Rel. diff | Pass |
+| --- | --- | --- | --- | --- |
+| MBB | runs_cshell/FULL vs runs_cshell/V7 (7860610 / 7864095) | 0.50307626 / 0.50307572 (both stop at it 37) | 1.1e-6 | ✅ |
+| Cantilever | runs_cshell/FULL vs runs_cshell/V7 (7860613 / 7864094) | 0.51890 / 0.51920 (stop at it 53 / 67) | 5.8e-4 | ✅ |
+Phase A (direct engine) reproduces to 1e-11; in phase B atomic floating-point adds (two-grid kernels, geometry chain)
+give ~1e-16 noise that MMA amplifies (~10× per 3 iterations) until the convergence stop flips. The FE alone is bitwise
+in the opt-in `fe.twogrid.deterministic = "full"` mode (+150 % FE time); the geometry chain remains non-deterministic
+(`research/twogrid/notes.md`).
