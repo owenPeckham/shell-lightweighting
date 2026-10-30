@@ -747,7 +747,8 @@ For each enclosed void component (void cells not connected to the exterior):
    - the final-FE material von Mises stress is in the lowest 30 % of that void's wall.
 2. Choose `escape_holes_per_void` (2) sites that maximise their separation along the void's principal axis.
 3. Cut a cylinder of diameter `escape_hole_diameter_mm` (3 mm) along the local outward normal, from the void through the wall: ψ ← max(ψ, D/2 − ‖(x − p) × n‖), capped to the wall.
-4. Log each hole in `escape_holes.csv` (position, normal, wall, stress).
+4. The cut length is chosen so both ends of the hole clear the walls (no sub-t_min film at the hole end); wall-thickness statistics count only true opposite-wall hits, and the hole rims are reported separately (`wall_off_rims`).
+5. Log each hole in `escape_holes.csv` (position, normal, wall, stress).
 
 Stage 3 may bring holes inside the loop as fixed features once the void topology settles.
 
@@ -766,13 +767,14 @@ Find δ by Brent so that V = V₀ on the export grid, applying d_i ← clip(d_i 
 ### 8.6 Final analyses and body-fitted validation
 
 1. **Voxel FE** of the exported geometry at the optimisation resolution and the next finer one (§5.4). All responses, for both the solid and the final design.
-2. **Body-fitted check.**
-   - Mesh: TetGen (`tetgen`/pyvista) or gmsh. Quadratic tets (C3D10) with at least 2 elements through the thinnest wall.
-   - Solve: CalculiX `ccx` (conda-forge `calculix`), a linear static step and a `*BUCKLE` step with the same BCs (clamped support-face nodes, load shared over the load-face nodes).
-   - Run it for both the solid and the final design.
-   - If `ccx` is unavailable, use scikit-fem P2 tets for compliance; `analysis.Conformal` shows the pattern.
-   - Tolerances: compliance ≤ 5 %, first buckling factor ≤ 10 %, 0.995 stress quantile ≤ 15 %, and the ratios K/K₀ and P/P₀ within 5 % (absolute) of the voxel values.
-   - The report flags any miss, and a miss on the ratios blocks acceptance.
+2. **Body-fitted check** (`validate.py`, `bodyfit_gpu.py`; v1.3).
+   - Surface: the exported STL is remeshed (pymeshlab isotropic remesh to edge h, quadric pre-decimation of marching-cubes input, midpoint subdivision of very coarse input, repair of self-intersections, projection onto the input). Checks: watertight, no self-intersection, |ΔV/V| ≤ 5·10⁻³, longest edge ≤ 2.5 h. The remesh runs in a spawned process (a second call in one process silently skipped the remeshing on B2). Solid and design go through the same chain, so mesher bias cancels in the ratios.
+   - Volume: gmsh inside that triangulation (Delaunay + Netgen/Relocate3D rounds, variants tried until the minimum dihedral is ≥ 1°), no TetGen fallback (its slivers moved λ_b by −46 % on B2). Quadratic tets (C3D10).
+   - Levels h = 0.5 mm and h/√2; the finer is compared, and a change in C above 2 % between levels is flagged.
+   - Gate on the finer level (failure blocks acceptance): ≥ 2 tets through the thinnest wall (1 % quantile), minimum dihedral ≥ 0.25°, fraction of tets below 5° ≤ 10⁻³, longest edge ≤ 2.5 h.
+   - Solve: default `validation.engine = "gpu"`: the same C3D10 model on cuDSS (static, block-Krylov buckling, 0.995 stress quantile with the 2 mm BC exclusion). It matches CalculiX on the B2 design deck (h = 0.5): C 8·10⁻⁹, σ_q 6·10⁻⁸, λ₁ 2·10⁻⁶ (CalculiX prints 7 digits); modes 2–4 differ by 5·10⁻⁴ to 9·10⁻² (CalculiX's eigen-solver; not investigated). `"ccx"` remains available.
+   - Buckling uses the K_σ exclusion within `capacity.exclude_bc_mm` of clamped nodes (same rule as the voxel side, §4.4); λ without exclusion is recorded as `lam_unexcl`.
+   - Tolerances: compliance ≤ 5 %, λ_b ≤ 10 %, 0.995 stress quantile ≤ 15 % (each relative); the ratios K/K₀ and P/P₀ satisfy |r_bf/r_vox − 1| ≤ 5 % (relative, v1.3). A miss on the ratios, or a failed gate, blocks acceptance.
 
 ---
 

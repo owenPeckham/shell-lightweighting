@@ -1,6 +1,7 @@
 """GPU (cuDSS) vs CalculiX on the SAME C3D10 deck of the B2 design (new chain: remesh_surface + gmsh inside + gate).
 usage: python xcheck.py <stl> <h> <ccx_threads>   (run from the repo root)"""
 import json, sys, time
+sys.path.insert(0, "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2")
 from pathlib import Path
 import numpy as np
 import trimesh

@@ -26,3 +26,8 @@ Tests added in tests/cshell/test_validate.py (gate, remesh, GPU vs ccx 1e-5, col
 
 ## Update
 - 7808904 finished: 25 passed, 1 skipped (B2 VF films test), 1 FAILED: test_collect.py::test_end_to_end_run_collect (RuntimeError, cause unread; see logs/cshell_cpu_test_7808904.out). test_export hole-cap test passed. 7809370 collect still running at last check.
+
+## Update 2 (2026-10-30)
+Root causes fixed: gmsh sliver optimisation + variants (_gmsh_inside_robust); coarse-input midpoint subdivision; _close (non-manifold) in repair; remesh_surface runs in a spawned process (pymeshlab 2nd call silently skipped remeshing: 925k-face garbage); bodyfit_gpu.solve frees cuDSS/pool (OOM on 2nd level).
+Jobs: collect 7863412 (body-fitted ran end to end, both gates pass on the finer level; P_b ratio +6.7 % > 5 % -> blocking, decision keeps original solid); xcheck 7860914 (C 8e-9, sigma_q 6e-8, lam1 2e-6; modes 2-4 differ up to 9 %); GPU test_validate 7864303 14 passed; CPU test_export 7864375: 13 passed, test_b2_validation_export_has_no_films FAILS (5898 samples below t_min-b_v off-rim, min nominal 1.405 < t_min 1.5: tapered design walls, not hole films -> test criterion needs the nominal-vs-optimiser wall, open).
+Docs updated: THEORY 8.3/8.6, VALIDATION B2 body-fitted row.

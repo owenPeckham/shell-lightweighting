@@ -132,7 +132,8 @@ def tetrahedralise(V: np.ndarray, T: np.ndarray, h: float, layers: float = 2.0, 
     T = np.ascontiguousarray(T, np.int64)
     h_min = h / 8 if h_min is None else h_min
     if backend == "keep":
-        return _gmsh_inside(*remesh_surface(V, T, h)[:2], h, workdir)
+        V1, T1 = remesh_surface(V, T, h)[:2]
+        return _gmsh_inside_robust(V1, T1, h, workdir)
     if backend == "tetgen":
         # tetgen's maxvolume bound does not bound edge length: on a 0.25 mm decimated MC surface it produced flat
         # slivers with 7 mm edges (B2). Kept for tests only; validate_design rejects such meshes via mesh_gate().
@@ -192,8 +193,40 @@ def tetrahedralise(V: np.ndarray, T: np.ndarray, h: float, layers: float = 2.0, 
     return nodes, _orient(nodes, tets)
 
 
+def _close(ms):
+    """After deleting faces: drop non-manifold edges/vertices (they stop close_holes), then close every hole."""
+    ms.meshing_remove_unreferenced_vertices()
+    for _ in range(3):
+        ms.meshing_repair_non_manifold_edges(method=0)
+        ms.meshing_repair_non_manifold_vertices(vertdispratio=0)
+        ms.meshing_remove_unreferenced_vertices()
+    ms.meshing_close_holes(maxholesize=100000, newfaceselected=True)
+
+
+def _self_int(V, T) -> int:
+    import pymeshlab
+    m = pymeshlab.MeshSet()
+    m.add_mesh(pymeshlab.Mesh(V, np.asarray(T, np.int32)))
+    m.compute_selection_by_self_intersections_per_face()
+    return int(m.current_mesh().selected_face_number())
+
+
 def remesh_surface(V: np.ndarray, T: np.ndarray, h: float, max_dev: float = 0.02, repair_iters: int = 4,
-                   max_vol_rel: float = 5e-3):
+                   max_vol_rel: float = 5e-3, isolate: bool = True):
+    """`_remesh_surface` in a fresh (spawned) process. In one process the second call of pymeshlab's isotropic remesher
+    silently does nothing (B2 design: 929k faces instead of 107k at h = 0.354 after a first call at 0.5; same input
+    arrays, copies made; research/vf_b2/meshgate2.py), so the two mesh levels of a collect run would be garbage."""
+    if not isolate:
+        return _remesh_surface(V, T, h, max_dev, repair_iters, max_vol_rel)
+    import concurrent.futures as cf
+    import multiprocessing as mp
+    with cf.ProcessPoolExecutor(1, mp_context=mp.get_context("spawn")) as ex:
+        return ex.submit(_remesh_surface, np.asarray(V, float), np.asarray(T, np.int64), h, max_dev, repair_iters,
+                         max_vol_rel).result()
+
+
+def _remesh_surface(V: np.ndarray, T: np.ndarray, h: float, max_dev: float = 0.02, repair_iters: int = 4,
+                    max_vol_rel: float = 5e-3):
     """Isotropic remesh (pymeshlab) of a closed surface to edge h, after quadric pre-decimation of very fine
     (marching-cubes) input to edge h/3, then repair of self-intersections and projection back onto the input.
 
@@ -206,18 +239,24 @@ def remesh_surface(V: np.ndarray, T: np.ndarray, h: float, max_dev: float = 0.02
     import igl
     import pymeshlab
     import trimesh
-    t_in = trimesh.Trimesh(np.asarray(V, float), np.asarray(T, np.int64), process=False)
+    # COPIES: pymeshlab/trimesh work in place on the buffers they are given; a second call on the same input arrays
+    # (two mesh levels in one process) then started from the first call's modified vertices (B2: 925k-face garbage)
+    t_in = trimesh.Trimesh(np.array(V, float), np.array(T, np.int64), process=False)
     t_in.merge_vertices()                    # duplicated vertices (unwelded STL) make the remesher a silent no-op
-    V, T = np.ascontiguousarray(t_in.vertices, float), np.ascontiguousarray(t_in.faces, np.int64)
-    t0 = trimesh.Trimesh(V, T, process=False)
+    V, T = np.array(t_in.vertices, float, order='C'), np.array(t_in.faces, np.int64, order='C')
+    t0 = trimesh.Trimesh(V.copy(), T.copy(), process=False)
     ms = pymeshlab.MeshSet()
-    ms.add_mesh(pymeshlab.Mesh(V, T.astype(np.int32)))
+    ms.add_mesh(pymeshlab.Mesh(V.copy(), T.astype(np.int32)))
     if len(T) > 50 * t0.area / h ** 2:
         ms.meshing_decimation_quadric_edge_collapse(targetfacenum=int(t0.area / (0.433 * (h / 3) ** 2)),
                                                     preservenormal=True, preservetopology=True, qualitythr=0.5,
                                                     planarquadric=True)
+    e0 = np.linalg.norm(V[T[:, [1, 2, 0]]] - V[T], axis=2).max()
+    if e0 > 1.5 * h:      # coarse input (STEP tessellation, 248 faces on B2): split long edges first, the remesher then
+        ms.meshing_surface_subdivision_midpoint(iterations=12, threshold=pymeshlab.PureValue(h))   # starts from a resolved surface
     ms.meshing_isotropic_explicit_remeshing(targetlen=pymeshlab.PureValue(h), iterations=8, featuredeg=60,
                                             checksurfdist=True, maxsurfdist=pymeshlab.PureValue(max_dev))
+    stages = [ms.current_mesh().face_number()]
     repairs = []
     for it in range(repair_iters):
         ms.compute_selection_by_self_intersections_per_face()
@@ -230,10 +269,10 @@ def remesh_surface(V: np.ndarray, T: np.ndarray, h: float, max_dev: float = 0.02
             ms.compute_selection_transfer_vertex_to_face(inclusive=False)
             ms.apply_selection_dilatation()
         ms.meshing_remove_selected_faces()
-        ms.meshing_remove_unreferenced_vertices()
-        ms.meshing_close_holes(maxholesize=2000, newfaceselected=True)
+        _close(ms)
         ms.meshing_isotropic_explicit_remeshing(targetlen=pymeshlab.PureValue(h), iterations=4, featuredeg=60,
                                                 selectedonly=True, checksurfdist=False)
+        stages.append(ms.current_mesh().face_number())
     m = ms.current_mesh()
     V1, T1 = m.vertex_matrix().astype(float), m.face_matrix().astype(np.int64)
     if repairs:
@@ -249,13 +288,27 @@ def remesh_surface(V: np.ndarray, T: np.ndarray, h: float, max_dev: float = 0.02
             ring = np.unique(T1[np.isin(T1, vs).any(1)])
             Vt[ring] = V1[ring]
         V1 = Vt
-    m3 = pymeshlab.MeshSet()
-    m3.add_mesh(pymeshlab.Mesh(V1, T1.astype(np.int32)))
-    m3.compute_selection_by_self_intersections_per_face()
-    nsi = int(m3.current_mesh().selected_face_number())
+    nsi = _self_int(V1, T1)
+    for it in range(6):                      # residual self-intersections after projection: wider repair, no projection
+        if nsi == 0:
+            break
+        ms = pymeshlab.MeshSet()
+        ms.add_mesh(pymeshlab.Mesh(V1, T1.astype(np.int32)))
+        ms.compute_selection_by_self_intersections_per_face()
+        repairs.append(int(ms.current_mesh().selected_face_number()))
+        for _ in range(4 + 2 * it):
+            ms.compute_selection_transfer_face_to_vertex(inclusive=False)
+            ms.compute_selection_transfer_vertex_to_face(inclusive=False)
+            ms.apply_selection_dilatation()
+        ms.meshing_remove_selected_faces()
+        _close(ms)
+        ms.meshing_isotropic_explicit_remeshing(targetlen=pymeshlab.PureValue(h), iterations=4, featuredeg=60,
+                                                selectedonly=True, checksurfdist=False)
+        V1, T1 = ms.current_mesh().vertex_matrix().astype(float), ms.current_mesh().face_matrix().astype(np.int64)
+        nsi = _self_int(V1, T1)
     t1 = trimesh.Trimesh(V1, T1, process=False)
     e_max = float(np.linalg.norm(V1[T1[:, [1, 2, 0]]] - V1[T1], axis=2).max())
-    info = dict(faces=len(T1), watertight=bool(t1.is_watertight), self_intersections=nsi, repairs=repairs, edge_max=e_max,
+    info = dict(faces=len(T1), faces_in=len(T), area=float(t0.area), stages=stages, watertight=bool(t1.is_watertight), self_intersections=nsi, repairs=repairs, edge_max=e_max,
                 vol_rel=float(t1.volume / t0.volume - 1),
                 hausdorff=float(np.sqrt(igl.point_mesh_squared_distance(V1, V, T)[0].max())))
     if not info["watertight"] or nsi or abs(info["vol_rel"]) > max_vol_rel or e_max > 2.5 * h:
@@ -263,7 +316,7 @@ def remesh_surface(V: np.ndarray, T: np.ndarray, h: float, max_dev: float = 0.02
     return V1, T1, info
 
 
-def _gmsh_inside(V: np.ndarray, T: np.ndarray, h: float, workdir=None):
+def _gmsh_inside(V: np.ndarray, T: np.ndarray, h: float, workdir=None, opt_rounds: int = 3, algo: int = 1, opt_thr: float = 0.3):
     """gmsh Delaunay + Netgen optimisation inside the GIVEN triangulation (no reparametrisation, so no
     'Wrong topology of boundary mesh for parametrization' on marching-cubes surfaces)."""
     import gmsh
@@ -278,10 +331,16 @@ def _gmsh_inside(V: np.ndarray, T: np.ndarray, h: float, workdir=None):
         gmsh.model.geo.addVolume([loop])
         gmsh.model.geo.synchronize()
         gmsh.option.setNumber("Mesh.MeshSizeMax", h)
-        gmsh.option.setNumber("Mesh.Algorithm3D", 1)
+        gmsh.option.setNumber("Mesh.Algorithm3D", algo)
         gmsh.option.setNumber("Mesh.Optimize", 1)
         gmsh.option.setNumber("Mesh.OptimizeNetgen", 1)
+        gmsh.option.setNumber("Mesh.OptimizeThreshold", opt_thr)
         gmsh.model.mesh.generate(3)
+        # extra volume optimisation: Netgen / Relocate3D remove the isolated sliver tets (min dihedral ~0.1 deg) left by
+        # the Delaunay pass; boundary nodes stay fixed, so the surface and the volume are unchanged
+        for _ in range(opt_rounds):
+            for method in ("Netgen", "Relocate3D", ""):
+                gmsh.model.mesh.optimize(method, True)
         tags, xyz, _ = gmsh.model.mesh.getNodes()
         types, _, en = gmsh.model.mesh.getElements(3)
         en = en[list(types).index(4)].reshape(-1, 4)
@@ -296,6 +355,32 @@ def _gmsh_inside(V: np.ndarray, T: np.ndarray, h: float, workdir=None):
     remap[used] = np.arange(len(used))
     nodes, tets = nodes[used], remap[tets]
     return nodes, _orient(nodes, tets)
+
+
+# (Mesh.Algorithm3D, optimisation rounds, OptimizeThreshold): tried in order until the minimum dihedral is >= 1 deg
+# (4x the 0.25 deg gate); isolated Delaunay slivers (B2 solid h/sqrt2: 0.14 deg, B2 design: 1.1 deg) differ between
+# variants (research/vf_b2/meshgate2.py: 14-20 deg and 1.1-1.6 deg with different variants).
+_MESH_VARIANTS = ((1, 3, 0.3), (1, 3, 1.0), (4, 1, 0.3), (1, 8, 0.5))
+
+
+def _gmsh_inside_robust(V, T, h, workdir=None, target_deg: float = 1.0):
+    from .bodyfit_gpu import dihedral_min
+    best = None
+    for algo, rounds, thr in _MESH_VARIANTS:
+        try:
+            nodes, tets = _gmsh_inside(V, T, h, workdir, opt_rounds=rounds, algo=algo, opt_thr=thr)
+        except Exception as e:                 # a variant may fail (e.g. HXT): try the next
+            log.warning("gmsh variant %s failed: %s", (algo, rounds, thr), e)
+            continue
+        dm = float(dihedral_min(nodes, tets).min())
+        log.info("gmsh variant %s: %d tets, min dihedral %.2f deg", (algo, rounds, thr), len(tets), dm)
+        if best is None or dm > best[0]:
+            best = (dm, nodes, tets)
+        if dm >= target_deg:
+            break
+    if best is None:
+        raise RuntimeError("gmsh failed for every variant")
+    return best[1], best[2]
 
 
 def mesh_gate(nodes: np.ndarray, tets: np.ndarray, V: np.ndarray, T: np.ndarray, gate: dict | None = None,

@@ -257,8 +257,19 @@ def weighted_quantile(x, w, q):
     return float(x[i][np.searchsorted(c, q)])
 
 
-def solve(nodes, tets10, fixed, load_nodes, load_vec, E, nu, n_modes=4, quantile=0.995, exclude_bc_mm=2.0, nrhs=12,
-          tol=1e-7, unexcl=True):
+def solve(*a, **k):
+    """_solve, then release the cuDSS factor and the CuPy pool (two B2 levels in one process ran out of device memory)."""
+    import gc
+    import cupy as cp
+    try:
+        return _solve(*a, **k)
+    finally:
+        gc.collect()
+        cp.get_default_memory_pool().free_all_blocks()
+
+
+def _solve(nodes, tets10, fixed, load_nodes, load_vec, E, nu, n_modes=4, quantile=0.995, exclude_bc_mm=2.0, nrhs=12,
+           tol=1e-7, unexcl=True):
     import cupy as cp
     t = {}
     t0 = time.time()
@@ -320,6 +331,10 @@ def solve(nodes, tets10, fixed, load_nodes, load_vec, E, nu, n_modes=4, quantile
                nnz=M.nnz, factor_GiB=ch.est_GiB, static_rel_residual=res_static, eig_iters=len(hist),
                eig_res=hist[-1], timings_s=t, modes=loc)
     out["_phi_nodes"] = a
+    try:
+        ch.s.free()
+    except Exception:
+        pass
     return out
 
 
