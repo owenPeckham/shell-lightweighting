@@ -10,6 +10,7 @@ J uses a fixed base (C0 = 1, λ0 = 1): J differences between engines are w_K δl
 import argparse
 import dataclasses
 import glob
+import hashlib
 import json
 import os
 import resource
@@ -31,11 +32,14 @@ def run(a):
     from cshell import config
     from cshell.optimise import Context, PhaseModel
     from cshell.fe_sparse import _host
+    if a.det:                                           # two-grid determinism: full | kernels | off (atomic kernels)
+        os.environ["CSHELL_TWOGRID_DET"] = a.det
     rd = Path(a.run_dir)
     fe_over = {"engine": a.engine}
     if a.engine == "twogrid":
         fe_over["twogrid"] = {"coarse_precision": a.coarse, "krylov_tol": a.krylov_tol, "nrhs": a.nrhs,
-                              "degree": a.degree, "smoothing_range": a.range}
+                              "degree": a.degree, "smoothing_range": a.range,
+                              "deterministic": a.det or "off"}
     cfg = config.load(str(rd / "config_used.json"), {"fe": fe_over})
     t0 = time.time()
     ctx = Context(cfg)
@@ -60,6 +64,7 @@ def run(a):
     out, rows, prev = {}, [], None
     for name, xi, c_norm, _ in designs:
         rho = np.asarray(_host(model.dm.rho(model.dm.forward(xi[:nv], xi[nv:], as_built=True))))
+        rho_sha = hashlib.sha1(rho.tobytes()).hexdigest()[:12]            # identical across runs <=> design chain bitwise
         t1 = time.time()
         fe = model.fe_eval(rho, st, base, c_norm, prev)
         t_fe = time.time() - t1
@@ -68,12 +73,22 @@ def run(a):
         pcg = model.fe.pcg_summary() if hasattr(model.fe, "pcg_summary") else {}
         row = dict(design=name, J=fe["J"], C=fe["C"], lam_s=fe["lam_s"], lam_b=fe["lam_b"], mu_tilde=fe["mu_tilde"],
                    eig_iters=fe["eig_iters"], t_fe=t_fe, ndof=int(model.grid_fe.ndof), engine=model.fe_engine,
-                   pcg=pcg, rss_GiB=rss_GiB(),
+                   pcg=pcg, rss_GiB=rss_GiB(), rho_sha=rho_sha,
                    stats={k: v for k, v in s.items() if isinstance(v, (int, float, str, bool))})
         print(json.dumps(row, default=float), flush=True)
         rows.append(row)
         out[f"{name}_dJ"] = np.asarray(fe["dJ"])
         out[f"{name}_elem"] = np.asarray(model.grid_fe.elem_dense)
+        for rep_i in range(a.repeat):       # same rho again, cold start: FE-only run-to-run reproducibility
+            if hasattr(model.fe, "_u_prev"):
+                model.fe._u_prev = None
+            fe2 = model.fe_eval(rho, st, base, c_norm, None)
+            same = {k: bool(np.array_equal(np.asarray(fe2[k]), np.asarray(fe[k])))
+                    for k in ("J", "C", "lam_s", "lam_b", "mu_tilde", "dJ")}
+            print("REPEAT", name, rep_i + 1, json.dumps(same), "dJ max|diff|",
+                  float(np.abs(np.asarray(fe2["dJ"]) - np.asarray(fe["dJ"])).max()), "J diff", fe2["J"] - fe["J"],
+                  flush=True)
+            row.setdefault("repeat_bitwise", []).append(all(same.values()))
     info = dict(run_dir=str(rd), phase=a.phase, engine=a.engine, rows=rows, rss_setup_GiB=rss_setup,
                 rss_peak_GiB=rss_GiB(), total_s=time.time() - t0, eig_tol=st.eig_tol,
                 coarse=a.coarse, krylov_tol=a.krylov_tol, nrhs=a.nrhs,
@@ -97,6 +112,9 @@ def compare(ref_path, new_path):
         c = dict(design=d, J_ref=rr["J"], J_rel=rel("J"), C_rel=rel("C"), lam_s_rel=rel("lam_s"),
                  lam_b_rel=rel("lam_b"), mu_rel=rel("mu_tilde"),
                  dJ_rel2=float(np.linalg.norm(gn - gr) / np.linalg.norm(gr)),
+                 bitwise=bool(r[f"{d}_elem"].size == n[f"{d}_elem"].size and np.array_equal(gn, gr)
+                              and rr["J"] == nr["J"] and rr["C"] == nr["C"] and rr["lam_b"] == nr["lam_b"]),
+                 dJ_max_abs=float(np.abs(gn - gr).max()), rho_same=rr.get("rho_sha") == nr.get("rho_sha"),
                  t_fe_ref=rr["t_fe"], t_fe_new=nr["t_fe"], engines=(rr["engine"], nr["engine"]),
                  eig_iters=(rr["eig_iters"], nr["eig_iters"]))
         res.append(c)
@@ -122,4 +140,7 @@ if __name__ == "__main__":
     ap.add_argument("--nrhs", type=int, default=7)
     ap.add_argument("--eig-tol", type=float, default=None)
     ap.add_argument("--no-buckling", action="store_true")
+    ap.add_argument("--repeat", type=int, default=0, help="re-evaluate each design this many times on the same rho")
+    ap.add_argument("--det", default=None, choices=["full", "kernels", "off"],
+                    help="two-grid determinism mode (default: the engine's, full)")
     run(ap.parse_args())

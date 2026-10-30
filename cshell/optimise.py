@@ -234,7 +234,8 @@ class PhaseModel:
                        coarse_precision=tg.get("coarse_precision", "auto"), degree=tg.get("degree", 5),
                        smoothing_range=tg.get("smoothing_range", 30.0),
                        tol=tg.get("tol", 1e-10), krylov_tol=tg.get("krylov_tol", 1e-2),
-                       maxiter=tg.get("maxiter", 100), nrhs=tg.get("nrhs", 7))
+                       maxiter=tg.get("maxiter", 100), nrhs=tg.get("nrhs", 7),
+                       deterministic=tg.get("deterministic"))
         return g, fe, "twogrid"
 
     def settings(self, frac: float) -> Settings:

@@ -6,8 +6,19 @@ K = Σ_e E ρ̂_e K̂ on an active element set, clamped DOF as identity rows/col
 `objective.evaluate`, `buckling()` and `optimise.PhaseModel` use it unchanged.
 
 Fine level (h_e): K u is applied element by element on the GPU (one fused CUDA kernel: gather u_e, K̂ u_e scaled by
-E ρ̂_e, atomic scatter-add) for k right-hand sides at once; no assembled fine K and no fine factor. The Jacobi diagonal
+E ρ̂_e, scatter-add) for k right-hand sides at once; no assembled fine K and no fine factor. The Jacobi diagonal
 is computed element-wise.
+
+Determinism (`deterministic` = "off" (default: atomic kernels, fastest) | "kernels" | "full"; config
+`fe.twogrid.deterministic`, env CSHELL_TWOGRID_DET when the argument is None). In "kernels"/"full" every accumulation has a
+fixed order (full: bitwise repeatable FE evaluations on the same GPU, but not end to end: design.py still uses atomics). Elements are split into 8 colours by the parity of their (i, j, k): two elements of one colour never
+share a node, so within a colour each node is updated by at most one element with a plain (non-atomic) add, and the
+colours are applied one kernel launch after another. The K and G products, the Jacobi diagonal, the coarse Galerkin
+assembly (coarse elements coloured the same way) and the buckling adjoint load use this. "off" keeps the float64 atomicAdd
+kernels (run-to-run noise ~1e-16 per product, amplified by the optimiser's MMA). cuDSS (coarse
+factor and solve) is itself not reproducible run to run; "full" switches on its DETERMINISTIC_MODE, which supports one
+right-hand side per solve only (the coarse solve then loops over the PCG block's columns); "kernels" keeps the
+colour-ordered kernels with the default (faster, non-reproducible) cuDSS.
 
 Coarse level (2 h_e): trilinear prolongation P (node-level, ⊗ I₃) from the coarse nodes of every coarse element that
 contains an active fine element. A coarse DOF that interpolates to any clamped fine DOF is fixed (identity row), so
@@ -17,7 +28,10 @@ with 8 precomputed 24×24 matrices. K_c is factorised by cuDSS (fp32, fp64 if fp
 
 Preconditioner: symmetric two-grid V(1,1) cycle, Chebyshev(Jacobi) smoothing of degree `degree` on
 [1/r, 1]·1.1 λ_max(D⁻¹K) (λ_max by Lanczos, r = `smoothing_range`), exact coarse solve. PCG in fp64 with the Polak-Ribière β (robust to the
-fp32 coarse factor's rounding), one column per right-hand side, run as a block; non-convergence raises.
+fp32 coarse factor's rounding), one column per right-hand side, run as a block. Non-convergence in `maxiter`
+iterations raises; a column whose residual has stagnated (reduction < 2× over 20 iterations, rounding level of an
+ill-conditioned K) is accepted with a logged warning if its relative residual is ≤ `stall_accept` (1e-7), and counted
+in `stats`/`pcg_summary()`.
 
 Memory (device): _dofs (Ne×24 int32), ρ̂, diag, f, the coarse factor and the PCG/Krylov work blocks; no fine matrix.
 Host: only the active element/node ids of the grid (interface of `ActiveGrid`), built on the GPU (`LeanGrid`).
@@ -25,6 +39,7 @@ Units mm, N, MPa.
 """
 from __future__ import annotations
 
+import os
 import time
 
 import numpy as np
@@ -43,7 +58,7 @@ _KERNELS = r"""
 extern "C" __global__ void k_apply(const double* __restrict__ X, double* __restrict__ Y,
                                    const int* __restrict__ dofs, const double* __restrict__ s,
                                    const unsigned char* __restrict__ fixed, const double* __restrict__ Khat,
-                                   const long long ne, const int k)
+                                   const int* __restrict__ elist, const long long ne, const int k, const int atom)
 {
     __shared__ double Ks[576];
     for (int i = threadIdx.x; i < 576; i += blockDim.x) Ks[i] = Khat[i];
@@ -52,6 +67,7 @@ extern "C" __global__ void k_apply(const double* __restrict__ X, double* __restr
     if (t >= ne * k) return;
     long long e = t / k;
     int j = (int)(t - e * k);
+    if (!atom) e = elist[e];
     int d[24];
     double u[24];
     #pragma unroll
@@ -66,19 +82,21 @@ extern "C" __global__ void k_apply(const double* __restrict__ X, double* __restr
         double acc = 0.0;
         #pragma unroll
         for (int b = 0; b < 24; b++) acc += Ks[a * 24 + b] * u[b];
-        atomicAdd(&Y[(long long)d[a] * k + j], se * acc);
+        if (atom) atomicAdd(&Y[(long long)d[a] * k + j], se * acc);
+        else Y[(long long)d[a] * k + j] += se * acc;
     }
 }
 
 extern "C" __global__ void g_apply(const double* __restrict__ X, double* __restrict__ Y,
                                    const int* __restrict__ dofs, const double* __restrict__ H,
                                    const unsigned char* __restrict__ fixed, const double sgn,
-                                   const long long ne, const int k)
+                                   const int* __restrict__ elist, const long long ne, const int k, const int atom)
 {
     long long t = (long long)blockIdx.x * blockDim.x + threadIdx.x;
     if (t >= ne * k) return;
     long long e = t / k;
     int j = (int)(t - e * k);
+    if (!atom) e = elist[e];
     double h[64];
     #pragma unroll
     for (int i = 0; i < 64; i++) h[i] = H[e * 64 + i];
@@ -96,7 +114,8 @@ extern "C" __global__ void g_apply(const double* __restrict__ X, double* __restr
             double acc = 0.0;
             #pragma unroll
             for (int b = 0; b < 8; b++) acc += h[a * 8 + b] * v[b];
-            atomicAdd(&Y[(long long)d[a] * k + j], sgn * acc);
+            if (atom) atomicAdd(&Y[(long long)d[a] * k + j], sgn * acc);
+            else Y[(long long)d[a] * k + j] += sgn * acc;
         }
     }
 }
@@ -123,6 +142,11 @@ def _ew(name):
         _EW["axpy"] = cp.ElementwiseKernel("T x, T a", "T y", "y += a * x", "tg_axpy")
         _EW["xpay"] = cp.ElementwiseKernel("T z, T b", "T p", "p = z + b * p", "tg_xpay")
         _EW["cheb"] = cp.ElementwiseKernel("T r, T dinv, T a, T c", "T d", "d = a * d + c * dinv * r", "tg_cheb")
+        # in-place indexed adds out[idx] += v; callers guarantee distinct idx within one launch (one colour)
+        _EW["idxadd"] = cp.ElementwiseKernel("T v, S idx", "raw T out", "out[idx] += v", "tg_idxadd")
+        _EW["idxadd9"] = cp.ElementwiseKernel("raw T v, S idx", "raw T out",
+                                              "for (int q = 0; q < 9; q++) out[idx * 9 + q] += v[i * 9 + q];",
+                                              "tg_idxadd9")
         _EW["dot"] = cp.ReductionKernel("T x, T y", "T z", "x * y", "a + b", "z = a", "0", "tg_coldot")
     return _EW[name]
 
@@ -147,6 +171,28 @@ def _xpay(xp, P, Z, b):
         P += Z
     else:
         _ew("xpay")(Z, b, P)
+
+
+def _idx_add(xp, out, idx, vals):
+    """out[idx] += vals (1-D out, 1-D idx, vals same length) for DISTINCT idx: plain in-place add, no atomics."""
+    if xp is np:
+        out[idx] += vals
+    else:
+        _ew("idxadd")(vals, idx, out)
+
+
+def _blk_add(xp, out, pos, vals):
+    """out[pos] += vals for out (nblk, 3, 3), pos (m,) DISTINCT, vals (m, 3, 3)."""
+    if xp is np:
+        out[pos] += vals
+    else:
+        _ew("idxadd9")(xp.ascontiguousarray(vals).reshape(-1), pos, out)
+
+
+def _colour_lists(xp, ei, ej, ek):
+    """Element ids (ascending, int32) of each of the 8 parity colours of the element indices (i, j, k)."""
+    col = 4 * (ei % 2) + 2 * (ej % 2) + ek % 2
+    return [l for l in (xp.flatnonzero(col == c).astype(xp.int32) for c in range(8)) if l.size]
 
 
 def _bincount_add(Y, idx, vals):
@@ -241,6 +287,7 @@ class _BlockPattern:
         self.node_shape = tuple(n + 1 for n in elem_shape)
         self.node_dense, conn = _connectivity(xp, elem_dense, elem_shape)
         conn = conn.astype(xp.int64)
+        self.colours = _colour_lists(xp, *_unravel(xp, elem_dense.astype(xp.int64), elem_shape))
         self.Ne, self.Nn = int(conn.shape[0]), int(self.node_dense.size)
         self.ndof = 3 * self.Nn
         slot_ab = _stencil_slot(CORNERS[None, :, :] - CORNERS[:, None, :])
@@ -288,10 +335,11 @@ class _BlockPattern:
 class _CoarseSolver:
     """K_c factorised by cuDSS (SPD, fp32 or fp64, `nrhs` columns per call) or SciPy SuperLU on the CPU."""
 
-    def __init__(self, xp, pat: _BlockPattern, precision: str = "auto", nrhs: int = 14):
+    def __init__(self, xp, pat: _BlockPattern, precision: str = "auto", nrhs: int = 14, deterministic: bool = True):
         if precision not in ("auto", "fp32", "fp64"):
             raise ValueError("coarse precision must be 'auto', 'fp32' or 'fp64'")
         self.xp, self.pat, self.nrhs = xp, pat, max(int(nrhs), 1)
+        self.deterministic = bool(deterministic)
         self.auto = precision == "auto"
         self.precision = "fp32" if precision == "auto" else precision
         self.dt = np.float32 if self.precision == "fp32" else np.float64
@@ -336,6 +384,11 @@ class _CoarseSolver:
             opts = DirectSolverOptions(sparse_system_type=DirectSolverMatrixType.SPD,
                                        multithreading_lib=_cudss_mtlayer())
             self._solver = DirectSolver(self._K, self._b, options=opts, execution=ExecutionCUDA())
+            if self.deterministic:      # cuDSS run-to-run reproducibility (not exposed by nvmath's option classes)
+                from nvmath.bindings import cudss
+                one = np.array(1, dtype=np.int32)
+                cudss.config_set(self._solver.config_ptr, cudss.ConfigParam.DETERMINISTIC_MODE, one.ctypes.data,
+                                 one.dtype.itemsize)
             self._solver.plan()
             est = self._solver.plan_info.memory_estimates
             self.stats["coarse_factor_estimate_GiB"] = float(est["peak_device_memory"]) / 2 ** 30
@@ -427,9 +480,10 @@ class _ElemGeomOp:
             Y[fe.fixed] = 0.0
         else:
             _, g_apply = _kernels()
-            n = fe.g.Ne * k
-            g_apply(((n + 127) // 128,), (128,), (X, Y, fe._dofs, self.H, fe._fixed_u8, np.float64(-1.0),
-                                                  np.int64(fe.g.Ne), np.int32(k)))
+            for el, ne, atom in fe._launches():
+                n = ne * k
+                g_apply(((n + 127) // 128,), (128,), (X, Y, fe._dofs, self.H, fe._fixed_u8, np.float64(-1.0),
+                                                      el, np.int64(ne), np.int32(k), np.int32(atom)))
         return Y[:, 0] if one else Y
 
 
@@ -449,7 +503,8 @@ class TwoGridFE(SparseFE):
     def __init__(self, grid, fixed_dof: np.ndarray, nodal_load: np.ndarray, h_mm: float, E_MPa: float, nu: float,
                  backend: str = "auto", element_type: str = "q1_im", coarse_precision: str = "auto",
                  degree: int = 5, tol: float = 1e-10, krylov_tol: float = 1e-2, maxiter: int = 100,
-                 nrhs: int = 7, warm_start: bool = True, lanczos_steps: int = 20, smoothing_range: float = 30.0):
+                 nrhs: int = 7, warm_start: bool = True, lanczos_steps: int = 20, smoothing_range: float = 30.0,
+                 deterministic=None, stall_accept: float = 1e-7, stall_window: int = 20):
         t0 = time.time()
         self.g, self.h, self.E, self.nu = grid, float(h_mm), float(E_MPa), float(nu)
         self.element_type = element_type
@@ -466,6 +521,14 @@ class TwoGridFE(SparseFE):
         self.degree, self.tol, self.krylov_tol, self.maxiter = int(degree), float(tol), float(krylov_tol), int(maxiter)
         self.nrhs, self.warm_start, self.lanczos_steps = max(int(nrhs), 1), bool(warm_start), int(lanczos_steps)
         self.smoothing_range = float(smoothing_range)
+        mode = os.environ.get("CSHELL_TWOGRID_DET", "off") if deterministic is None else deterministic
+        mode = {True: "full", False: "off"}.get(mode, mode)
+        if mode not in ("full", "kernels", "off"):
+            raise ValueError("deterministic must be 'full', 'kernels' or 'off' (or True/False)")
+        self.det_mode = mode
+        self.deterministic = mode != "off"                                  # colour-ordered kernels and assembly
+        self.cudss_deterministic = mode == "full"                           # + cuDSS DETERMINISTIC_MODE (nrhs = 1)
+        self.stall_accept, self.stall_window = float(stall_accept), int(stall_window)
         self.precision = "pcg-fp64"
         self.hybrid = False
         self.Khat = gpu_analysis.element_khat(element_type, (self.h,) * 3, self.nu)
@@ -503,8 +566,10 @@ class TwoGridFE(SparseFE):
         del conn
         self.stats = dict(engine="twogrid", Ne=grid.Ne, ndof=grid.ndof, backend=backend, coarse_ndof=self._pat.ndof,
                           coarse_nnz=self._pat.nnz, coarse_fixed_dof=self._nb, smoothing_range=self.smoothing_range,
-                          degree=self.degree, tol=self.tol, krylov_tol=self.krylov_tol, setup_s=time.time() - t0)
-        self._co = _CoarseSolver(xp, self._pat, coarse_precision, self.nrhs)
+                          deterministic=self.det_mode, maxiter=self.maxiter, degree=self.degree, tol=self.tol,
+                          krylov_tol=self.krylov_tol, setup_s=time.time() - t0)
+        self._co = _CoarseSolver(xp, self._pat, coarse_precision, 1 if self.cudss_deterministic else self.nrhs,
+                                 self.cudss_deterministic)      # cuDSS deterministic mode supports one right-hand side
         self.stats["coarse_precision"] = self._co.precision
         self._reset_counters()
 
@@ -526,6 +591,9 @@ class TwoGridFE(SparseFE):
         cdense, parent = xp.unique(pdense, return_inverse=True)
         del pdense
         self._parent, self._child = parent.astype(xp.int32), child
+        # fine-element colours = child index (the parity of (i, j, k)); a colour has no two elements sharing a node
+        self._colours = [l for l in (xp.flatnonzero(child == c).astype(xp.int32) for c in range(8)) if l.size]
+        self._null = xp.zeros(1, xp.int32)                                      # "no element list" kernel argument
         self._pat = _BlockPattern(xp, cdense, esc)
         del cdense
         pat = self._pat
@@ -589,9 +657,15 @@ class TwoGridFE(SparseFE):
         # Jacobi diagonal
         dK = xp.asarray(np.diag(self.Khat).copy())
         diag = xp.zeros(g.ndof)
-        for s in range(0, g.Ne, 1 << 20):
-            _scatter_add(xp, diag, self._dofs[s:s + (1 << 20)].reshape(-1),
-                         (self._s[s:s + (1 << 20), None] * dK[None, :]).reshape(-1))
+        if self.deterministic:
+            for lst in self._colours:
+                for s in range(0, lst.size, 1 << 19):
+                    sel = lst[s:s + (1 << 19)]
+                    _idx_add(xp, diag, self._dofs[sel].reshape(-1), (self._s[sel, None] * dK[None, :]).reshape(-1))
+        else:
+            for s in range(0, g.Ne, 1 << 20):
+                _scatter_add(xp, diag, self._dofs[s:s + (1 << 20)].reshape(-1),
+                             (self._s[s:s + (1 << 20), None] * dK[None, :]).reshape(-1))
         diag[self.fixed] = 1.0
         self._diag = diag
         self._dinv = 1.0 / diag
@@ -616,10 +690,17 @@ class TwoGridFE(SparseFE):
         rho_c = xp.zeros((pat.Ne, 8))
         rho_c[self._parent, self._child.astype(xp.int64)] = self._s
         blocks = xp.zeros((pat.nblk, 3, 3))
-        for s in range(0, pat.Ne, _CHUNK):
-            Ke = rho_c[s:s + _CHUNK] @ self._Mc                             # (n, 576) coarse-element matrices
+        if self.deterministic:      # colour by colour: within one colour every (element, a, b) hits a distinct block
+            chunks = [(lst[s:s + _CHUNK]) for lst in pat.colours for s in range(0, lst.size, _CHUNK)]
+        else:
+            chunks = [slice(s, s + _CHUNK) for s in range(0, pat.Ne, _CHUNK)]
+        for sel in chunks:
+            Ke = rho_c[sel] @ self._Mc                                      # (n, 576) coarse-element matrices
             Kb = Ke.reshape(-1, 8, 3, 8, 3).transpose(0, 1, 3, 2, 4).reshape(-1, 3, 3)
-            _scatter_add(xp, blocks, pat.pos_blk[s:s + _CHUNK].reshape(-1), Kb)
+            if self.deterministic:
+                _blk_add(xp, blocks, pat.pos_blk[sel].reshape(-1), Kb)
+            else:
+                _scatter_add(xp, blocks, pat.pos_blk[sel].reshape(-1), Kb)
             del Ke, Kb
         del rho_c
         data = xp.empty(pat.nnz)
@@ -666,11 +747,30 @@ class TwoGridFE(SparseFE):
             Y = np.asarray(self._Kcpu @ X0)
         else:
             k_apply, _ = _kernels()
-            n = self.g.Ne * k
-            k_apply(((n + 127) // 128,), (128,), (X, Y, self._dofs, self._s, self._fixed_u8, self._Khat,
-                                                  np.int64(self.g.Ne), np.int32(k)))
+            for el, ne, atom in self._launches():
+                n = ne * k
+                k_apply(((n + 127) // 128,), (128,), (X, Y, self._dofs, self._s, self._fixed_u8, self._Khat,
+                                                      el, np.int64(ne), np.int32(k), np.int32(atom)))
         Y[self.fixed] = X[self.fixed]
         return Y[:, 0] if one else Y
+
+    def _launches(self):
+        """(element list, count, atomic flag) per kernel launch: the 8 colours in fixed order (deterministic) or one
+        launch over all elements with atomics."""
+        if self.deterministic:
+            return [(l, int(l.size), 0) for l in self._colours]
+        return [(self._null, self.g.Ne, 1)]
+
+    def _scatter_dofs(self, out, vals):
+        """out (ndof,) += Σ_e (per-element DOF values vals (Ne, 24)) scattered to `_dofs`, in a fixed order."""
+        xp = self.xp
+        if not self.deterministic:
+            return SparseFE._scatter_dofs(self, out, vals)
+        for lst in self._colours:
+            for s in range(0, lst.size, 1 << 19):
+                sel = lst[s:s + (1 << 19)]
+                _idx_add(xp, out, self._dofs[sel].reshape(-1), vals[sel].reshape(-1))
+        return out
 
     def matvec(self, x):
         return self._apply_K(x)
@@ -744,10 +844,15 @@ class TwoGridFE(SparseFE):
         self._vcycles = 0
         self._t_pcg = 0.0
         self.stats_solves = []                     # (columns, iterations, tol) per solve since the last factor
+        self.stall_events = []                     # stagnation acceptances since the last factor (see _pcg)
+        if hasattr(self, "stats"):
+            self.stats.update(pcg_stall_accepted=0, pcg_stall_max_rel=0.0)
 
     def _pcg(self, B, X0=None, tol: float = 1e-10):
         """Column-wise PCG on (n, k) blocks (converged columns frozen); Polak-Ribière β. Raises when a column does not
-        reach ‖r‖ ≤ tol ‖b‖ within maxiter iterations, or on an indefinite step."""
+        reach ‖r‖ ≤ tol ‖b‖ within maxiter iterations, or on an indefinite step. A column whose residual stagnates
+        (reduction < 2× over `stall_window` iterations: rounding level of the operator) is accepted with a warning if
+        its relative residual is ≤ `stall_accept`; it is then counted in `stall_events`."""
         xp = self.xp
         t_start = time.time()
         k = B.shape[1]
@@ -757,7 +862,8 @@ class TwoGridFE(SparseFE):
         X = xp.zeros_like(B) if X0 is None else xp.array(X0, dtype=xp.float64).reshape(B.shape)
         R = B - self._apply_K(X) if X0 is not None else B.copy()
         tgt = tol * nb
-        active = (xp.linalg.norm(R, axis=0) > tgt) & (nb > 0)
+        rn = xp.linalg.norm(R, axis=0)
+        active = (rn > tgt) & (nb > 0)
         if X0 is not None:
             X[:, ~(nb > 0)] = 0.0
         its = 0
@@ -765,6 +871,7 @@ class TwoGridFE(SparseFE):
             Z = self.precondition(R)
             P = Z.copy()
             rz = _coldot(xp, R, Z)
+            hist = [rn]                                           # residual norms of the last stall_window + 1 iterations
             for its in range(1, self.maxiter + 1):
                 AP = self._apply_K(P)
                 pap = _coldot(xp, P, AP)
@@ -778,6 +885,13 @@ class TwoGridFE(SparseFE):
                 if not bool(xp.isfinite(rn).all()):
                     raise FloatingPointError(f"two-grid PCG: non-finite residual at iteration {its}")
                 active &= rn > tgt
+                hist.append(rn)
+                if len(hist) > self.stall_window + 1:
+                    hist.pop(0)
+                    stalled = active & (rn > 0.5 * hist[0]) & (rn <= self.stall_accept * nb)
+                    if bool(stalled.any()):
+                        self._accept_stalled(stalled, rn, nb, its, tol)
+                        active &= ~stalled
                 if not bool(active.any()):
                     break
                 rzo = _coldot(xp, R, Z)
@@ -794,6 +908,15 @@ class TwoGridFE(SparseFE):
         self.stats_solves.append((k, its, tol))
         self._t_pcg += time.time() - t_start
         return X
+
+    def _accept_stalled(self, stalled, rn, nb, its, tol):
+        rel = float(self.xp.max(self.xp.where(stalled, rn / self.xp.where(nb > 0, nb, 1.0), 0.0)))
+        n = int(stalled.sum())
+        self.stall_events.append(dict(columns=n, iteration=its, rel_residual=rel, tol=tol))
+        self.stats.update(pcg_stall_accepted=len(self.stall_events),
+                          pcg_stall_max_rel=max(e["rel_residual"] for e in self.stall_events))
+        print(f"fe_twogrid: WARNING: PCG stagnated at iteration {its} ({n} column(s)): accepting relative residual "
+              f"{rel:.2e} (target {tol:.0e}, accept limit {self.stall_accept:.0e})", flush=True)
 
     def solve(self, rhs, x0=None, tol: float | None = None):
         """K x = rhs for (ndof,) or (ndof, k); clamped DOF of rhs are zeroed (x = 0 there). Columns are solved in
@@ -837,7 +960,8 @@ class TwoGridFE(SparseFE):
         inner = [i for _, i, t in s if t > self.tol * 1.0001]
         return dict(n_solves=len(s), its_exact=full, its_krylov_mean=float(np.mean(inner)) if inner else 0.0,
                     its_krylov_max=int(max(inner)) if inner else 0, vcycles=int(self._vcycles),
-                    pcg_s=float(self._t_pcg))
+                    pcg_s=float(self._t_pcg), stalled=len(self.stall_events),
+                    stall_max_rel=max([e["rel_residual"] for e in self.stall_events], default=0.0))
 
     def free(self):
         """Release the coarse factor and the device arrays of this engine."""

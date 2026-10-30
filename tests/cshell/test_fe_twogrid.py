@@ -127,3 +127,54 @@ def test_warm_start_and_nonconvergence(backend):
     t.maxiter, t._u_prev = 2, None
     with pytest.raises(RuntimeError, match="did not converge"):
         t.primal()
+
+
+@pytest.mark.gpu
+def test_bitwise_reproducible_gpu():
+    """P6 (PLAN_collect_fixes): two identical primal solves and two identical buckling evaluations (fresh engines, same
+    inputs) are bitwise equal; the colour-ordered kernels agree with the atomic ones to rounding."""
+    import cupy as cp
+    mask, rho, fixed, load = hollow_tube((41, 17, 21))
+    gt = LeanGrid(mask, xp=cp)
+    res = []
+    for _ in range(2):
+        t = TwoGridFE(LeanGrid(mask, xp=cp), fixed, load, 1.0, E, NU, backend="gpu", deterministic="full").factor(gt.gather_elems(rho))
+        p = t.primal()
+        b = buckling(t, p, num_modes=4, tol=1e-6, maxiter=100)
+        res.append((h(t._diag), h(t._coarse_values()), h(p.u), p.compliance, np.asarray(b.mu), b.dmu_tilde, h(b.modes),
+                    b.iterations))
+        t.free()
+    for name, x, y in zip("diag coarse u C mu dmu modes iters".split(), *res):
+        assert np.array_equal(x, y), f"{name} differs run to run: {np.max(np.abs(np.asarray(x) - np.asarray(y)))}"
+    ta = TwoGridFE(LeanGrid(mask, xp=cp), fixed, load, 1.0, E, NU, backend="gpu", deterministic=False)
+    ta.factor(gt.gather_elems(rho))
+    tb = TwoGridFE(LeanGrid(mask, xp=cp), fixed, load, 1.0, E, NU, backend="gpu", deterministic="kernels").factor(gt.gather_elems(rho))
+    X = cp.asarray(np.random.default_rng(0).standard_normal((tb.g.ndof, 5)))
+    assert np.abs(h(ta._apply_K(X)) - h(tb._apply_K(X))).max() < 1e-12 * np.abs(h(tb._apply_K(X))).max()
+    assert np.abs(h(ta._diag) - h(tb._diag)).max() < 1e-12 * h(tb._diag).max()
+    assert np.abs(h(ta._coarse_values()) - h(tb._coarse_values())).max() < 1e-12 * np.abs(h(tb._coarse_values())).max()
+    G = np.random.default_rng(1).standard_normal((tb.g.Ne, 8, 8))
+    ga, gb = ta._geometric_op(cp.asarray(G)) @ X, tb._geometric_op(cp.asarray(G)) @ X
+    assert np.abs(h(ga) - h(gb)).max() < 1e-12 * np.abs(h(gb)).max()
+
+
+@pytest.mark.parametrize("backend", BACKENDS)
+def test_stagnation_accepted_with_warning(backend, capsys):
+    """P4(ii): with a slowly converging preconditioner (Jacobi) the residual reduces < 2x over `stall_window`
+    iterations before the tolerance is reached: a column below `stall_accept` is then accepted with a logged warning and
+    counted in stats/pcg_summary; above it (stall_accept tiny) the solve raises as before at maxiter."""
+    mask, rho, fixed, load = hollow_tube()
+    xp = np if backend == "cpu" else __import__("cupy")
+    gt = LeanGrid(mask, xp=xp)
+    t = TwoGridFE(gt, fixed, load, 1.0, E, NU, backend=backend, tol=1e-12, maxiter=400, stall_window=2,
+                  stall_accept=1e-1).factor(gt.gather_elems(rho))
+    t.precondition = lambda B: t._dinv[:, None] * B
+    p = t.primal()
+    r = h(t.f - t._apply_K(p.u))
+    assert np.linalg.norm(r) <= 1e-1 * np.linalg.norm(h(t.f))
+    s = t.pcg_summary()
+    assert s["stalled"] >= 1 and 0 < s["stall_max_rel"] <= 1e-1 and t.stats["pcg_stall_accepted"] >= 1
+    assert "stagnated" in capsys.readouterr().out
+    t.stall_accept, t._u_prev, t.maxiter = 1e-30, None, 30
+    with pytest.raises(RuntimeError, match="did not converge"):
+        t.primal()

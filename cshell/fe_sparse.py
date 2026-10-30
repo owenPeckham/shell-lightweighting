@@ -405,6 +405,11 @@ class SparseFE:
     def matvec(self, x):
         return self._K @ x
 
+    def _scatter_dofs(self, out, vals):
+        """out (ndof,) += per-element DOF values vals (Ne, 24) scattered to the element DOFs."""
+        _scatter_add(self.xp, out, self._dofs.reshape(-1), vals.reshape(-1))
+        return out
+
     def _geometric_op(self, H):
         """G = −K_σ from the element matrices H_e (Ne, 8, 8) (K_σ,e = H_e ⊗ I₃), assembled per node pair."""
         xp, g = self.xp, self.g
@@ -613,7 +618,7 @@ def buckling(fe: SparseFE, primal: Primal, num_modes: int = 6, p: float = 8.0, m
         term_b = -fe._detJ * drs * xp.einsum("egi,egi->e", sig_unit, Gam)
         dmu += w[k] * (term_a + term_b)
         ce = fe._detJ * fe.E * (r * rho)[:, None] * xp.einsum("gij,egi->ej", fe._DB, Gam)   # B_gᵀ D Γ_g, (Ne, 24)
-        _scatter_add(xp, cvec, fe._dofs.reshape(-1), (w[k] * ce).reshape(-1))
+        fe._scatter_dofs(cvec, w[k] * ce)
     eta = fe.solve(cvec)
     dmu += fe.E * xp.einsum("ei,ij,ej->e", eta[fe._dofs], fe._Khat, u_e)
     return BucklingResult(mu=mu, mu_tilde=float(mu_tilde), modes=vecs[:, xp.asarray(idx)], dmu_tilde=_host(dmu),

@@ -39,7 +39,8 @@ DEFAULTS = {
            "twogrid": {"coarse_precision": "auto",           # fp32 coarse factor, fp64 if fp32 breaks down
                        "degree": 5, "smoothing_range": 30.0,      # Chebyshev(Jacobi) smoother on [λmax/r, λmax]
                        "tol": 1e-10, "krylov_tol": 1e-2,          # PCG: exact solves / buckling Krylov expansion
-                       "maxiter": 100, "nrhs": 7}},               # PCG block width (work memory ∝ nrhs)
+                       "maxiter": 100, "nrhs": 7,                # PCG block width (work memory ∝ nrhs)
+                       "deterministic": "off"}},         # "off" (atomics, fastest) | "kernels" | "full" (bitwise FE, ~2.5x slower)
     "capacity": {"stress_p": [6, 8, 10], "stress_q": 2, "stress_quantile": 0.995, "exclude_bc_mm": 2.0,
                  "include_mounts": False, "buckling": True, "buckling_modes": 6, "buckling_p": 8,
                  "knockdown": 0.85, "softmin_beta": [8, 12, 16], "eig_tol": 1e-3, "min_density_geometric": 0.1},

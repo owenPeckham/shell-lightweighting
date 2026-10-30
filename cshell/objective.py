@@ -56,7 +56,7 @@ def stress_pnorm(fe: SparseFE, primal: Primal, rho, m, p: float = 8.0, q: float 
     ge = (coef[:, None] * dsds) @ DB                                      # (Ne, 24)
     t0 = time.time()
     rhs = xp.zeros(fe.g.ndof)
-    _scatter_add(xp, rhs, fe._dofs.reshape(-1), ge.reshape(-1))
+    fe._scatter_dofs(rhs, ge)  # fixed-order scatter (two-grid: colours)
     eta = fe.solve(-rhs)
     t_adj = time.time() - t0
     dv = (sig_pn / p / Sv) * ((r ** p) / A - 1.0)          # = σ^{1−p}(s^p − σ^p)/(pΣv), overflow-safe

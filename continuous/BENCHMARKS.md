@@ -115,3 +115,9 @@ Wall time per 3-iteration run: MBB 5:17 (two-grid) vs 9:23 (hybrid); cantilever 
 Accuracy vs direct (`research/twogrid/notes.md`): compliance-and-stress dJ (buckling off) ≤ 5e-10 rel 2-norm, J ≤ 7e-11
 (7857876, MBB phase B 10 s vs 99 s); full objective J ≤ 8e-9 on 5 of 6 designs, 3e-7 on MBB ckpt 3; full dJ 6e-5–1.6e-3,
 set by the eigen-solver tolerance, not the engine; 3-iteration run histories J ≤ 5.7e-8 (MBB) and ≤ 2.7e-8 (cantilever).
+
+### Two-grid determinism, opt-in `fe.twogrid.deterministic` (default `off` = the atomic kernels; P6; `research/twogrid/notes.md`, jobs 7868216, 7869145-8, 7870417-9, 7870887)
+MBB phase B, voided design, full objective, FE seconds per evaluation (ckpt 2 / 3) and peak GPU: atomic kernels (before)
+47.0 / 24.8 s, 25.8 GiB; colour-ordered kernels + default cuDSS (`kernels`) 54.3 / 28.3 s (+14-16 %), 25.4 GiB; plus cuDSS
+deterministic mode (`full`, default) 124 / 63.8 s (+150 %, cuDSS solves one right-hand side at a time: 9.4 vs 0.73 ms/rhs at
+561 k coarse DOF), 26.6 GiB. Final code, default `off` (7875876): 48.3 / 24.8 s, 25.9 GiB (= before). FE-only re-evaluation of the same ρ is bitwise equal in `full` only. J/dJ vs direct unchanged.
