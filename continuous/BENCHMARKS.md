@@ -95,3 +95,23 @@ after the active-set rebuild. Cause: device memory of a freed cuDSS DirectSolver
 factor plus buckling no longer fits. With `fe.precision = auto` the new fe_sparse chooses fp64 hybrid at 6.3 M DOF,
 which spills the factor to host memory and was killed by the 115 GB job memory limit (jobs 7800876/7800877, both
 chains); the MBB timings above therefore use `fe.precision = fp32`.
+
+## Two-grid engine (`cshell/fe_twogrid.py`, PLAN_twogrid.md; default `fe.engine = auto`)
+Matrix-free q1_im K at h_e (CUDA kernel), Galerkin coarse level at 2h_e (cuDSS fp32 factor), Chebyshev-Jacobi
+(degree 5, range 30), block PCG fp64 tol 1e-10; buckling inner solves to min(1e-2, 0.1·res). `auto`: direct fp64
+when ≤ 2 M DOF and the fp64 factor fits in device memory (phase A), else two-grid (phase B). Reference "direct" =
+hybrid fp64 cuDSS (`--mem=240G`). Voided designs of `fixhyb_mbb` / `fix_cantilever`, full objective, eig_tol 1e-3.
+
+| Phase B 0.4 mm, full objective | DOF | Engine | FE s / evaluation | Peak GPU | Peak host RSS |
+| --- | --- | --- | --- | --- | --- |
+| MBB (bench 7808957 / 7809111) | 8.36 M | hybrid fp64 / two-grid | 58 / 24.9 | 52.8 / 26.4 GiB | 167 / 29.6 GB |
+| Cantilever (7808959 / 7809112) | 6.13 M | hybrid fp64 / two-grid | 41.5 / 32 | 42.6 / 19.6 GiB | 117 / 23 GB |
+| MBB 3-iteration run (7856981 / 7809227) | 8.36 M | hybrid fp64 / auto | 51–137 / 25–50 | 50.1 / 25.9 GiB | 161 / 34 GB (job) |
+| Cantilever 3-iteration run (7856982 / 7856983) | 6.13 M | hybrid fp64 / auto | 46–108 / 33–34 | 82.9 / 19.6 GiB | 111 / 26 GB (job) |
+| Phase A (MBB / cantilever, two-grid) | 1.3 / 0.9 M | two-grid vs direct | 7.7 vs 7.4 / 5.8 vs 5.5 | 5.0 vs 15.0 / 4.0 vs 11.0 GiB | |
+PCG iterations: 40–53 per exact (primal/adjoint) solve, ≈ 5 per buckling inner solve (≈ 19 at eig_tol 1e-5).
+Wall time per 3-iteration run: MBB 5:17 (two-grid) vs 9:23 (hybrid); cantilever 4:39 vs 6:22.
+
+Accuracy vs direct (`research/twogrid/notes.md`): compliance-and-stress dJ (buckling off) ≤ 5e-10 rel 2-norm, J ≤ 7e-11
+(7857876, MBB phase B 10 s vs 99 s); full objective J ≤ 8e-9 on 5 of 6 designs, 3e-7 on MBB ckpt 3; full dJ 6e-5–1.6e-3,
+set by the eigen-solver tolerance, not the engine; 3-iteration run histories J ≤ 5.7e-8 (MBB) and ≤ 2.7e-8 (cantilever).

@@ -52,6 +52,9 @@ if [ -n "$RD" ] && [ "${CSHELL_AUTO_COLLECT:-1}" = 1 ]; then
   ALL=$(python -c "import json,os,sys; c=json.load(open(os.path.join(sys.argv[1],'config_used.json'))); \
 print(int(all(os.path.exists(os.path.join(sys.argv[1],f'done_{s}.json')) for s in c['optimiser']['starts'])))" "$RD")
   if [ "$ALL" = 1 ] && mkdir "$RD/.collect_submitted" 2>/dev/null; then
-    cd "$HERE"; echo "[run.sh] all starts done: submitting collect"; sbatch continuous/cluster/collect.sh "$RD"
+    # collect's own memory (CPU geometry chain at h_g 0.1: more host memory than a run); not the run's SBATCH_MEM_*
+    cd "$HERE"; echo "[run.sh] all starts done: submitting collect"
+    env -u SBATCH_MEM_PER_NODE -u SLURM_MEM_PER_NODE sbatch ${CSHELL_COLLECT_MEM:+--mem=$CSHELL_COLLECT_MEM} \
+      continuous/cluster/collect.sh "$RD"
   fi
 fi

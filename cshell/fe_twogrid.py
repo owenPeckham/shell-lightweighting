@@ -422,7 +422,7 @@ class _ElemGeomOp:
             Yn = Y.reshape(-1, 3 * k)
             for s in range(0, fe.g.Ne, _CHUNK):
                 n_ = nodes[s:s + _CHUNK]
-                ye = -np.einsum("eab,ebk->eak", self.H[s:s + _CHUNK].reshape(-1, 8, 8), Xn[n_])
+                ye = -np.matmul(self.H[s:s + _CHUNK].reshape(-1, 8, 8), Xn[n_])     # batched GEMM, not einsum
                 _bincount_add(Yn, n_.ravel(), ye.reshape(-1, 3 * k))
             Y[fe.fixed] = 0.0
         else:
@@ -485,7 +485,7 @@ class TwoGridFE(SparseFE):
         self._fixed_u8 = self.fixed.astype(xp.uint8)
         self.f = xp.asarray(f)
         del fx, f
-        conn = xp.asarray(grid.conn).astype(xp.int32)
+        conn = xp.asarray(_host_int(grid.conn) if xp is np else grid.conn).astype(xp.int32)   # grid may be on the GPU
         p3 = xp.arange(3, dtype=xp.int32)
         self._dofs = (3 * conn[:, :, None] + p3[None, None, :]).reshape(grid.Ne, 24)
         if isinstance(grid, LeanGrid):
@@ -580,6 +580,12 @@ class TwoGridFE(SparseFE):
             raise ValueError("rho_hat must have one value per active element")
         self.rho_hat = rho
         self._s = self.E * rho                                              # element scale E ρ̂_e
+        if xp is np:                    # CPU (tests, small problems): assembled K, a NumPy element loop is ~100× slower
+            d = self._dofs.astype(np.int64)
+            Ke = self._s[:, None, None] * self.Khat[None]
+            self._Kcpu = self._sp.csr_matrix((Ke.ravel(), (np.repeat(d, 24, 1).ravel(), np.tile(d, (1, 24)).ravel())),
+                                             shape=(g.ndof, g.ndof))
+            del d, Ke
         # Jacobi diagonal
         dK = xp.asarray(np.diag(self.Khat).copy())
         diag = xp.zeros(g.ndof)
@@ -657,10 +663,7 @@ class TwoGridFE(SparseFE):
         if xp is np:
             X0 = X.copy()
             X0[self.fixed] = 0.0
-            for s in range(0, self.g.Ne, _CHUNK):
-                d = self._dofs[s:s + _CHUNK]
-                ye = np.einsum("ij,ejk->eik", self.Khat, X0[d]) * self._s[s:s + _CHUNK, None, None]
-                _bincount_add(Y, d.ravel(), ye.reshape(-1, k))
+            Y = np.asarray(self._Kcpu @ X0)
         else:
             k_apply, _ = _kernels()
             n = self.g.Ne * k

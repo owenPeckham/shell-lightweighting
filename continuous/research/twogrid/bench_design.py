@@ -54,6 +54,8 @@ def run(a):
     st = model.settings(1.0)
     if a.eig_tol:
         st = dataclasses.replace(st, eig_tol=a.eig_tol)
+    if a.no_buckling:                                   # dJ without the eigenvector-dependent term (engine accuracy)
+        st = dataclasses.replace(st, buckling=False)
     base = dict(C0=1.0, lam0=1.0)
     out, rows, prev = {}, [], None
     for name, xi, c_norm, _ in designs:
@@ -91,9 +93,9 @@ def compare(ref_path, new_path):
         gr, gn = np.zeros(e.size), np.zeros(e.size)
         gr[np.searchsorted(e, r[f"{d}_elem"])] = r[f"{d}_dJ"]
         gn[np.searchsorted(e, n[f"{d}_elem"])] = n[f"{d}_dJ"]
-        c = dict(design=d, J_ref=rr["J"], J_rel=abs(nr["J"] / rr["J"] - 1), C_rel=abs(nr["C"] / rr["C"] - 1),
-                 lam_s_rel=abs(nr["lam_s"] / rr["lam_s"] - 1), lam_b_rel=abs(nr["lam_b"] / rr["lam_b"] - 1),
-                 mu_rel=abs(nr["mu_tilde"] / rr["mu_tilde"] - 1),
+        rel = lambda k: abs(nr[k] - rr[k]) / abs(rr[k]) if rr[k] and np.isfinite(rr[k]) else abs(nr[k] - rr[k])
+        c = dict(design=d, J_ref=rr["J"], J_rel=rel("J"), C_rel=rel("C"), lam_s_rel=rel("lam_s"),
+                 lam_b_rel=rel("lam_b"), mu_rel=rel("mu_tilde"),
                  dJ_rel2=float(np.linalg.norm(gn - gr) / np.linalg.norm(gr)),
                  t_fe_ref=rr["t_fe"], t_fe_new=nr["t_fe"], engines=(rr["engine"], nr["engine"]),
                  eig_iters=(rr["eig_iters"], nr["eig_iters"]))
@@ -119,4 +121,5 @@ if __name__ == "__main__":
     ap.add_argument("--range", type=float, default=30.0)
     ap.add_argument("--nrhs", type=int, default=7)
     ap.add_argument("--eig-tol", type=float, default=None)
+    ap.add_argument("--no-buckling", action="store_true")
     run(ap.parse_args())

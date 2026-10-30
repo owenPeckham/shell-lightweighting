@@ -211,7 +211,7 @@ class PhaseModel:
                 lean = None
                 g = ActiveGrid(mask)
                 fe = SparseFE(g, self.fixed, self.load, self.h_e, E, nu, backend=fc["backend"], precision="auto")
-                if fe.backend == "cpu":
+                if fe.backend != "gpu":                             # "cpu" / "cpu_direct": SciPy direct solve
                     return g, fe, "direct"
                 fe.factor(self.disc.rho_min + (1 - self.disc.rho_min) * g.gather_elems(rho))
                 if fe.stats.get("precision") == "fp64" and not fe.stats.get("hybrid"):
