@@ -693,7 +693,7 @@ The problem is non-convex: void closure is close to a topological switch. Run th
 
 | Start | Definition |
 | --- | --- |
-| S1 uniform | ξᵃ = 0 (a = t_min everywhere), ξᵈ uniform, restored to mass. The closest representable uniform shell. The add-in's own shell (a = 0, d = t) is evaluated separately for the comparison table, directly from ψ = max(φ − t, −φ). |
+| S1 uniform | ξᵃ = 0 (a = t_min everywhere), ξᵈ uniform, restored to mass. The closest representable uniform shell. The add-in's own shell (a = 0, d = t) is evaluated separately for the comparison table. Its mount (load/support) faces are kept solid, as in the optimiser (Owen 2026-10-30, D1): ψ = max(φ − Pd, −φ − Pa) with d = t, a = 0 on free vertices and d = 0, closed (a = a^hi) on mount vertices; t is solved for constant mass on the optimisation band and refined by the export's mass correction. (The pure shell ψ = max(φ − t, −φ) put the load face on the inner skin; with the as-built bias its load nodes lost their material on grid-aligned faces: MBB K/K₀ 0.054 against 0.67–0.76.) Every re-scored design applies its BCs only at nodes that touch material (an adjacent element with ρ ≥ 10⁻³); a load's share on dropped nodes is redistributed equally over its remaining nodes and reported, and material components not connected to a clamped node are removed before the FE. |
 | S2 vshell | Run `vshell` (or load its saved arrays) and map its best design: ξᵃ_i = θ of the region containing the vertex's inward point at depth r_MA/2, and ξᵈ = s(1 − θ)/d^{hi}. Restore. |
 | S3 neutral | ξᵃ = 0.5, ξᵈ restored. |
 | S4 energy-guided (optional) | From the solid FE, set ξᵃ_i = clip(W_axis,i / W_surf,i, 0, 1): high axis energy (shear) gives closed, low gives open. |
@@ -774,7 +774,8 @@ Find δ by Brent so that V = V₀ on the export grid, applying d_i ← clip(d_i 
    - Gate on the finer level (failure blocks acceptance): ≥ 2 tets through the thinnest wall (1 % quantile), minimum dihedral ≥ 0.25°, fraction of tets below 5° ≤ 10⁻³, longest edge ≤ 2.5 h.
    - Solve: default `validation.engine = "gpu"`: the same C3D10 model on cuDSS (static, block-Krylov buckling, 0.995 stress quantile with the 2 mm BC exclusion). It matches CalculiX on the B2 design deck (h = 0.5): C 8·10⁻⁹, σ_q 6·10⁻⁸, λ₁ 2·10⁻⁶ (CalculiX prints 7 digits); modes 2–4 differ by 5·10⁻⁴ to 9·10⁻² (CalculiX's eigen-solver; not investigated). `"ccx"` remains available.
    - Buckling uses the K_σ exclusion within `capacity.exclude_bc_mm` of clamped nodes (same rule as the voxel side, §4.4); λ without exclusion is recorded as `lam_unexcl`.
-   - Tolerances: compliance ≤ 5 %, λ_b ≤ 10 %, 0.995 stress quantile ≤ 15 % (each relative); the ratios K/K₀ and P/P₀ satisfy |r_bf/r_vox − 1| ≤ 5 % (relative, v1.3). A miss on the ratios, or a failed gate, blocks acceptance.
+   - Tolerances: compliance ≤ 5 %, λ_b ≤ 10 %, 0.995 stress quantile ≤ 15 % (each relative). The ratios K/K₀ and P/P₀ are checked one-sided (Owen 2026-10-30, D3): a ratio blocks only when the voxel model over-predicts it, r_vox/r_bf − 1 > 5 %. A voxel under-prediction is conservative for the decision and is logged (`under` in validation.csv), not blocking. Evidence: B2 P_b/P_b0 voxel 1.79–1.81 at h_e 0.2–0.4 against the mesh-converged body-fitted 1.932 (−0.14 % between levels; `research/vf_b2/voxel_conv.py`). A blocking ratio miss, or a failed gate, blocks acceptance.
+   - Export gate before re-scoring (D2): when the best export fails its checks (mass correction not bracketed or |δ| > δ_fail, not watertight, or |V_STL/V₀ − 1| > 2·10⁻³), the STL is written for inspection, it is not re-scored or validated, and the original solid is kept with reason "export failed: …". A large void_min opening fill (§8.2) on an unconverged design is reported as optimiser non-convergence, not a re-scoring error.
 
 ---
 
@@ -951,7 +952,7 @@ Optional: jax[cuda], nvmath-python (cuDSS), scikit-sparse, pyvista, tetgen, gmsh
 | V5-B3 | Clamped–free column (L = 100, r₀ = 5) | hollow, a → t_min; λ_b ≥ best uniform tube |
 | V5-B4 | MMA on Svanberg's toy problems | reference optima |
 | V6 | Study 1 parts, full pipeline | §11.1 |
-| V7 | Re-run identical config | J identical to 10⁻⁴ |
+| V7 | Re-run identical config | final J within 10⁻³ (relaxed from 10⁻⁴ by Owen, 2026-10-30: GPU atomic-add noise ~10⁻¹⁶ is amplified by MMA; bitwise reruns need the opt-in `fe.twogrid.deterministic = "full"` mode plus a deterministic geometry chain, not built) |
 
 ### 11.1 What to expect on the Study 1 parts (and how to report it)
 

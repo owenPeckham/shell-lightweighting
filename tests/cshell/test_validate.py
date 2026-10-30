@@ -137,20 +137,37 @@ def test_compare_tolerances_and_csv(tmp_path):
     assert not by[("sigma_q995_MPa", "design")]["passed"]                                          # +22 %
     assert abs(by[("K/K0", "ratio")]["bodyfitted"] - 10.2 / 20.8) < 1e-12
     assert by[("K/K0", "ratio")]["blocking"] and abs(by[("K/K0", "ratio")]["diff"] - (10.2 / 20.8 / 0.5 - 1)) < 1e-12 \
-        and by[("K/K0", "ratio")]["kind"] == "rel"
+        and by[("K/K0", "ratio")]["kind"] == "ratio_over"
+    assert abs(by[("K/K0", "ratio")]["over"] - (0.5 / (10.2 / 20.8) - 1)) < 1e-12
     p = vd.write_validation_csv(rows, tmp_path / "validation.csv")
     txt = p.read_text().splitlines()
     assert txt[0].startswith("metric,case") and len(txt) == len(rows) + 1
 
 
 def test_ratio_tolerance_is_relative():
-    """§8.6: K/K0 = 3.2 -> 3.32 (+3.8 %) passes; the old absolute 0.05 rule would fail it. +6 % fails."""
+    """§8.6: K/K0 = 3.2 -> 3.32 (+3.8 %) passes; the old absolute 0.05 rule would fail it. A voxel over-prediction of
+    +6.4 % fails (one-sided, D3)."""
     vox = {"solid": dict(compliance=3.2, lambda_b=5.0, sigma_q=30.0), "design": dict(compliance=1.0, lambda_b=5.0, sigma_q=30.0)}
     ok = {"solid": dict(compliance=3.32, lambda_b=5.0, sigma_q=30.0), "design": dict(compliance=1.0, lambda_b=5.0, sigma_q=30.0)}
-    bad = {"solid": dict(compliance=3.2 * 1.06, lambda_b=5.0, sigma_q=30.0), "design": dict(compliance=1.0, lambda_b=5.0, sigma_q=30.0)}
+    bad = {"solid": dict(compliance=3.2 * 0.94, lambda_b=5.0, sigma_q=30.0), "design": dict(compliance=1.0, lambda_b=5.0, sigma_q=30.0)}
     r = {x["metric"]: x for x in vd.compare(vox, ok) if x["case"] == "ratio"}["K/K0"]
     assert r["passed"] and abs(r["voxel"] - 3.2) < 1e-12 and abs(r["diff"] - 0.0375) < 1e-9
     assert not {x["metric"]: x for x in vd.compare(vox, bad) if x["case"] == "ratio"}["K/K0"]["passed"]
+
+
+def test_ratio_tolerance_one_sided_b2():
+    """D3 (Owen 2026-10-30): the B2 numbers of runs_cshell/VF_B2 (P_b/P_b0 voxel 1.8107, body-fitted 1.9324, voxel
+    under-predicts by 6.3 %) pass and are flagged `under`; the mirror case (voxel over-predicts by 6.7 %) blocks;
+    +4.99 % over-prediction passes, +5.01 % fails."""
+    def rows(lv, lb):
+        vox = {"solid": dict(lambda_b=1.0), "design": dict(lambda_b=lv)}
+        bf = {"solid": dict(lambda_b=1.0), "design": dict(lambda_b=lb)}
+        return {x["metric"]: x for x in vd.compare(vox, bf) if x["case"] == "ratio"}["Pb/Pb0"]
+    r = rows(1.810728765094716, 1.9323873327565493)
+    assert r["passed"] and r["under"] and r["blocking"] and abs(r["over"] - (1.810728765094716 / 1.9323873327565493 - 1)) < 1e-15
+    m = rows(1.9323873327565493, 1.810728765094716)
+    assert not m["passed"] and not m["under"] and abs(m["over"] - 0.06718762633423433) < 1e-12
+    assert rows(1.0499, 1.0)["passed"] and not rows(1.0501, 1.0)["passed"]
 
 
 # -- remesh, quality gate (CPU) ------------------------------------------------------------------------------------------

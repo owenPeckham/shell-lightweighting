@@ -42,8 +42,11 @@ E_MPA, NU = 1760.0, 0.42
 _CCX_EDGES = np.array([[0, 1], [1, 2], [2, 0], [0, 3], [1, 3], [2, 3]])
 # §8.6 tolerances: compliance, first buckling factor, 0.995 stress quantile (relative); ratios (absolute)
 TOLERANCES = dict(compliance=0.05, buckling=0.10, stress=0.15, ratio=0.05)
-# Ratio rows are RELATIVE (|r_bf / r_vox - 1| <= 5 %): §8.6 "within 5 %" of K/K0 = 3.2 means +-0.16, not +-0.05
-# (an absolute 0.05 is 1.5 % of K/K0 = 3.2 but 5 % of K/K0 = 1, i.e. it tightens as the design improves).
+# Ratio rows are RELATIVE: §8.6 "within 5 %" of K/K0 = 3.2 means +-0.16, not +-0.05 (an absolute 0.05 is 1.5 % of
+# K/K0 = 3.2 but 5 % of K/K0 = 1, i.e. it tightens as the design improves). They are ONE-SIDED (Owen 2026-10-30, D3):
+# a ratio blocks only when the voxel model over-predicts it, r_vox / r_bf - 1 > 5 %; a voxel under-prediction is
+# conservative and only logged (B2: P_b/P_b0 voxel 1.79-1.81 at h_e 0.2-0.4 against the mesh-converged body-fitted
+# 1.932, research/vf_b2/voxel_conv.py).
 # Body-fitted mesh gate (research/b2_bodyfit): the tetgen mesh of B2 had 24 % of tets below 5 deg dihedral and a
 # median 1.2 tets through the 1.5 mm wall; it moved lambda_b by -46 %.
 # Gate numbers: the corrected B2 meshes have 0.4-1.5 deg minimum and <= 8e-5 of tets below 5 deg; the sliver mesh had
@@ -800,8 +803,9 @@ def compare(voxel: dict, bf: dict, tol: dict | None = None) -> list[dict]:
 
     `voxel`, `bf`: {"solid": {...}, "design": {...}} each with `compliance` (N·mm), `lambda_b`, `sigma_q` (MPa).
     Absolute rows: relative differences against compliance 5 %, buckling 10 %, stress 15 %. Ratio rows (design/solid):
-    K/K0 = C0/C, P/P0 = λ_b/λ_b0 and strength σ0/σ, RELATIVE difference of the ratio <= 0.05; a ratio miss blocks
-    acceptance (`blocking` True). Missing entries are skipped.
+    K/K0 = C0/C, P/P0 = λ_b/λ_b0 and strength σ0/σ, one-sided (D3): `over` = r_vox/r_bf − 1 ≤ 0.05 passes; a ratio
+    miss blocks acceptance (`blocking` True); `under` flags a voxel under-prediction beyond the tolerance (logged, not
+    blocking). `diff` = (b − a)/a for every row. Missing entries are skipped.
     """
     tol = {**TOLERANCES, **(tol or {})}
     rows = []
@@ -809,9 +813,14 @@ def compare(voxel: dict, bf: dict, tol: dict | None = None) -> list[dict]:
     def add(metric, case, a, b, kind, t, blocking=False):
         if a is None or b is None or not (np.isfinite(a) and np.isfinite(b)):
             return
-        diff = (b - a) / a if kind == "rel" else b - a
+        diff = (b - a) / a if kind in ("rel", "ratio_over") else b - a
+        if kind == "ratio_over":                                        # one-sided: voxel over-prediction only
+            over = a / b - 1.0
+            rows.append(dict(metric=metric, case=case, voxel=a, bodyfitted=b, diff=diff, kind=kind, tol=t,
+                             passed=bool(over <= t), blocking=blocking, over=over, under=bool(over < -t)))
+            return
         rows.append(dict(metric=metric, case=case, voxel=a, bodyfitted=b, diff=diff, kind=kind, tol=t,
-                         passed=bool(abs(diff) <= t), blocking=blocking))
+                         passed=bool(abs(diff) <= t), blocking=blocking, over=None, under=False))
 
     for case in ("solid", "design"):
         if case not in voxel or case not in bf:
@@ -834,14 +843,14 @@ def compare(voxel: dict, bf: dict, tol: dict | None = None) -> list[dict]:
         rv, rb = ratios(voxel), ratios(bf)
         for k in rv:
             if k in rb:
-                add(k, "ratio", rv[k], rb[k], "rel", tol["ratio"], blocking=True)
+                add(k, "ratio", rv[k], rb[k], "ratio_over", tol["ratio"], blocking=True)
     return rows
 
 
 def write_validation_csv(rows: list[dict], path: str | Path) -> Path:
     """`validation.csv` with a pass/fail per row and a final summary row for blocking ratio misses."""
     path = Path(path)
-    cols = ["metric", "case", "voxel", "bodyfitted", "diff", "kind", "tol", "passed", "blocking"]
+    cols = ["metric", "case", "voxel", "bodyfitted", "diff", "kind", "tol", "passed", "blocking", "over", "under"]
     with open(path, "w", newline="") as f:
         w = csv.DictWriter(f, cols)
         w.writeheader()

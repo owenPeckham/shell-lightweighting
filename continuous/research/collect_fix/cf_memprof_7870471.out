@@ -1,0 +1,131 @@
+[collect] starts: uniform done J +0.2933 feasible True; vshell done J +0.0916 feasible True; neutral done J +0.2033 feasible True
+[cshell] context: 118478 vertices, mounts 76 faces, r_MA 3.22 mm median, 51 s
+[memprof] Context#1                       51.7 s  rss 0.7->1.3  peak rss 1.5 pss 1.5 cg anon 1.2 GiB
+[collect] host RSS 1.3 GiB after context
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /home/b6bl/owenpeckham.b6bl/.cache/warp/1.18.0
+Module cshell.band ad91966 load on device 'cuda:0' took 3.74 ms  (cached)
+[cshell] phase 1: h_e 0.4 h_g 0.1, band 281.9 M cells, element box (772, 297, 147), passive {'mount': 26272, 'thin': 17762}, V0 85235.6 mm³, 66 s
+[cshell]   geometry chain on the GPU: compact band 6.30 GiB, released from the device during each FE evaluation
+[memprof] make_model#1                    66.2 s  rss 2.8->19.0  peak rss 30.0 pss 29.9 cg anon 29.8 GiB
+[collect] host RSS 19.0 GiB after model opt (parametric)
+[memprof] cell_rescore#1                   0.1 s  rss 19.0->19.0  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[collect] best (uniform) band volume: optimiser V/V0-1 -3.167e-06, export closure rule +5.050e-03 (rule/optimiser - 1 = +5.053e-03)
+[memprof] cell_rescore#2                   0.1 s  rss 19.0->19.0  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[memprof] cell_rescore#3                   0.1 s  rss 19.0->19.0  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[memprof] cell_rescore#4                   0.1 s  rss 19.0->19.0  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[memprof] cell_rescore#5                   0.1 s  rss 19.0->19.0  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[memprof] cell_rescore#6                   0.1 s  rss 19.0->19.0  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[memprof] cell_rescore#7                   0.1 s  rss 19.0->19.0  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[memprof] cell_rescore#8                   0.1 s  rss 19.0->19.0  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[collect] uniform shell (mounts solid): t = 2.2140 mm for constant mass on the optimisation band
+[cshell]   active set rebuilt: 1931984 elements, 6346890 DOF, engine twogrid, coarse 930252 DOF (fp32), 91.1 GiB device memory free
+[memprof] raw_responses#1                 82.6 s  rss 19.0->19.7  peak rss 19.8 pss 19.8 cg anon 8.9 GiB
+[cshell]   active set rebuilt: 2449445 elements, 8357652 DOF, engine twogrid, coarse 1283169 DOF (fp32), 89.6 GiB device memory free
+[memprof] raw_responses#2                124.0 s  rss 19.7->21.2  peak rss 20.7 pss 20.7 cg anon 8.9 GiB
+[collect] parametric best (uniform) on the optimisation grid: {'J': 0.305530554312448, 'K_K0': 0.9396082282910377, 'P_P0': 1.9608016164866766, 'lam_s': 12.521668403850901, 'lam_b': 11.114411320458904, 'lam': 10.917565519005295, 'governing': 'buckling'}
+[memprof] free_model#1                     0.4 s  rss 21.2->15.2  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[collect] host RSS 15.2 GiB after release model opt (parametric)
+[memprof] export_baselines#1               0.3 s  rss 15.2->15.2  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[collect] host RSS 14.9 GiB after export baselines
+[memprof] export_design#1                  0.1 s  rss 14.9->14.9  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[collect] host RSS 14.9 GiB after export best
+[cshell] phase 1: h_e 0.4 h_g 0.1, band 281.9 M cells, element box (772, 297, 147), passive {'mount': 26272, 'thin': 17762}, V0 85235.6 mm³, 65 s
+[cshell]   geometry chain on the GPU: compact band 6.30 GiB, released from the device during each FE evaluation
+[memprof] make_model#2                    65.3 s  rss 14.9->29.7  peak rss 37.9 pss 38.9 cg anon 28.7 GiB
+[collect] host RSS 29.7 GiB after model opt
+[memprof] cell_rescore#9                   0.1 s  rss 29.7->29.7  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[memprof] stl_soup#1                       3.2 s  rss 29.7->32.8  peak rss 33.6 pss 34.3 cg anon 11.9 GiB
+[memprof] mesh_phi#1                      56.2 s  rss 32.8->32.8  peak rss 32.8 pss 32.8 cg anon 12.6 GiB
+[memprof] cell_rescore#10                  0.1 s  rss 29.7->29.9  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[memprof] stl_soup#2                       3.0 s  rss 29.0->32.6  peak rss 32.4 pss 33.1 cg anon 11.2 GiB
+[memprof] mesh_phi#2                      41.9 s  rss 32.6->32.8  peak rss 32.8 pss 33.7 cg anon 13.5 GiB
+[memprof] cell_rescore#11                  0.1 s  rss 29.6->29.9  peak rss 29.6 pss 29.8 cg anon 9.7 GiB
+[cshell]   active set rebuilt: 1931984 elements, 6346890 DOF, engine twogrid, coarse 930252 DOF (fp32), 47.4 GiB device memory free
+[memprof] raw_responses#3                 80.6 s  rss 29.7->31.8  peak rss 31.4 pss 31.4 cg anon 10.6 GiB
+[cshell]   active set rebuilt: 2552569 elements, 8741325 DOF, engine twogrid, coarse 1375224 DOF (fp32), 89.3 GiB device memory free
+[memprof] raw_responses#4                146.4 s  rss 31.7->32.9  peak rss 33.1 pss 33.1 cg anon 11.4 GiB
+[cshell]   active set rebuilt: 2645930 elements, 8954892 DOF, engine twogrid, coarse 1357239 DOF (fp32), 89.2 GiB device memory free
+[memprof] raw_responses#5                132.1 s  rss 32.5->34.0  peak rss 33.5 pss 33.5 cg anon 11.5 GiB
+[collect] solid re-score vs the parametric pass on the same grid: C -3.63e-14
+[collect] opt: solid               J +0.0000 K/K0 1.0000 P/P0 1.0000 buckling V/V0-1 +0.00e+00 load moved 0.0%
+[collect] opt: uniform_shell       J +0.1233 K/K0 0.7073 P/P0 1.8092 strength V/V0-1 -5.73e-05 load moved 0.0%
+[collect] opt: best                J +0.3653 K/K0 1.0171 P/P0 2.0412 buckling V/V0-1 +1.45e-01 load moved 0.0%
+[memprof] free_model#2                     0.4 s  rss 32.6->17.8  peak rss 30.5 pss 17.8 cg anon 7.6 GiB
+[collect] host RSS 16.6 GiB after release model opt
+[cshell] phase 1: h_e 0.4 h_g 0.1, band 281.9 M cells, element box (772, 297, 148), passive {'mount': 26272, 'thin': 17762}, V0 85235.6 mm³, 64 s
+[cshell]   geometry chain on the GPU: compact band 6.30 GiB, released from the device during each FE evaluation
+[memprof] make_model#3                    64.6 s  rss 16.6->31.2  peak rss 39.5 pss 40.0 cg anon 29.8 GiB
+[collect] host RSS 31.2 GiB after model shift
+[memprof] cell_rescore#12                  0.1 s  rss 31.2->31.4  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[memprof] stl_soup#3                       2.9 s  rss 31.2->34.3  peak rss 35.0 pss 32.4 cg anon 13.1 GiB
+[memprof] mesh_phi#3                      56.4 s  rss 34.3->34.3  peak rss 34.3 pss 34.3 cg anon 14.1 GiB
+[memprof] cell_rescore#13                  0.1 s  rss 31.2->31.2  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[memprof] stl_soup#4                       3.1 s  rss 30.2->33.7  peak rss 37.1 pss 37.6 cg anon 13.8 GiB
+[memprof] mesh_phi#4                      41.6 s  rss 33.7->33.9  peak rss 33.9 pss 33.9 cg anon 13.7 GiB
+[memprof] cell_rescore#14                  0.1 s  rss 30.7->31.0  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[cshell]   active set rebuilt: 1921401 elements, 6315936 DOF, engine twogrid, coarse 937008 DOF (fp32), 47.2 GiB device memory free
+[memprof] raw_responses#6                 90.7 s  rss 30.4->31.4  peak rss 31.7 pss 31.7 cg anon 10.9 GiB
+[cshell]   active set rebuilt: 2564610 elements, 8780964 DOF, engine twogrid, coarse 1371093 DOF (fp32), 89.2 GiB device memory free
+[memprof] raw_responses#7                147.2 s  rss 31.4->32.6  peak rss 32.9 pss 33.0 cg anon 12.1 GiB
+[cshell]   active set rebuilt: 2635335 elements, 8923212 DOF, engine twogrid, coarse 1360710 DOF (fp32), 89.2 GiB device memory free
+[memprof] raw_responses#8                157.1 s  rss 32.7->32.7  peak rss 33.8 pss 33.8 cg anon 11.9 GiB
+[collect] shift: solid             J +0.0000 K/K0 1.0000 P/P0 1.0000 buckling V/V0-1 +0.00e+00 load moved 0.0%
+[collect] shift: uniform_shell     J +0.1181 K/K0 0.7041 P/P0 1.7988 strength V/V0-1 -5.73e-05 load moved 0.0%
+[collect] shift: best              J +0.3668 K/K0 1.0158 P/P0 2.0504 buckling V/V0-1 +1.45e-01 load moved 0.0%
+[memprof] free_model#3                     0.4 s  rss 32.7->17.6  peak rss 30.6 pss 17.5 cg anon 7.4 GiB
+[collect] host RSS 16.3 GiB after release model shift
+[cshell] phase 1: h_e 0.5 h_g 0.125, band 145.1 M cells, element box (618, 238, 118), passive {'mount': 26272, 'thin': 17492}, V0 85238.2 mm³, 34 s
+[cshell]   geometry chain on the GPU: compact band 3.24 GiB, released from the device during each FE evaluation
+[memprof] make_model#4                    33.8 s  rss 16.3->24.7  peak rss 29.3 pss 29.8 cg anon 19.6 GiB
+[collect] host RSS 24.7 GiB after model coarse
+[memprof] cell_rescore#15                  0.1 s  rss 24.7->24.7  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[memprof] stl_soup#5                       2.7 s  rss 24.5->27.6  peak rss 26.6 pss 26.6 cg anon 10.2 GiB
+[memprof] mesh_phi#5                      31.5 s  rss 27.6->27.6  peak rss 27.6 pss 27.6 cg anon 12.4 GiB
+[memprof] cell_rescore#16                  0.1 s  rss 24.5->24.5  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[memprof] stl_soup#6                       2.9 s  rss 23.0->27.0  peak rss 28.2 pss 28.5 cg anon 10.7 GiB
+[memprof] mesh_phi#6                      22.8 s  rss 27.0->27.2  peak rss 27.2 pss 27.2 cg anon 12.0 GiB
+[memprof] cell_rescore#17                  0.1 s  rss 24.0->24.0  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[cshell]   active set rebuilt: 924734 elements, 3115740 DOF, engine twogrid, coarse 481545 DOF (fp32), 48.9 GiB device memory free
+[memprof] raw_responses#9                 41.1 s  rss 23.0->23.6  peak rss 23.6 pss 23.6 cg anon 8.2 GiB
+[cshell]   active set rebuilt: 1178867 elements, 4231227 DOF, engine twogrid, coarse 702090 DOF (fp32), 91.8 GiB device memory free
+[memprof] raw_responses#10               144.1 s  rss 23.7->24.3  peak rss 24.3 pss 24.3 cg anon 8.2 GiB
+[collect] coarse: best: BCs on material: {'components': 2, 'islands': 1, 'island_mm3': 0.00017634343632433574, 'fixed_nodes': 4528, 'fixed_dropped': 0, 'load_nodes_dropped': [0], 'load_share_redistributed': 0.0, 'isolated_load_nodes': 0}
+[cshell]   active set rebuilt: 1241214 elements, 4374312 DOF, engine twogrid, coarse 702414 DOF (fp32), 91.6 GiB device memory free
+[memprof] raw_responses#11                70.1 s  rss 24.4->24.4  peak rss 24.4 pss 24.4 cg anon 8.4 GiB
+[collect] coarse: solid            J +0.0000 K/K0 1.0000 P/P0 1.0000 buckling V/V0-1 +0.00e+00 load moved 0.0%
+[collect] coarse: uniform_shell    J +0.1372 K/K0 0.7178 P/P0 1.8330 strength V/V0-1 -1.06e-04 load moved 0.0%
+[collect] coarse: best             J +0.3812 K/K0 1.0203 P/P0 2.1006 buckling V/V0-1 +1.45e-01 load moved 0.0%
+[memprof] free_model#4                     0.3 s  rss 24.4->16.4  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[collect] host RSS 15.8 GiB after release model coarse
+[collect] DECISION: cshell design accepted: J = +0.3653 > ln(1 + 0.02) with K/K0 ≥ 1.016, P/P0 ≥ 2.041 at every resolution
+[collect] done in 1792 s (peak host RSS 43.0 GiB, export workers 2.4 GiB, peak GPU 58.9 GiB)
+[memprof] collect finished
+	Command being timed: "python continuous/research/collect_fix/memprof_cf.py runs_cshell/CF_mem --skip-export runs_cshell/SMOKE_mbb/MBB --force-ok"
+	User time (seconds): 1715.03
+	System time (seconds): 255.55
+	Percent of CPU this job got: 109%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 29:59.12
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 45068736
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 18904
+	Minor (reclaiming a frame) page faults: 6493920
+	Voluntary context switches: 395242
+	Involuntary context switches: 387895
+	Swaps: 0
+	File system inputs: 13878436
+	File system outputs: 22021504
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 65536
+	Exit status: 0

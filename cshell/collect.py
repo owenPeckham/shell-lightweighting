@@ -5,15 +5,21 @@ Pipeline (`collect`)
      (final phase complete, |V/V₀ − 1| ≤ mass_tol) by its final optimiser J (§7.4).
   2. Parametric FE of the best design on the optimisation grid (the optimiser's own as-built pipeline): material
      von Mises for hole siting, W̄ for the optimality page, buckling modes.
+     The uniform-shell t (mount faces solid, §7.4 S1 D1) is solved for constant mass on the same band; the model
+     is then released (host and device) before the export so the forked export workers do not inherit it.
   3. Export (§8, `export.export_design`): best_candidate.stl (+ escape_holes.csv, wall_thickness.csv,
      best_candidate_export.json); original.stl, uniform_shell.stl (`export.baselines`, t for constant mass).
+     A best export that fails its checks (`export_verdict`) is kept for inspection, not re-scored, and the solid is
+     kept with reason "export failed: …" (D2).
   4. Re-score on the export geometry (§5.4, §8.6.1) for the solid, the uniform shell and the best export, at
      (i) the optimisation grid, (ii) that grid shifted by ½h_e in x, y, z, (iii) h_e = 0.5 mm, h_g = 0.125 mm.
      Each exported mesh is turned into ψ on the phase band by its exact signed distance φ_E at the cell centres plus
      the as-built increment of the same design (§3.9):  ψ_ab = φ_E + Δ,  Δ = b_o on the outer branch of
      max(φ − d, −φ − a), Δ = a − a_ab = b_v S((r_MA − a)/b_v) on the void branch (interpolated with P, §3.6);
      χ = H_ε(−ψ_ab), ρ_e = mean χ, then the optimiser's FE (`objective.evaluate`). The solid uses φ itself (Δ = b_o),
-     so its re-score is the optimiser's baseline exactly. All designs are scored against the solid on the *same*
+     so its re-score is the optimiser's baseline exactly. The cell maps run on the device for the GPU chain
+     (`DeviceDesignMap.rescore`), the STL is read unwelded (`stl_soup`) one mesh at a time, BCs act only on nodes
+     that touch material and unanchored material islands are removed (`DesignBCs`). All designs are scored against the solid on the *same*
      grid with the solid's normalisation c = Q_q/σ_PN (§4.4(b)); responses are kept raw so that `sensitivity.csv`
      needs no new FE (λ_b ∝ κ_b, λ_s ∝ σ_f).
   5. Body-fitted check (`validate.validate_design`, CalculiX C3D10, §8.6.2) of the solid and the best export;
@@ -266,11 +272,17 @@ def make_model(ctx, r: dict, D_comp: float, log=print):
     cfg = copy.deepcopy(ctx.cfg)
     ph = len(cfg["grid"]["phases"]) - 1
     cfg["grid"]["phases"][ph] = dict(cfg["grid"]["phases"][ph], h_e=r["h_e"], h_g=r["h_g"])
-    cfg["grid"]["geometry_device"] = "cpu"              # host P/φ for the re-scoring; the FE still uses the GPU
+    # geometry chain: config grid.geometry_device (auto = GPU when present; F1: CPU and GPU chains agree to 1e-15)
+    tg = cfg["fe"].setdefault("twogrid", {})
+    tg["maxiter"] = max(int(tg.get("maxiter", 100)), 300)   # re-scoring PCG headroom (P4(ii), F4)
     c2 = copy.copy(ctx)
     c2.cfg = cfg
     with grid_shift(r["shift"]):
         m = PhaseModel(c2, ph, D_comp, log)
+    # host memory (P5): the band's φ / closest-triangle copies live on in the Discretisation (or DeviceDisc); only the
+    # cell index (centres for the mesh SDF) and the centring offset are kept here
+    m.band.phi = m.band.tri = m.band.bary = None
+    m.band._be = None
     if r["shift"]:
         from .band import make_grid
         o = make_grid(ctx.V, r["h_g"], D_comp).origin
@@ -296,51 +308,287 @@ def scoring_settings(model):
     return dataclasses.replace(st, buckling=bool(model.ctx.cfg["capacity"]["buckling"]))
 
 
-class CellData:
-    """Host copies of the band quantities the re-scoring needs (φ, P, element map, centres)."""
+# =====================================================================================================================
+# Host memory (PLAN_collect_fixes P5)
+# =====================================================================================================================
+def rss_gib() -> float:
+    """Resident set size of this process (GiB, /proc/self/status)."""
+    try:
+        for line in open("/proc/self/status"):
+            if line.startswith("VmRSS:"):
+                return int(line.split()[1]) / 2 ** 20
+    except OSError:
+        pass
+    return float("nan")
 
-    def __init__(self, model, ctx):
-        import scipy.sparse as sp
-        d = model.disc
-        self.phi = _h(d.phi).astype(np.float64)
-        self.elem = _h(d.elem).astype(np.int64)
-        P = d.P
-        self.P = P.tocsr() if sp.issparse(P) else model.band.P(ctx.surf.V, ctx.surf.T)
-        self.k, self.h_g, self.n_elem, self.eps = d.k, d.h_g, d.n_elem, d.eps
-        self.V_extra = float(d.V_extra)
-        self.band = model.band
+
+def trim_host_memory() -> None:
+    """Return freed host memory to the OS: cyclic GC, CuPy's device and pinned pools, glibc malloc_trim(0)."""
+    import ctypes
+    import gc
+    gc.collect()
+    try:
+        import cupy as cp
+        cp.get_default_memory_pool().free_all_blocks()
+        cp.get_default_pinned_memory_pool().free_all_blocks()
+    except Exception:
+        pass
+    try:
+        ctypes.CDLL("libc.so.6").malloc_trim(0)
+    except OSError:
+        pass
 
 
-def mesh_phi(cd: CellData, V: np.ndarray, T: np.ndarray, chunk: int = 1 << 21) -> np.ndarray:
-    """Signed distance (negative inside) of the closed mesh (V, T) at the band cell centres."""
-    from .band import make_backend
-    c0 = cd.band.c0
-    be = make_backend(np.asarray(V, np.float64) - c0, np.asarray(T, np.int32))
-    out = np.empty(cd.band.n)
-    for s in range(0, cd.band.n, chunk):
-        sl = slice(s, min(cd.band.n, s + chunk))
-        out[sl] = be.query(cd.band.centres(sl) - c0, signed=True)[0]
+def free_model(model) -> None:
+    """Release a PhaseModel's FE engine and device band, then its host arrays (caller drops its references)."""
+    _release(model)
+    for k in ("band", "disc", "dm", "ds", "grid_fe", "fe", "fixed", "load", "rho0"):
+        if hasattr(model, k):
+            setattr(model, k, None)
+    trim_host_memory()
+
+
+def _grid_info(model):
+    """What DenseLookup / mode_magnitudes need of a model, without holding the model."""
+    from types import SimpleNamespace
+    return SimpleNamespace(origin=np.asarray(model.origin, float), h_e=model.h_e, elem_shape=model.elem_shape,
+                           node_shape=model.node_shape)
+
+
+# =====================================================================================================================
+# Re-scoring cell maps (THEORY §8.6.1): host for the CPU chain, `DeviceDesignMap.rescore` for the GPU chain
+# =====================================================================================================================
+def stl_soup(path, c0=None) -> np.ndarray:
+    """Vertices (3n, 3) float32 of the STL's triangles, unwelded (binary STL through np.memmap, chunked; ASCII via
+    trimesh). c0: subtract it in float64 before rounding to float32 (the Warp frame of `band.make_backend`).
+    No welding is needed for the winding-number SDF (triangle-based) or the volume."""
+    size = os.path.getsize(path)
+    with open(path, "rb") as f:
+        head = f.read(84)
+    n = int(np.frombuffer(head[80:84], "<u4")[0]) if len(head) == 84 else -1
+    if n >= 0 and 84 + 50 * n == size:
+        dt = np.dtype([("n", "<f4", 3), ("v", "<f4", (3, 3)), ("attr", "<u2")])
+        mm = np.memmap(path, dt, "r", offset=84, shape=(n,))
+        out = np.empty((3 * n, 3), np.float32)
+        ch = 1 << 22
+        for s in range(0, n, ch):
+            v = np.asarray(mm["v"][s:s + ch]).reshape(-1, 3)
+            out[3 * s:3 * s + len(v)] = v if c0 is None else (v.astype(np.float64) - c0)
+        del mm
+    else:
+        import trimesh
+        tm = trimesh.load(path, process=False, force="mesh")
+        v = np.asarray(tm.triangles, np.float64).reshape(-1, 3)
+        out = (v if c0 is None else v - c0).astype(np.float32)
+    out += np.float32(0.0)                                   # −0 → +0 (welding by bit pattern)
     return out
 
 
-def asbuilt_increment(cd: CellData, d_v, a_v, r_ma, b_v: float, b_o: float) -> np.ndarray:
-    """Δ = ψ_ab − ψ_nom of the parametric design (d, a) per cell (THEORY §3.9): b_o on the outer branch,
-    a − a_ab = b_v S((r_MA − a)/b_v) on the void branch."""
+def weld(soup: np.ndarray):
+    """Vertex weld of an unwelded (3n, 3) float32 soup by exact coordinates: (V float64, T int64)."""
+    u = soup.view(np.uint32)
+    order = np.lexsort((u[:, 2], u[:, 1], u[:, 0]))
+    us = u[order]
+    new = np.ones(len(us), bool)
+    new[1:] = np.any(us[1:] != us[:-1], axis=1)
+    del us
+    idx = np.cumsum(new) - 1
+    inv = np.empty(len(order), np.int64)
+    inv[order] = idx
+    V = soup[order[new]].astype(np.float64)
+    return V, inv.reshape(-1, 3)
+
+
+def load_mesh(path):
+    """(V, T, volume) of an STL, welded (validation mesher input)."""
+    V, T = weld(stl_soup(path))
+    a, b, c = V[T[:, 0]], V[T[:, 1]], V[T[:, 2]]
+    vol = float(np.einsum("ij,ij->", a, np.cross(b, c))) / 6.0
+    return V, T, vol
+
+
+def mesh_phi(model, soup_c: np.ndarray, chunk: int = 1 << 21):
+    """Signed distance (negative inside) of the closed triangle soup `soup_c` (centred by model.band.c0, float32) at
+    the band cell centres: float32, on the device for the GPU chain (CuPy), else NumPy."""
+    from .band import make_backend
+    band = model.band
+    c0 = band.c0
+    T = np.arange(len(soup_c), dtype=np.int32).reshape(-1, 3)
+    be = make_backend(soup_c, T)
+    del T
+    gpu = model.geometry_device == "gpu"
+    if gpu:
+        import cupy as cp
+        out = cp.empty(band.n, cp.float32)
+    else:
+        out = np.empty(band.n, np.float32)
+    for s in range(0, band.n, chunk):
+        sl = slice(s, min(band.n, s + chunk))
+        q = be.query(band.centres(sl) - c0, signed=True)[0]
+        out[sl] = cp.asarray(q) if gpu else q
+    del be
+    return out
+
+
+def design_fields(d, a, closed, r_ma, b_v: float) -> dict:
+    """Vertex fields of a re-scored design: d, a, cl (closed 0/1) and sv = b_v S((r_MA − a)/b_v) (THEORY §3.9)."""
     from .design import smoothstep
-    S, _ = smoothstep(np, (r_ma - a_v) / b_v)
-    d_c = cd.P @ d_v
-    a_c = cd.P @ a_v
-    da_c = cd.P @ (b_v * S)
-    outer = (cd.phi - d_c) >= (-cd.phi - a_c)
-    return np.where(outer, b_o, da_c)
+    S, _ = smoothstep(np, (r_ma - np.asarray(a, np.float64)) / b_v)
+    return dict(d=np.asarray(d, np.float64), a=np.asarray(a, np.float64), cl=np.asarray(closed, np.float64),
+                sv=b_v * S)
 
 
-def chi_rho(cd: CellData, psi: np.ndarray):
-    """χ = H_ε(−ψ), ρ_e = mean χ over the k³ cells (cells outside the band are empty), V = h³Σχ + V_extra."""
+def cell_rescore(model, phiE, f: dict | None, b_o: float, solid: bool = False, want_rho: bool = True):
+    """ρ (element box, host float64) of ψ_ab = ψ + Δ and the nominal volume of ψ (THEORY §3.9, §8.6.1).
+
+    ψ = φ_E (phiE, the exported mesh) or, with phiE None, the parametric max(φ − Pd, −φ − Pa) of `f`;
+    Δ = b_o on the outer branch of max(φ − Pd, −φ − Pa), P sv on the void branch; cells whose positive-weight
+    vertices are all closed use a = A_CLOSED (export closure rule, §8.2). solid: ψ = φ_E (or φ), Δ = b_o."""
+    from .export import A_CLOSED
+    if model.geometry_device == "gpu":
+        model.disc.upload()
+        f = f or {}
+        return model.dm.rescore(phiE, f.get("d"), f.get("a"), f.get("cl"), f.get("sv"), b_o, A_CLOSED, solid=solid,
+                                want_rho=want_rho)
     from .design import heaviside
-    chi, _ = heaviside(np, -psi, cd.eps)
-    rho = np.bincount(cd.elem, weights=chi, minlength=cd.n_elem) / cd.k ** 3
-    return chi, rho
+    D = model.disc
+    phi = np.asarray(D.phi, np.float64)
+    if solid:
+        pn = phi if phiE is None else phiE.astype(np.float64)
+        dl = b_o
+    else:
+        P = D.P
+        dc, ac = P @ f["d"], P @ f["a"]
+        ac = np.where(P @ f["cl"] >= 1.0 - 1e-9, A_CLOSED, ac)
+        o, i = phi - dc, -phi - ac
+        del dc, ac
+        outer = o >= i
+        pn = np.where(outer, o, i) if phiE is None else phiE.astype(np.float64)
+        del o, i
+        dl = np.where(outer, b_o, P @ f["sv"])
+    V = float(heaviside(np, -pn, D.eps)[0].sum()) * D.h_g ** 3 + D.V_extra
+    rho = None
+    if want_rho:
+        rho = np.bincount(D.elem, weights=heaviside(np, -(pn + dl), D.eps)[0], minlength=D.n_elem) / D.k ** 3
+    return rho, V
+
+
+# =====================================================================================================================
+# Boundary conditions consistent with the design (PLAN_collect_fixes P1, P4(i))
+# =====================================================================================================================
+_SHIFTS = [(a, b, c) for a in (0, 1) for b in (0, 1) for c in (0, 1)]
+
+
+def _node_touch(mat):
+    """Nodes with at least one adjacent element in `mat` (element box bool)."""
+    es = mat.shape
+    out = np.zeros(tuple(n + 1 for n in es), bool)
+    for a, b, c in _SHIFTS:
+        out[a:a + es[0], b:b + es[1], c:c + es[2]] |= mat
+    return out
+
+
+def _elem_touch(nodes):
+    """Elements with at least one corner node in `nodes` (node box bool)."""
+    es = tuple(n - 1 for n in nodes.shape)
+    out = np.zeros(es, bool)
+    for a, b, c in _SHIFTS:
+        out |= nodes[a:a + es[0], b:b + es[1], c:c + es[2]]
+    return out
+
+
+class DesignBCs:
+    """Material-aware BCs for re-scoring one model (THEORY §4.3 node rule restricted to nodes that touch material).
+
+    A node touches material when one of its ≤ 8 adjacent elements has ρ ≥ `thr`. Material components (26-connected
+    elements with ρ ≥ thr) that contain no element at a clamped material node are dropped (ρ = 0, P4(i): islands held
+    only by ρ_min stall the PCG). Supports clamp only nodes that touch the remaining material; each load is shared
+    equally among its load-face nodes that touch it (the dropped share is redistributed and reported)."""
+
+    def __init__(self, model, ctx, thr: float = 1e-3):
+        from . import fea
+        self.model, self.thr = model, thr
+        self.fixed0, self.load0 = model.fixed, model.load
+        self.fixed_n = model.fixed.any(-1)
+        self.loads = [(fea.nodes_near_faces(model.origin, model.h_e, model.node_shape, ctx.V, ctx.T, ctx.TF,
+                                            L["faces"]), np.asarray(L["force"], float)) for L in ctx.loads]
+        cap = ctx.cfg["capacity"]
+        self.r_ex = int(np.ceil(cap["exclude_bc_mm"] / model.h_e))
+        self.mount_ok = None
+        if not cap["include_mounts"]:
+            if model.geometry_device == "gpu":
+                model.disc.upload()
+            self.mount_ok = model.dm.elem_mean(ctx.mount.astype(float)).reshape(model.elem_shape) < 0.5
+        self.mask0, self.ksig0 = model.stress_mask_dense, model.ksig_mask_dense
+        # same rule as PhaseModel._stress_mask (elem_mean on the GPU sums with atomics: a tie at 0.5 could differ)
+        self.mask_mismatch = int(np.count_nonzero(self._stress_mask(self.fixed0, self.load0) != self.mask0))
+        self.current = "original"
+
+    def _stress_mask(self, fixed, load):
+        from scipy import ndimage
+        bc = fixed.any(-1) | (load != 0).any(-1)
+        m = ~ndimage.binary_dilation(bc, iterations=self.r_ex)[:-1, :-1, :-1]
+        if self.mount_ok is not None:
+            m &= self.mount_ok
+        return m.ravel()
+
+    def adjust(self, rho: np.ndarray):
+        """(ρ without islands, fixed, load, info) for the design ρ (element box)."""
+        from scipy import ndimage
+        m = self.model
+        es = m.elem_shape
+        mat = (rho >= self.thr).reshape(es)
+        fx = self.fixed_n & _node_touch(mat)
+        lab, nlab = ndimage.label(mat, structure=np.ones((3, 3, 3), bool))
+        keep = np.zeros(nlab + 1, bool)
+        keep[np.unique(lab[_elem_touch(fx) & mat])] = True
+        keep[0] = False
+        island = mat & ~keep[lab]
+        del lab
+        rho2 = rho
+        info = dict(components=int(nlab), islands=int(nlab - keep[1:].sum()),
+                    island_mm3=float(rho[island.ravel()].sum()) * m.h_e ** 3)
+        if island.any():
+            rho2 = rho.copy()
+            rho2[island.ravel()] = 0.0
+            mat &= ~island
+        touch = _node_touch(mat).ravel()
+        fixed = (self.fixed_n.ravel() & touch)
+        info["fixed_nodes"], info["fixed_dropped"] = int(fixed.sum()), int(self.fixed_n.sum() - fixed.sum())
+        load = np.zeros((touch.size, 3))
+        Fsum = sum(float(np.linalg.norm(F)) for _, F in self.loads)
+        dropped = 0.0
+        nd = []
+        for ln, F in self.loads:
+            k = ln[touch[ln]]
+            if k.size == 0:
+                raise RuntimeError("re-scoring: no load-face node touches material")
+            load[k] += F / k.size
+            dropped += float(np.linalg.norm(F)) * (1.0 - k.size / ln.size)
+            nd.append(int(ln.size - k.size))
+        info["load_nodes_dropped"] = nd
+        info["load_share_redistributed"] = dropped / Fsum if Fsum > 0 else 0.0
+        fixed = np.repeat(fixed[:, None], 3, 1).reshape(self.fixed0.shape)
+        load = load.reshape(self.load0.shape)
+        # check: every loaded node touches material (all 8 adjacent ρ < thr counts as isolated)
+        info["isolated_load_nodes"] = int(((load != 0).any(-1).ravel() & ~touch).sum())
+        return rho2, fixed, load, info
+
+    def apply(self, fixed, load) -> None:
+        """Set the model's BCs (and the stress / K_σ masks that depend on them); the FE engine is rebuilt lazily."""
+        m = self.model
+        same = np.array_equal(fixed, self.fixed0) and np.array_equal(load, self.load0)
+        key = "original" if same else id(load)
+        if key == self.current:
+            return
+        m.fixed, m.load = (self.fixed0, self.load0) if same else (fixed, load)
+        m.stress_mask_dense = self.mask0 if same else self._stress_mask(fixed, load)
+        m.ksig_mask_dense = self.ksig0 if same else m._ksig_mask()
+        if m.fe is not None:
+            m.fe.free()
+            m.fe = None
+        m.grid_fe = None
+        self.current = key
 
 
 def raw_responses(model, rho: np.ndarray, st, keep_fields: bool = False) -> dict:
@@ -392,8 +640,9 @@ def score(raw: dict, raw0: dict, st, sigma_f: float | None = None, kappa: float 
 
 
 def decide(checks: list[dict], crit: dict, export_ok: bool = True, blocking_miss: bool = False,
-           extra_reasons: list[str] | None = None):
-    """THEORY §5.4. checks: [{res, J, K_K0, P_P0}]. Returns (accepted, reason, checks with pass flags)."""
+           extra_reasons: list[str] | None = None, export_why: str | None = None):
+    """THEORY §5.4. checks: [{res, J, K_K0, P_P0}]. Returns (accepted, reason, checks with pass flags). A failed
+    export (D2) is the reason by itself: the design is then not re-scored, so `checks` is empty."""
     lnG = math.log(1 + crit["g_min"])
     why = list(extra_reasons or [])
     out = []
@@ -406,10 +655,10 @@ def decide(checks: list[dict], crit: dict, export_ok: bool = True, blocking_miss
             why.append(f"{c['res']}: K/K0 = {c['K_K0']:.3f} < {crit['f_K']:g}")
         if not pp:
             why.append(f"{c['res']}: P/P0 = {c['P_P0']:.3f} < {crit['f_P']:g}")
-    if not checks:
-        why.append("no feasible cshell design")
     if not export_ok:
-        why.append("export failed its checks (mass correction / watertight / R1)")
+        why.insert(0, "export failed: " + (export_why or "mass correction / watertight / R1 checks"))
+    elif not checks:
+        why.append("no feasible cshell design")
     if blocking_miss:
         why.append("body-fitted check misses a ratio tolerance (blocking)")
     acc = not why
@@ -546,11 +795,44 @@ def decimate_for_validation(V: np.ndarray, T: np.ndarray, edge: float, vol_tol: 
 # =====================================================================================================================
 # collect
 # =====================================================================================================================
+def export_verdict(ex: dict | None, vol_tol: float = 2e-3, G_s: float | None = None):
+    """(ok, reason) of an export summary (PLAN_collect_fixes P3, D2): mass correction bracketed and within δ_fail,
+    watertight, |V_STL/V₀ − 1| ≤ vol_tol. A failed bracket after a large void_min opening fill is reported as the
+    optimiser's non-convergence (§8.2/§8.4 behave as specified), not as a re-scoring error."""
+    if ex is None:
+        return True, ""
+    why = []
+    mc, mesh, cl = ex.get("mass_correction", {}), ex.get("mesh", {}), ex.get("cleanup", {}) or {}
+    V0 = ex.get("V0_mm3") or float("nan")
+    if not mc.get("ok", False):
+        bf = mc.get("bracket_failed") or {}
+        why.append(f"mass correction did not bracket (V/V0-1 before correction {mc.get('rel_before', float('nan')):+.2%}"
+                   + (f", limit ±{bf['limit']:g} mm" if "limit" in bf else "") + ")")
+        fill = cl.get("opening_removed_mm3")
+        if fill and fill / V0 > 0.01:
+            why.append(f"the void_min opening filled {fill / V0:+.1%} of V0: the design is not converged in the "
+                       f"sliver measure" + (f" (final G_s = {G_s:.3g})" if G_s is not None and np.isfinite(G_s) else "")
+                       + " - optimiser non-convergence, not a re-scoring error")
+    elif mc.get("fail", False):
+        why.append(f"mass correction |delta| = {abs(mc.get('delta', float('nan'))):.3f} mm above delta_fail")
+    if not mesh.get("watertight_manifold", False):
+        why.append(f"mesh not watertight ({mesh.get('bodies')} bodies, {mesh.get('duplicate_directed_edges')} "
+                   "duplicated directed edges)")
+    rel = mesh.get("volume_rel")
+    if rel is None or not np.isfinite(rel) or abs(rel) > vol_tol:
+        why.append(f"V_STL/V0 - 1 = {rel if rel is not None else float('nan'):+.2%} (tolerance {vol_tol:.1%})")
+    ok = bool(ex.get("ok", False)) and not why
+    if not ok and not why:
+        why.append("export checks failed")
+    return ok, "; ".join(why)
+
+
 def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None = None, export_kw: dict | None = None,
-            log=None) -> dict:
-    """Merge the starts of `run_dir`, export, re-score, validate and decide (module docstring). Returns summary."""
+            log=None, geometry_device: str | None = None) -> dict:
+    """Merge the starts of `run_dir`, export, re-score, validate and decide (module docstring). Returns summary.
+    geometry_device: "cpu" | "gpu" | "auto" for the re-scoring cell maps (default: config grid.geometry_device)."""
     from . import export as cex
-    from .optimise import Context
+    from .optimise import Context, PeakGPU
     run_dir = os.path.abspath(run_dir)
     logf = open(os.path.join(run_dir, "collect_log.txt"), "a")
 
@@ -559,10 +841,21 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
         logf.write(msg + "\n"); logf.flush()
     log = log or _log
     T0 = time.time()
-    tim = {}
+    tim, mem = {}, {}
+    pk_gpu = PeakGPU()
+    try:
+        pk_gpu.start()
+    except Exception:
+        pk_gpu = None
+
+    def memo(stage):
+        mem[stage] = round(rss_gib(), 2)
+        log(f"[collect] host RSS {mem[stage]:.1f} GiB after {stage}")
     cfg = json.load(open(os.path.join(run_dir, "config_used.json")))
     from . import config as ccfg
     cfg = ccfg.load(cfg)                                  # re-apply defaults (keys added after the run)
+    if geometry_device is not None:
+        cfg["grid"]["geometry_device"] = geometry_device
     o, m = cfg["objective"], cfg["manufacturing"]
     crit = dict(g_min=o["min_gain"], ln_1_g_min=math.log(1 + o["min_gain"]), f_K=o["floor_stiffness"],
                 f_P=o["floor_capacity"])
@@ -585,6 +878,7 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
     t0 = time.time()
     ctx = Context(cfg, log=log)
     tim["context"] = time.time() - t0
+    memo("context")
     nv = ctx.surf.n_vertices
     xi = None
     if best is not None:
@@ -607,30 +901,65 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
             r["w_min"], r["w_max"] = (float(w.min()), float(w.max())) if w.size else (None, None)
             A = ctx.surf.A * act
             r["closed_area_frac"] = float((A * (f["a"] >= ctx.r_ma)).sum() / A.sum())
+    b_v, b_o = m["wall_bias_mm"], m["outer_bias_mm"]
+    vf = cex.vertex_fields(ctx, xi, D_comp, h_g_last) if xi is not None else None
+    f_best = None
+    if vf is not None:
+        f_best = design_fields(vf["d"], vf["a"], vf["xt_a"] >= cex.ExportConfig.closed_thr, ctx.r_ma, b_v)
 
-    # 2. parametric FE of the best design on the optimisation grid ----------------------------------------------
+    # 2. parametric FE of the best design on the optimisation grid; uniform-shell t on its band ----------------------
     res_list = resolutions(cfg)
     t0 = time.time()
     model = make_model(ctx, res_list[0], D_comp, log)
+    memo("model opt (parametric)")
     st = scoring_settings(model)
-    cd = CellData(model, ctx)
-    raw_solid0 = raw_responses(model, model.rho0, st, keep_fields=True)
-    raw_param = None
-    vf = None
-    if xi is not None:
+    V0_band = float(_h(model.V0))
+    rule, rho_p = {}, None
+    if xi is not None:                                    # geometry first (band on the device), then the FE
         dm = model.dm
         x = dm.xp.asarray(xi)
-        sab = dm.forward(x[:nv], x[nv:], as_built=True)
-        raw_param = raw_responses(model, _h(dm.rho(sab)).astype(np.float64), st, keep_fields=True)
-        vf = cex.vertex_fields(ctx, xi, D_comp, h_g_last)
+        V_opt = dm.volume(dm.forward(x[:nv], x[nv:], as_built=False))
+        _, V_rule = cell_rescore(model, None, f_best, 0.0, want_rho=False)
+        rule = dict(V_opt_rel=V_opt / V0_band - 1.0, V_rule_rel=V_rule / V0_band - 1.0, rule_vs_opt=V_rule / V_opt - 1.0)
+        log(f"[collect] best ({best['start']}) band volume: optimiser V/V0-1 {rule['V_opt_rel']:+.3e}, export closure "
+            f"rule {rule['V_rule_rel']:+.3e} (rule/optimiser - 1 = {rule['rule_vs_opt']:+.3e})")
+        rho_p = _h(dm.rho(dm.forward(x[:nv], x[nv:], as_built=True))).astype(np.float64)
+    # uniform shell (§7.4 S1, D1: mount faces solid): t with V_nominal(t) = V0 on this band
+    has_mount = bool(np.asarray(ctx.mount).any())
+
+    def shell_dV(t):
+        fu = cex.uniform_shell_fields(ctx, t, h_g_last)
+        return cell_rescore(model, None, design_fields(fu["d"], fu["a"], fu["closed"], ctx.r_ma, b_v), 0.0,
+                            want_rho=False)[1] / V0_band - 1.0
+    from scipy.optimize import brentq
+    t_band = None
+    try:
+        t_band = brentq(shell_dV, 0.02, D_comp, xtol=1e-5)
+        log(f"[collect] uniform shell{' (mounts solid)' if has_mount else ''}: t = {t_band:.4f} mm for constant mass "
+            "on the optimisation band")
+    except ValueError as e:
+        log(f"[collect] uniform shell: no t in [0.02, {D_comp}] mm restores the mass on the band ({e})")
+        if has_mount:
+            raise RuntimeError(f"uniform shell: no t ≤ D_comp = {D_comp} mm restores the solid's mass") from e
+    if model.geometry_device == "gpu":
+        model.disc.release()                             # the FE gets the device memory (as fe_eval does)
+    raw_solid0 = raw_responses(model, model.rho0, st, keep_fields=True)
+    raw_param = None
+    if rho_p is not None:
+        raw_param = raw_responses(model, rho_p, st, keep_fields=True)
+        rho_p = None
         log(f"[collect] parametric best ({best['start']}) on the optimisation grid: "
             f"{score(raw_param, raw_solid0, st)}")
+    g_opt = _grid_info(model)
     tim["param_fe"] = time.time() - t0
+    free_model(model)
+    model = None
+    memo("release model opt (parametric)")
 
-    # 3. export ------------------------------------------------------------------------------------------------------
+    # 3. export (the PhaseModel is released: the forked export workers do not inherit it) ----------------------------
     t0 = time.time()
     bdir = os.path.join(run_dir, "export_baselines")
-    base_ex = cex.export_baselines(ctx, bdir, log=log, **ekw)
+    base_ex = cex.export_baselines(ctx, bdir, t_coarse=t_band, h_g=h_g_last, log=log, **ekw)
     for nm in ("original", "uniform_shell"):
         shutil.copyfile(os.path.join(bdir, f"{nm}.stl"), os.path.join(run_dir, f"{nm}.stl"))
         files[f"{nm}.stl"] = f"{nm}.stl"
@@ -638,61 +967,98 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
     if t_shell > D_comp:
         raise RuntimeError(f"uniform shell t = {t_shell:.2f} mm exceeds the band's outward extent {D_comp} mm")
     tim["export_baselines"] = time.time() - t0
-    best_ex = None
+    trim_host_memory()
+    memo("export baselines")
+    best_ex, export_ok, export_why = None, True, ""
     if xi is not None:
         t0 = time.time()
-        stress_fn = DenseLookup(model, raw_param["vm_dense"])
+        stress_fn = DenseLookup(g_opt, raw_param["vm_dense"])
         best_ex = cex.export_design(ctx, xi, run_dir, D_comp, stress=stress_fn, name="best_candidate", h_g=h_g_last,
                                     log=log, **ekw)
         files["best_candidate.stl"] = "best_candidate.stl"
         tim["export_best"] = time.time() - t0
+        trim_host_memory()
+        memo("export best")
+        hist_b = [h_ for h_ in read_history(run_dir) if h_["start"] == best["start"]]
+        G_s = _f(hist_b[-1].get("G_s")) if hist_b else None
+        export_ok, export_why = export_verdict(best_ex, G_s=G_s)
+        if not export_ok:
+            log(f"[collect] best_candidate export FAILED its checks: {export_why}. The STL is kept for inspection and "
+                "not re-scored (D2); the original solid is kept.")
 
     # 4. re-score ----------------------------------------------------------------------------------------------------
-    import trimesh
-
-    def load_mesh(p):
-        tm = trimesh.load(p, process=True)
-        return np.asarray(tm.vertices, float), np.asarray(tm.faces, np.int64), float(tm.volume)
-    meshes = {"uniform_shell": load_mesh(os.path.join(run_dir, "uniform_shell.stl"))}
-    if best_ex is not None:
-        meshes["best"] = load_mesh(os.path.join(run_dir, "best_candidate.stl"))
-    b_v, b_o = m["wall_bias_mm"], m["outer_bias_mm"]
+    stl = {"uniform_shell": os.path.join(run_dir, "uniform_shell.stl")}
+    fields = {"uniform_shell": None}
+    fu = cex.uniform_shell_fields(ctx, t_shell, h_g_last)
+    fields["uniform_shell"] = design_fields(fu["d"], fu["a"], fu["closed"], ctx.r_ma, b_v)
+    if best_ex is not None and export_ok:
+        stl["best"] = os.path.join(run_dir, "best_candidate.stl")
+        fields["best"] = f_best
+    c0 = np.round(0.5 * (ctx.V.min(0) + ctx.V.max(0)), 3)            # band.c0 (Warp frame)
     res_rows, raws = [], {}
+    fields_extra, modes = {}, {}
     for r in res_list:
         t0 = time.time()
-        if r["res"] != "opt":
-            _release(model)
-            del model, cd
-            model = make_model(ctx, r, D_comp, log)
-            cd = CellData(model, ctx)
+        model = make_model(ctx, r, D_comp, log)
+        if not np.allclose(model.band.c0, c0):
+            raise RuntimeError("band centring offset differs from the mesh frame used for the STL soup")
+        memo(f"model {r['res']}")
         st_r = scoring_settings(model)
-        raw0 = raw_solid0 if r["res"] == "opt" else raw_responses(model, model.rho0, st_r)
-        _, rho_chk = chi_rho(cd, cd.phi + b_o)
-        if not np.allclose(rho_chk, _h(model.rho0)):
-            raise RuntimeError("re-scoring ρ of the solid differs from the optimiser's baseline ρ0")
-        designs = {"solid": raw0}
+        bcs = DesignBCs(model, ctx)
         V0 = float(_h(model.V0))
+        rho_chk, _ = cell_rescore(model, None, None, b_o, solid=True)
+        if not np.allclose(rho_chk, _h(model.rho0), rtol=0, atol=1e-12):
+            raise RuntimeError("re-scoring ρ of the solid differs from the optimiser's baseline ρ0")
+        del rho_chk
+        rhos = {"solid": _h(model.rho0).astype(np.float64)}
         vols = {"solid": V0}
-        for name, (VE, TE, _) in meshes.items():
-            phiE = mesh_phi(cd, VE, TE)
-            if name == "uniform_shell":
-                Dlt = asbuilt_increment(cd, np.full(nv, t_shell), np.zeros(nv), ctx.r_ma, b_v, b_o)
-            else:
-                a_v = np.where(vf["xt_a"] >= cex.ExportConfig.closed_thr, cex.A_CLOSED, vf["a"])
-                Dlt = asbuilt_increment(cd, vf["d"], a_v, ctx.r_ma, b_v, b_o)
-            chi_nom, _ = chi_rho(cd, phiE)
-            vols[name] = float(chi_nom.sum()) * cd.h_g ** 3 + cd.V_extra
-            _, rho = chi_rho(cd, phiE + Dlt)
-            designs[name] = raw_responses(model, rho, st_r, keep_fields=(r["res"] == "opt" and name == "best"))
+        for name, path in stl.items():
+            soup = stl_soup(path, c0)
+            phiE = mesh_phi(model, soup)
+            del soup
+            rhos[name], vols[name] = cell_rescore(model, phiE, fields[name], b_o)
+            del phiE
+            trim_host_memory()
+        if model.geometry_device == "gpu":
+            model.disc.release()                         # the FE gets the device memory (as fe_eval does)
+        designs, bcinfo = {}, {}
+        for name, rho in rhos.items():
+            rho2, fixed, load, info = bcs.adjust(rho)
+            bcinfo[name] = info
+            if info["islands"] or info["fixed_dropped"] or any(info["load_nodes_dropped"]):
+                log(f"[collect] {r['res']}: {name}: BCs on material: {info}")
+            bcs.apply(fixed, load)
+            keep = r["res"] == "opt" and name in ("solid", "best")
+            try:
+                designs[name] = raw_responses(model, rho2, st_r, keep_fields=keep)
+            except RuntimeError as e:                        # e.g. PCG not converged: recorded, the row fails
+                log(f"[collect] {r['res']}: {name}: FE FAILED: {e!r}")
+                designs[name] = dict(C=float("nan"), sigma_pn=float("nan"), sigma_q=float("nan"),
+                                     mu_tilde=float("nan"), lam1=float("nan"), dof=0, seconds=0.0, error=repr(e)[:300])
+            fe = model.fe
+            designs[name]["pcg"] = list(getattr(fe, "stats_solves", []) or [])[-3:] if fe is not None else []
+            del rho2
+        bcs.apply(bcs.fixed0, bcs.load0)
+        raw0 = designs["solid"]
+        if r["res"] == "opt":
+            log(f"[collect] solid re-score vs the parametric pass on the same grid: C {raw0['C'] / raw_solid0['C'] - 1:+.2e}")
         for name, raw in designs.items():
-            sc = score(raw, raw0, st_r)
+            sc = score(raw, raw0, st_r) if np.isfinite(raw["C"]) else dict(
+                J=float("nan"), K_K0=float("nan"), P_P0=float("nan"), lam_s=float("nan"), lam_b=float("nan"),
+                lam=float("nan"), governing=None)
+            bi = bcinfo[name]
             row = dict(label=f"{r['res']}: {name}", res=r["res"], design=name, h_e=r["h_e"], h_g=r["h_g"],
                        shift_mm=r["shift"], **sc, C_Nmm=raw["C"], K_N_mm=float(ctx.F @ ctx.F / raw["C"]),
                        lam1=raw["lam1"], sigma_pn=raw["sigma_pn"], sigma_q=raw["sigma_q"], V_mm3=vols[name],
-                       mass_err=vols[name] / V0 - 1.0, dof=raw["dof"], seconds=raw["seconds"])
+                       mass_err=vols[name] / V0 - 1.0, dof=raw["dof"], seconds=raw["seconds"],
+                       error=raw.get("error"), pcg=raw.get("pcg"),
+                       bc_load_share_redistributed=bi["load_share_redistributed"],
+                       bc_load_nodes_dropped=bi["load_nodes_dropped"], bc_fixed_dropped=bi["fixed_dropped"],
+                       bc_isolated_load_nodes=bi["isolated_load_nodes"], islands=bi["islands"],
+                       island_mm3=bi["island_mm3"])
             res_rows.append(row)
             log(f"[collect] {row['label']:<24} J {sc['J']:+.4f} K/K0 {sc['K_K0']:.4f} P/P0 {sc['P_P0']:.4f} "
-                f"{sc['governing']} V/V0-1 {row['mass_err']:+.2e}")
+                f"{sc['governing']} V/V0-1 {row['mass_err']:+.2e} load moved {bi['load_share_redistributed']:.1%}")
         raws[r["res"]] = (designs, st_r)
         if r["res"] == "opt":
             surfX = ctx.surf.V
@@ -701,28 +1067,33 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
             pts_d = surfX + (dd - 0.5 * model.h_e)[:, None] * Ns
             pts_s = surfX - 0.5 * model.h_e * Ns
             fields_extra = dict(stress_solid=DenseLookup(model, raw0["vm_dense"])(pts_s))
-            if "best" in designs:
-                fields_extra["stress"] = DenseLookup(model, designs["best"]["vm_dense"])(pts_d)
-                fields_extra["W_bar"] = DenseLookup(model, designs["best"]["W_dense"])(pts_d)
+            # design fields: the re-scored export when it passed its checks, else the parametric best (same grid)
+            rb, gb = (designs["best"], model) if "best" in designs and "vm_dense" in designs["best"] else (raw_param, g_opt)
+            if rb is not None:
+                fields_extra["stress"] = DenseLookup(gb, rb["vm_dense"])(pts_d)
+                fields_extra["W_bar"] = DenseLookup(gb, rb["W_dense"])(pts_d)
             modes = dict(solid_mag=mode_magnitudes(model, raw0, pts_s), solid_lambda=1.0 / raw0["mu"][raw0["mu"] > 0]
                          if raw0.get("mu") is not None and raw0["mu"].size else np.zeros(0))
-            if "best" in designs:
-                rb = designs["best"]
-                modes.update(design_mag=mode_magnitudes(model, rb, pts_d),
+            if rb is not None and rb.get("mu") is not None:
+                modes.update(design_mag=mode_magnitudes(gb, rb, pts_d),
                              design_lambda=1.0 / rb["mu"][rb["mu"] > 0] if rb["mu"].size else np.zeros(0))
             for dsg in designs.values():                  # drop big arrays
                 for k in ("vm_dense", "W_dense", "modes", "node_dense"):
                     dsg.pop(k, None)
         tim[f"rescore_{r['res']}"] = time.time() - t0
-    _release(model)
-    del model, cd
+        rb = gb = None
+        free_model(model)
+        model = bcs = None
+        trim_host_memory()
+        memo(f"release model {r['res']}")
+    raw_param = raw_solid0 = None
 
     # 5. body-fitted validation ---------------------------------------------------------------------------------
     from . import validate as cval
     do_val = cfg["validation"].get("body_fitted", True) if validate is None else validate
-    val = dict(ran=False, why="disabled" if not do_val else "no design")
+    val = dict(ran=False, why="disabled" if not do_val else ("export failed" if not export_ok else "no design"))
     blocking = val_failed = False
-    if do_val and best_ex is not None:
+    if do_val and "best" in stl:
         try:
             t0 = time.time()
             vd = os.path.join(run_dir, "validation")
@@ -731,7 +1102,7 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
                 32, len(os.sched_getaffinity(0))))), want_stress=True, E=cfg["material"]["E_MPa"], nu=cfg["material"]["nu"],
                 fallback=None, timeout=_get(cfg, "validation.timeout_s", None))
             bf, dec, errs, used = {}, {}, {}, {}
-            VE, TE, _ = meshes["best"]
+            VE, TE, _ = load_mesh(stl["best"])
             # Same mesher for solid and design (ratios cancel mesher bias): isotropic surface remesh to h, gmsh volume
             # inside that triangulation, quality gate; solved on the GPU (cuDSS, C3D10-identical). Two levels
             # (h, h/sqrt(2)) give the mesh-convergence estimate; the finer level is compared. No tetgen fallback:
@@ -743,24 +1114,39 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
                 try:
                     lv = []
                     for i_l, hh in enumerate(levels):
-                        # the coarse level is reported (gate numbers included) but only the finer one must pass the gate
-                        lv.append(cval.validate_design(Vs, Ts, ctx.V, ctx.T, ctx.TF, ctx.support, ctx.loads, vd,
-                                                       f"{nm}_h{hh:.3f}", backend="keep", enforce_gate=(i_l == len(levels) - 1),
-                                                       **dict(kw, h=hh)))
+                        # the coarse level is reported (gate numbers included) but only the finer one must pass the gate;
+                        # it only feeds the (non-blocking) convergence flag, so its failure is recorded, not blocking:
+                        # pymeshlab's isotropic remesh at h = 0.5 passes or fails the edge check depending on the vertex
+                        # order of the same B2 surface (research/collect_fix/remesh_check.py, job 7870945)
+                        fine = i_l == len(levels) - 1
+                        try:
+                            lv.append(cval.validate_design(Vs, Ts, ctx.V, ctx.T, ctx.TF, ctx.support, ctx.loads, vd,
+                                                           f"{nm}_h{hh:.3f}", backend="keep", enforce_gate=fine,
+                                                           **dict(kw, h=hh)))
+                        except Exception as e:
+                            if fine:
+                                raise
+                            errs[f"{nm}/coarse_level"] = repr(e)[:600]
+                            log(f"[collect] WARNING body-fitted {nm}: coarse level h = {hh:.3f} failed ({e!r:.300}); "
+                                "no level-convergence estimate, the finer level is compared")
                     bf[nm] = lv[-1]
-                    dec[nm]["level_change"] = dict(C=lv[1].compliance / lv[0].compliance - 1,
-                                                   lam=lv[1].lambda_b / lv[0].lambda_b - 1)
-                    dec[nm]["converged_C"] = bool(abs(dec[nm]["level_change"]["C"]) <= 0.02)
+                    if len(lv) == 2:
+                        dec[nm]["level_change"] = dict(C=lv[1].compliance / lv[0].compliance - 1,
+                                                       lam=lv[1].lambda_b / lv[0].lambda_b - 1)
+                        dec[nm]["converged_C"] = bool(abs(dec[nm]["level_change"]["C"]) <= 0.02)
+                    else:
+                        dec[nm]["level_change"], dec[nm]["converged_C"] = None, None
                     dec[nm]["gate"] = [x.info.get("mesh_quality") for x in lv]
                     dec[nm]["lambda_unexcl"] = [x.info.get("lam_unexcl") for x in lv]
                     dec[nm]["seconds"] = [dict(mesh=x.seconds_mesh, solve=x.seconds_ccx) for x in lv]
                     used[nm] = "keep"
-                    if not dec[nm]["converged_C"]:
+                    if dec[nm]["converged_C"] is False:
                         errs[f"{nm}/convergence"] = f"compliance changes {dec[nm]['level_change']['C']:+.2%} between levels"
                         log(f"[collect] WARNING {nm}: {errs[f'{nm}/convergence']} (> 2 %)")
                 except Exception as e:                        # recorded; a failed check blocks acceptance below
                     errs[f"{nm}/keep"] = repr(e)[:600]
                     log(f"[collect] body-fitted {nm} FAILED: {e!r}")
+            del VE, TE
             if len(bf) < 2:
                 raise _ValidationFailed(errs)
             d_opt = raws["opt"][0]
@@ -771,9 +1157,14 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
             cval.write_validation_csv(vrows, os.path.join(run_dir, "validation.csv"))
             files["validation.csv"] = "validation.csv"
             blocking = any(r["blocking"] and not r["passed"] for r in vrows)
+            for r in vrows:
+                if r.get("under"):
+                    log(f"[collect] body-fitted: voxel under-predicts {r['metric']} by {-r['over']:.1%} "
+                        "(conservative; logged, not blocking, §8.6 D3)")
             val = dict(ran=True, engine=sorted({v.engine for v in bf.values()}), blocking_miss=blocking, surface=dec,
                        errors=errs, mesher=used,
                        n_rows=len(vrows), n_failed=sum(not r["passed"] for r in vrows), file="validation.csv",
+                       under_predicted=[r["metric"] for r in vrows if r.get("under")],
                        seconds_mesh={k: v.seconds_mesh for k, v in bf.items()},
                        seconds_ccx={k: v.seconds_ccx for k, v in bf.items()})
             tim["validation"] = time.time() - t0
@@ -787,10 +1178,9 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
     # 6. decision ----------------------------------------------------------------------------------------------------
     checks = [dict(res=r["res"], J=r["J"], K_K0=r["K_K0"], P_P0=r["P_P0"]) for r in res_rows if r["design"] == "best"]
     extra = ["body-fitted check could not be run (see validation.errors)"] if val_failed else []
-    export_ok = True
-    if best_ex is not None:
-        export_ok = bool(best_ex.get("ok", False))
-    acc, reason, checks = decide(checks, crit, export_ok, blocking, extra)
+    extra += [f"{r['res']}: FE of the best export failed ({r['error']})" for r in res_rows
+              if r["design"] == "best" and r.get("error")]
+    acc, reason, checks = decide(checks, crit, export_ok, blocking, extra, export_why=export_why)
     final = os.path.join(run_dir, "final_design.stl")
     shutil.copyfile(os.path.join(run_dir, "best_candidate.stl" if acc else "original.stl"), final)
     files["final_design.stl"] = "final_design.stl"
@@ -802,7 +1192,7 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
         for sp in SIGMA_PCT:
             js, ks, ps, jopt = [], [], [], float("nan")
             for rk, (designs, st_r) in raws.items():
-                if "best" not in designs:
+                if "best" not in designs or not np.isfinite(designs["best"]["C"]):
                     continue
                 sc = score(designs["best"], designs["solid"], st_r, st_r.sigma_f * (1 + sp / 100), kb)
                 js.append(sc["J"]); ks.append(sc["K_K0"]); ps.append(sc["P_P0"])
@@ -845,7 +1235,8 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
     V0x = (best_ex or base_ex["original"]).get("V0_mm3")
     vfin = bmesh.get("volume") if acc else base_ex["original"].get("mesh", {}).get("volume")
     mass = dict(target=V0x * rho_g if V0x else None, final=vfin * rho_g if vfin else None,
-                error=bmesh.get("volume_rel"), V0_mm3=V0x, density_g_mm3=rho_g)
+                error=bmesh.get("volume_rel"), V0_mm3=V0x, density_g_mm3=rho_g,
+                mass_matched=bool(export_ok) if best_ex is not None else None)
     d_opt = {r["design"]: r for r in res_rows if r["res"] == "opt"}
     comparison = [dict(label="solid", source="rescored", J=0.0, K_K0=1.0, P_P0=1.0,
                        governing=d_opt["solid"]["governing"], w_min=None, w_max=None),
@@ -856,7 +1247,6 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
     try:
         vs = load_vshell(vshell_run_dir(cfg))
         b = vs["best"]
-        lam3 = b.get("lambda strength / Euler / local") or [None]
         vrow = dict(run_dir=str(vshell_run_dir(cfg)), J=b.get("J"), K_K0=b.get("K/K0"), P_P0=b.get("P/P0"),
                     accepted=vs["accepted"], s_mm=vs["s"])
         comparison.append(dict(label="vshell best", source="vshell", J=b.get("J"), K_K0=b.get("K/K0"),
@@ -873,6 +1263,9 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
                                                                             ("J", "K_K0", "P_P0", "governing")},
                                w_min=bw.get("min_nominal"), w_max=next((r["w_max"] for r in rows if best and
                                                                         r["start"] == best["start"]), None)))
+    elif best_ex is not None:
+        comparison.append(dict(label="cshell export", source="not mass-matched", J=None, K_K0=None, P_P0=None,
+                               governing=None, w_min=None, w_max=None))
     load_cases = [dict(case=f"1 ({n})", lam_s=d_opt[k]["lam_s"], lam_b=d_opt[k]["lam_b"], softmin=d_opt[k]["lam"])
                   for k, n in (("solid", "solid"), ("best", "cshell")) if k in d_opt]
     Lam = None
@@ -892,6 +1285,10 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
     except Exception:
         pass
     tim["total"] = time.time() - T0
+    import resource
+    mem["peak_rss_GiB"] = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 2 ** 20
+    mem["peak_rss_children_GiB"] = resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss / 2 ** 20
+    peak_collect_gpu = pk_gpu.stop() if pk_gpu is not None else float("nan")
     ex_sum = None
     if best_ex is not None:
         ex_sum = {k: v for k, v in best_ex.items() if k not in ("timing_s",)}
@@ -902,7 +1299,10 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
                                                  xi_file=best["xi_file"], phase=len(cfg["grid"]["phases"]) - 1),
              starts=rows, comparison=comparison, resolutions=res_rows, checks=checks, load_cases=load_cases,
              Lambda=Lam,
-             export=dict(best=ex_sum, uniform_shell_t_mm=t_shell,
+             export=dict(best=ex_sum, best_ok=export_ok if best_ex is not None else None,
+                         best_reject_reason=export_why or None, closure_rule_band=rule or None,
+                         uniform_shell_t_mm=t_shell, uniform_shell_t_band_mm=t_band,
+                         uniform_shell_mounts_solid=bool(base_ex["uniform_shell"].get("mounts_solid", False)),
                          delta_mm=(best_ex or {}).get("mass_correction", {}).get("delta"),
                          voids=(best_ex or {}).get("voids"), holes=((best_ex or {}).get("voids") or {}).get("holes"),
                          wall=(best_ex or {}).get("wall")),
@@ -910,7 +1310,8 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
              sensitivity=dict(file="sensitivity.csv", accepted_fraction=float(np.mean([r["accepted"] for r in sens])),
                               kappa_b=list(KAPPAS), sigma_f_pct=list(SIGMA_PCT)),
              vshell=vrow,
-             resources=dict(gpu_model=gpu_model, peak_gpu_GiB=peak,
+             resources=dict(gpu_model=gpu_model, peak_gpu_GiB=peak, peak_gpu_collect_GiB=peak_collect_gpu,
+                            host_rss_GiB=mem,
                             gpu_hours=float(np.nansum([r["hours"] for r in rows])) + tim["total"] / 3600,
                             collect_s=tim["total"]),
              timings_s=tim, files=files)
@@ -920,7 +1321,8 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
     json.dump(S, open(os.path.join(run_dir, "summary.json"), "w"), indent=1)
     with open(os.path.join(run_dir, "summary.txt"), "w") as f:
         f.write(summary_text(S))
-    log(f"[collect] done in {tim['total']:.0f} s")
+    log(f"[collect] done in {tim['total']:.0f} s (peak host RSS {mem['peak_rss_GiB']:.1f} GiB, export workers "
+        f"{mem['peak_rss_children_GiB']:.1f} GiB, peak GPU {peak_collect_gpu:.1f} GiB)")
     return S
 
 
@@ -931,6 +1333,9 @@ def summary_text(S: dict) -> str:
     m = S["mass"]
     L.append(f"mass target {g(m['target'], '{:.2f}')} g, final {g(m['final'], '{:.2f}')} g, best-candidate mesh "
              f"V/V0-1 {g(m['error'], '{:+.2e}')}")
+    ex = S.get("export") or {}
+    if ex.get("best_ok") is False:
+        L.append(f"best-candidate export NOT MASS-MATCHED / failed (not re-scored): {ex.get('best_reject_reason')}")
     L += ["", f"{'design':<22}{'source':<10}{'J':>9}{'K/K0':>8}{'P/P0':>8}  governing   wall mm"]
     for r in S["comparison"]:
         L.append(f"{r['label']:<22}{r['source']:<10}{g(r['J']):>9}{g(r['K_K0'], '{:.3f}'):>8}"

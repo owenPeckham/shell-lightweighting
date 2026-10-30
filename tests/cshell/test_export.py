@@ -114,7 +114,35 @@ def test_b2_validation_export_has_no_films():
     s = json.load(open(f))
     assert s["voids"]["without_hole"] == 0 and s["mesh"]["bodies"] == 1
     w = s["wall_off_rims"]
-    assert w["n_below_t_min_minus_b_v"] == 0, w
+    # walls sit exactly at the t_min bound by design (research/vf_b2/wall_where.py, job 7864770): count only samples
+    # below t_min - b_v by more than the export voxel discretisation (2.5 h_x), PLAN_collect_fixes P7
+    cfg = json.load(open(f.parent / "config_used.json"))
+    thr = cfg["manufacturing"]["t_min_mm"] - cfg["manufacturing"]["wall_bias_mm"] - 2.5 * s["h_x"]
+    if "n_below_t_min_minus_b_v_disc" in w:
+        assert w["n_below_t_min_minus_b_v_disc"] == 0, w
+    assert w["min_as_built"] >= thr, (w, thr)
+
+
+def test_closure_rule_interpolates_the_optimiser_a():
+    """§8.2 closure rule (P2): a cell is closed (A_CLOSED) only when all its positive-weight vertices are closed; a
+    mixed triangle interpolates the optimiser's a linearly (it used to interpolate A_CLOSED = 1e4 and close the whole
+    ring)."""
+    V = np.array([[0, 0, 0], [1, 0, 0], [0, 1, 0], [1, 1, 0.0]])
+    T = np.array([[0, 1, 2], [1, 3, 2]])
+    a = np.array([2.0, 3.0, 5.0, 7.0])
+    closed = np.array([False, True, True, True])
+    dz = ex.Design(V, T, V, T, d=np.zeros(4), a=a, d_hi=np.ones(4), active=np.ones(4, bool), closed=closed)
+    tri = np.array([0, 0, 1, 0], np.int32)
+    b1 = np.array([0.2, 0.5, 0.3, 1.0], np.float32)          # vertex-1 weight
+    b2 = np.array([0.3, 0.5, 0.3, 0.0], np.float32)          # vertex-2 weight
+    out = dz.a_at(tri, b1, b2)
+    w0 = 1.0 - b1.astype(float) - b2.astype(float)
+    lin = w0 * a[0] + b1 * a[1] + b2 * a[2]
+    assert abs(out[0] - lin[0]) < 1e-12                       # mixed: linear in the optimiser's a
+    assert out[1] == ex.A_CLOSED                             # on edge 1-2: vertex 0 has zero weight -> closed
+    assert out[2] == ex.A_CLOSED                             # triangle 1 is all closed
+    assert out[3] == ex.A_CLOSED                             # at vertex 1
+    assert np.all(out[:1] < 10.0)
 
 
 def test_mass_correction_clip_and_bracket(sphere, tmp_path):

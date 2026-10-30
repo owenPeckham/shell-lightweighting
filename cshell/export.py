@@ -143,6 +143,15 @@ def _barycentric(P, tri_v):
     return bary / bary.sum(1, keepdims=True)
 
 
+def closed_cells(closed_f: np.ndarray, v: np.ndarray, b0, b1, b2) -> np.ndarray:
+    """Cells whose closest-triangle vertices with positive (clipped, normalised) weight are all closed: Σ w_k c_k ≥
+    1 − 1e-9 (same test as collect's re-scoring kernel, `design.rescore_fwd`)."""
+    w0, w1, w2 = np.maximum(b0, 0.0), np.maximum(b1, 0.0), np.maximum(b2, 0.0)
+    sw = (w0 + w1) + w2
+    cc = ((w0 / sw) * closed_f[v[:, 0]] + (w1 / sw) * closed_f[v[:, 1]]) + (w2 / sw) * closed_f[v[:, 2]]
+    return cc >= 1.0 - 1e-9
+
+
 class Design:
     """Nominal two-field design on Γ₀ (V0, T0) and Γ_h (Vh, Th), or a constant (d, a) design when Vh is None.
 
@@ -174,6 +183,12 @@ class Design:
         self.closed = closed
         self.d = np.asarray(d, np.float64).copy()
         self.a = np.where(closed, A_CLOSED, np.asarray(a, np.float64))
+        # closure rule (§8.2, PLAN_collect_fixes P2): a cell is closed (a = A_CLOSED) only when every vertex of its
+        # closest Γ_h triangle with positive weight is closed; otherwise a is the linear interpolation of the
+        # optimiser's a (closed vertices keep their a ≈ a^hi). Interpolating A_CLOSED itself closed one extra triangle
+        # ring along every closed/open boundary (+3.8 % V on the MBB smoke best).
+        self.a_lin = np.asarray(a, np.float64).copy()
+        self.closed_f = closed.astype(np.float64)
         self.d_hi = np.asarray(d_hi, np.float64)
         self.active = np.ones(nv, bool) if active is None else np.asarray(active, bool)
         self.d_out_max = float(np.max(np.where(self.active, self.d_hi, self.d)) if nv else 0.0)
@@ -221,7 +236,9 @@ class Design:
             return np.full(len(b1), self.a_const)
         v = self.Th[tri]
         b1, b2 = b1.astype(np.float64), b2.astype(np.float64)
-        return (1.0 - b1 - b2) * self.a[v[:, 0]] + b1 * self.a[v[:, 1]] + b2 * self.a[v[:, 2]]
+        b0 = 1.0 - b1 - b2
+        a = b0 * self.a_lin[v[:, 0]] + b1 * self.a_lin[v[:, 1]] + b2 * self.a_lin[v[:, 2]]
+        return np.where(closed_cells(self.closed_f, v, b0, b1, b2), A_CLOSED, a)
 
     def d_at(self, tri, b1, b2, delta: float = 0.0):
         if self.Vh is None:
@@ -1230,7 +1247,9 @@ class Exporter:
         off = ~rim
         self.summary["wall_off_rims"] = dict(
             n_rim=int(rim.sum()), min_as_built=float(t_ab[off].min()) if off.any() else None,
-            n_below_t_min_minus_b_v=int((t_ab[off] < cfg.t_min - cfg.b_v).sum()))
+            n_below_t_min_minus_b_v=int((t_ab[off] < cfg.t_min - cfg.b_v).sum()),
+            # walls sit at the t_min bound by design: count only those thinner than the export voxel resolution allows
+            n_below_t_min_minus_b_v_disc=int((t_ab[off] < cfg.t_min - cfg.b_v - 2.5 * cfg.h_x).sum()))
         self.summary["wall"] = dict(samples=int(len(t)), miss=w["n_miss"], mesh_stride=stride, min_nominal=float(t.min()),
                                     p1_nominal=float(np.quantile(t, 0.01)), median_nominal=float(np.median(t)),
                                     min_as_built=float(t_ab.min()), p1_as_built=float(np.quantile(t_ab, 0.01)),
@@ -1239,6 +1258,12 @@ class Exporter:
 
     # -- driver ----------------------------------------------------------------------------------------------------
     def run(self, out_dir: str, name: str = "final_design") -> dict:
+        try:
+            return self._run(out_dir, name)
+        finally:
+            _G.clear()                  # the tile store etc. would otherwise stay resident (and be forked) after the run
+
+    def _run(self, out_dir: str, name: str) -> dict:
         cfg = self.cfg
         os.makedirs(out_dir, exist_ok=True)
         t_all = time.time()
@@ -1326,10 +1351,34 @@ def export_design(ctx, xi, out_dir: str, D_comp: float = 4.0, stress=None, name:
     return ex.run(out_dir, name)
 
 
-def export_baselines(ctx, out_dir: str, **cfg_kw) -> dict:
-    """original.stl (ψ = φ) and uniform_shell.stl (ψ = max(φ − t, −φ), t solved for constant mass, §7.4 S1)."""
+def uniform_shell_fields(ctx, t: float, h_g: float) -> dict:
+    """Vertex fields of the uniform-shell baseline on Γ_h (THEORY §7.4 S1, Owen 2026-10-30 D1): d = t, a = 0 on the
+    free surface; mount (load/support) vertices kept solid as in the optimiser (d = 0, closed, a = a^hi = r_MA + γ_c h_g).
+    `active` vertices carry the mass correction δ."""
+    nv = ctx.surf.n_vertices
+    mount = np.asarray(getattr(ctx, "mount", np.zeros(nv, bool)), bool)
+    a_hi = ctx.r_ma + ctx.cfg["design"]["closure_gamma"] * h_g
+    return dict(d=np.where(mount, 0.0, float(t)), a=np.where(mount, a_hi, 0.0), closed=mount.copy(), active=~mount,
+                d_hi=np.full(nv, float(t) + 0.5), mount=mount)   # ≥ t + δ_retry
+
+
+def export_baselines(ctx, out_dir: str, t_coarse: float | None = None, h_g: float | None = None, **cfg_kw) -> dict:
+    """original.stl (ψ = φ) and uniform_shell.stl, t for constant mass (§7.4 S1). With mount vertices (ctx.mount) the
+    shell keeps them solid (D1): ψ = max(φ − Pd, −φ − Pa) of `uniform_shell_fields`, t = `t_coarse` (collect solves
+    it on the optimisation band) refined by the export's mass correction. Without mounts: ψ = max(φ − t, −φ)."""
     cfg = ExportConfig.from_run_cfg(ctx.cfg, **cfg_kw)
-    return baselines(ctx.V, ctx.T, out_dir, cfg)
+    mount = np.asarray(getattr(ctx, "mount", np.zeros(0, bool)), bool)
+    if not mount.any():
+        return baselines(ctx.V, ctx.T, out_dir, cfg, t_coarse=t_coarse)
+    if h_g is None:
+        h_g = min(p["h_g"] for p in ctx.cfg["grid"]["phases"])
+    if t_coarse is None:
+        raise ValueError("export_baselines: a part with mounts needs t_coarse (solved on the band by collect)")
+    s = ctx.surf
+    f = uniform_shell_fields(ctx, t_coarse, h_g)
+    dz = Design(ctx.V, ctx.T, s.V, s.T, f["d"], f["a"], f["d_hi"], active=f["active"], closed=f["closed"],
+                sign=cfg.sign)
+    return baselines(ctx.V, ctx.T, out_dir, cfg, t_coarse=t_coarse, shell_design=dz)
 
 
 def solve_shell_thickness(V0, T0, h_c: float = 0.25, t_max: float = 8.0, sign="pseudonormal", workers=None) -> float:
@@ -1364,7 +1413,11 @@ def solve_shell_thickness(V0, T0, h_c: float = 0.25, t_max: float = 8.0, sign="p
 
     global _JOB
     _JOB = job
-    res = _pmap(_hist_job, grid.tile_ids(), workers or len(os.sched_getaffinity(0)))
+    try:
+        res = _pmap(_hist_job, grid.tile_ids(), workers or len(os.sched_getaffinity(0)))
+    finally:
+        _G.clear()
+        _JOB = None
     n_deep = sum(r[1] for r in res)
     hist = sum(r[2] for r in res)
     mid = 0.5 * (edges[1:] + edges[:-1])
@@ -1382,7 +1435,9 @@ def _hist_job(tid):
     return _JOB(tid)
 
 
-def baselines(V0, T0, out_dir: str, cfg: ExportConfig) -> dict:
+def baselines(V0, T0, out_dir: str, cfg: ExportConfig, t_coarse: float | None = None, shell_design=None) -> dict:
+    """original and uniform shell. `shell_design`: a Γ_h `Design` at t_coarse (mounts solid) instead of the constant
+    shell ψ = max(φ − t, −φ)."""
     os.makedirs(out_dir, exist_ok=True)
     out = {}
     cl = dict(clean=False, holes=False)
@@ -1392,10 +1447,16 @@ def baselines(V0, T0, out_dir: str, cfg: ExportConfig) -> dict:
     out["original"] = ex.run(out_dir, "original")
     # uniform shell
     t0 = time.time()
-    tc = solve_shell_thickness(V0, T0, h_c=max(cfg.h_x, 0.25), sign=cfg.sign, workers=cfg.workers)
-    cfg.log(f"[export] uniform shell: coarse t = {tc:.4f} mm ({time.time() - t0:.1f} s)")
-    ex = Exporter(Design(V0, T0, d_const=tc, a_const=0.0, sign=cfg.sign), c)
+    tc = t_coarse
+    if tc is None:
+        tc = solve_shell_thickness(V0, T0, h_c=max(cfg.h_x, 0.25), sign=cfg.sign, workers=cfg.workers)
+        cfg.log(f"[export] uniform shell: coarse t = {tc:.4f} mm ({time.time() - t0:.1f} s)")
+    else:
+        cfg.log(f"[export] uniform shell: t = {tc:.4f} mm (given){', mounts solid' if shell_design is not None else ''}")
+    dz = shell_design if shell_design is not None else Design(V0, T0, d_const=tc, a_const=0.0, sign=cfg.sign)
+    ex = Exporter(dz, c)
     s = ex.run(out_dir, "uniform_shell")
     s["t_coarse_mm"], s["t_final_mm"] = tc, tc + s["mass_correction"]["delta"]
+    s["mounts_solid"] = shell_design is not None
     out["uniform_shell"] = s
     return out

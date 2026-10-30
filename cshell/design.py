@@ -314,6 +314,50 @@ __global__ void geo_rev(long long n, const float* phi, const int* face, const fl
     }
 }
 
+// Re-scoring (collect, THEORY §8.6.1): nominal ψ = φ_E (exported mesh, has_phiE) or max(φ − Pd, −φ − Pa) of the
+// vertex fields, as-built ψ_ab = ψ + Δ with Δ = b_o on the outer branch of max(φ − Pd, −φ − Pa), P sv on the void
+// branch. Cells whose positive-weight vertices are all closed (P cl ≥ 1 − 1e-9) use a = a_closed (export closure
+// rule, §8.2). solid: ψ = φ_E (or φ), Δ = b_o. vol[0] += Σ H(−ψ); rho[elem] += H(−ψ_ab) when want_rho.
+__global__ void rescore_fwd(long long n, const float* phi, const int* face, const float* bary, const int* Th,
+        const int* elem, const float* phiE, int has_phiE, const double* d, const double* a, const double* cl,
+        const double* sv, double bo, double eps, double a_closed, int solid, int want_rho, double* rho, double* vol) {
+    double acc = 0.0;
+    for (long long c = blockIdx.x * (long long)blockDim.x + threadIdx.x; c < n;
+         c += (long long)gridDim.x * blockDim.x) {
+        double ph = (double)phi[c];
+        double pn, dl;
+        if (solid) {
+            pn = has_phiE ? (double)phiE[c] : ph;
+            dl = bo;
+        } else {
+            int t = face[c];
+            int v0 = Th[3 * t], v1 = Th[3 * t + 1], v2 = Th[3 * t + 2];
+            double b0 = fmax((double)bary[3 * c], 0.0), b1 = fmax((double)bary[3 * c + 1], 0.0),
+                   b2 = fmax((double)bary[3 * c + 2], 0.0);
+            double sb = (b0 + b1) + b2;
+            double w0 = b0 / sb, w1 = b1 / sb, w2 = b2 / sb;
+            double dc = ((w0 * d[v0]) + w1 * d[v1]) + w2 * d[v2];
+            double ac = ((w0 * a[v0]) + w1 * a[v1]) + w2 * a[v2];
+            double cc = ((w0 * cl[v0]) + w1 * cl[v1]) + w2 * cl[v2];
+            double sc = ((w0 * sv[v0]) + w1 * sv[v1]) + w2 * sv[v2];
+            if (cc >= 1.0 - 1e-9) ac = a_closed;
+            double o = ph - dc, i = -ph - ac;
+            bool outer = o >= i;
+            pn = has_phiE ? (double)phiE[c] : (outer ? o : i);
+            dl = outer ? bo : sc;
+        }
+        double z = fmin(fmax(-pn / eps, -1.0), 1.0);
+        acc += 0.5 + z * (15.0 / 16.0 - z * z * (5.0 / 8.0 - z * z * 3.0 / 16.0));
+        if (want_rho) {
+            z = fmin(fmax(-(pn + dl) / eps, -1.0), 1.0);
+            double H = 0.5 + z * (15.0 / 16.0 - z * z * (5.0 / 8.0 - z * z * 3.0 / 16.0));
+            if (H != 0.0) atomicAdd(rho + elem[c], H);
+        }
+    }
+    acc = block_sum(acc);
+    if (threadIdx.x == 0) atomicAdd(vol, acc);
+}
+
 // Σ_c∈e (P v)_c and the cell count per element
 __global__ void geo_elem_sum(long long n, const int* face, const float* bary, const int* Th, const int* elem,
         const double* f, double* num, double* cnt) {
@@ -494,6 +538,27 @@ class DeviceDesignMap(DesignMap):
             np.int64(D.n), D.phi, D.face, D.bary, D.Th, D.elem, *st.dev, np.float64(st.b_o), np.float64(D.eps),
             np.int32(want), g_el, np.float64(gmul), np.float64(gdiv), np.float64(gconst), gd, ga))
         return self.pull_vertex(st, gd.get(), ga.get())
+
+    def rescore(self, phiE, d, a, cl, sv, b_o: float, a_closed: float, solid: bool = False, want_rho: bool = True):
+        """Collect's re-scoring cell map on the device (kernel `rescore_fwd`): ρ of ψ_ab = ψ + Δ (host, element box)
+        and the nominal volume h_g³ Σ H(−ψ) + V_extra. phiE: per-cell φ_E (float32, device) or None (ψ from the
+        vertex fields d, a, cl). Vertex arrays d, a, cl (closed 0/1), sv (= b_v S) are float64."""
+        cp, D = self.cxp, self.disc
+        rho = cp.zeros(D.n_elem if want_rho else 1, cp.float64)
+        vol = cp.zeros(1, cp.float64)
+        nv = D.n_v
+
+        def dv(x):
+            return cp.zeros(1, cp.float64) if x is None else cp.asarray(np.broadcast_to(x, (nv,)), dtype=np.float64)
+        pe = cp.zeros(1, cp.float32) if phiE is None else cp.asarray(phiE, dtype=cp.float32)
+        if phiE is not None and pe.size != D.n:
+            raise ValueError(f"phiE has {pe.size} cells, the band {D.n}")
+        self._k.get_function("rescore_fwd")(*self._grid(), (
+            np.int64(D.n), D.phi, D.face, D.bary, D.Th, D.elem, pe, np.int32(phiE is not None), dv(d), dv(a), dv(cl),
+            dv(sv), np.float64(b_o), np.float64(D.eps), np.float64(a_closed), np.int32(solid), np.int32(want_rho),
+            rho, vol))
+        V = float(vol.get()[0]) * D.h_g ** 3 + D.V_extra
+        return ((rho / D.k ** 3).get() if want_rho else None), V
 
     def pull_chi(self, st: State, g_chi):
         raise NotImplementedError("DeviceDesignMap stores no per-cell state; use pull_rho_hat or volume_grad")
