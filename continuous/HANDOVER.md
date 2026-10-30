@@ -30,6 +30,17 @@ For the next Claude Code session. Read this first, then `continuous/STATUS.md` (
 5. **K_σ excluded within `exclude_bc_mm` (2 mm) of clamped nodes** in voxel and body-fitted buckling (spec §4.4(c)).
 6. FE memory option 1 adopted (done). V2-b tube E: investigated, no FE change (see VALIDATION.md).
 
+## Decisions 2026-10-30 (Owen; overnight standing orders)
+- Slot cap 24 for this session. Critical-path work only; ask before anything else.
+- max_iter phase B 120 for the L-bracket (done: converged at 0.1662); fe.engine = twogrid default everywhere;
+  eig_tol stays 1e-3; fe.twogrid.deterministic default "off" (opt-in "kernels"/"full"); V7 relaxed to final J ≤ 1e-3.
+- Collect plan `plans/PLAN_collect_fixes.md` approved (mounts solid in the uniform-shell baseline; reject early when the
+  export fails; one-sided 5 % ratio tolerance in §8.6). V5-B1b documented as is.
+- Overnight: a part genuinely failing a criterion → accept and document (no criterion changes, no extra optimisation);
+  a toolchain bug fix that changes optimiser results → re-run the 9 starts (runs_cshell/FULL configs) and collect;
+  collect jobs may request up to ~460G (1 GPU) if measured need exceeds 230G; fast-forward `cshell` to
+  `cshell-stage2` and push only if every Stage 2 gate item passes or is documented per these decisions.
+
 ## Done and committed (this session)
 - Stage 2 code: `collect.py` (decision, re-scoring at opt/shifted/0.5 mm grids, export, body-fitted step, summary,
   sensitivity, fields.vtp, modes, bc faces), `report.py` (15 pages), CLI (`run/collect/report/setup/bench/faces/init`),
