@@ -8,5 +8,6 @@
 set -euo pipefail
 source continuous/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
-python -m cshell collect "$@"
+/usr/bin/time -v python -m cshell collect "$@" 2> >(tee "$TMPDIR/time.txt" >&2)
+grep -E "Maximum resident|Elapsed" "$TMPDIR/time.txt" || true
 python -m cshell report "$1" || echo "[collect.sh] report failed (see plots/report_log.txt)"

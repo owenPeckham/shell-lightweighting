@@ -4,7 +4,7 @@ Numbers and job ids: `continuous/BENCHMARKS.md` "Two-grid engine". Development l
 
 ## Acceptance
 1. **Tests.** CPU (7859087: test_objective, test_buckling, test_fe_twogrid, test_fe_sparse) 22 passed, 17 GPU-only
-   skipped; GPU and remaining CPU suites: see the commit message. Gradient tests (compliance FD, stress adjoint notched
+   skipped; GPU (7859529: same files + test_end_to_end) 45 passed. Gradient tests (compliance FD, stress adjoint notched
    bar, buckling directional, J directional, end-to-end) are parametrised over both engines.
 2. **Voided phase-B designs vs hybrid fp64 direct.** J ≤ 8e-9 on 5 of 6 designs; MBB ckpt 3: 3.0e-7 (plan 1e-7).
    dJ (2-norm rel): 6e-5 – 1.6e-3 with buckling (plan 1e-5); **≤ 5e-10 with buckling off** (7857876, both phase-0
