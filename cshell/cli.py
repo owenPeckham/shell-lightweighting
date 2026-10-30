@@ -21,7 +21,7 @@ import sys
 
 from . import config
 
-BENCH = {"B1": "B1_stub.json", "B2": "B2_slender.json", "B3": "B3_column.json"}
+BENCH = {"B1": "B1_stub.json", "B1b": "B1b_stub_slender.json","B2": "B2_slender.json", "B3": "B3_column.json"}
 EXIT_PAUSED = 3
 
 
