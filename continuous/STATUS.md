@@ -6,6 +6,7 @@ Stage log for `cshell` (THEORY_continuous.md §12). Newest entries at the top of
 
 | Date | Stage | Entry |
 | --- | --- | --- |
+| 2026-10-31 | 2 | **Overnight:** collect fixed (PLAN_collect_fixes P1–P5, P7, D1–D3; host 41–80 GiB), deterministic two-grid modes opt-in (default fast), watertight export (ambiguous MC faces), body-fitted mesher by isosurface stuffing (gate passes on all 12 production meshes; B2 unchanged, accepted). Full test suite green (GPU 162, CPU 124 on 36f2b5a; later file-level suites green). Voxel re-scoring of the 3 parts consistent across grids (§5). **Blocker (Owen's decision):** body-fitted solves at production scale (19–42 M DOF C3D10) need a 0.15–1.5 TB direct factor; collect therefore keeps the original solid ("body-fitted check could not be run"). `cshell` not fast-forwarded (gate not passed). |
 | 2026-10-30 | 2 | **Full runs done** (`runs_cshell/FULL`, 9 starts, 34–44 min each on one GPU, 64G host, two-grid phase B): final phase-B J (opt grid) MBB 0.5031/0.5032/0.5032 (uniform/vshell/neutral), cantilever 0.5189/0.5193/0.5193, L-bracket 0.1664/0.1663/0.1664 (80-iteration cap, still creeping). Starts agree ≤ 0.1 %. **Collect blocked:** on MBB it needs 153 GiB host (CPU geometry chain at h_g 0.1) and its re-scoring disagrees with the run (best V/V0−1 +14.5 %, uniform shell K/K0 0.054, PCG non-convergence; smoke job 7860423) — under diagnosis (`research/collect_mem/`). |
 | 2026-10-30 | 2 | **Two-grid engine accepted** (`research/twogrid/notes.md`, BENCHMARKS.md): engine dJ ≤ 5e-10 vs direct with buckling off; full-objective dJ gap 6e-5–1.6e-3 is eigenvector truncation at eig_tol 1e-3; 3-iteration histories J ≤ 5.7e-8; MBB phase B 25–50 s / 26 GiB GPU / 34 GB host vs hybrid 51–137 s / 50 GiB / 161 GB. Tests: GPU 45 passed, CPU 22 passed (FE files). |
 | 2026-10-29 | 2 | Hand-over summarised in `HANDOVER.md` (two-grid engine, validation fixes, K_σ clamp mask, cuDSS leak fix, FE memory option 1). |
@@ -141,4 +142,17 @@ Each will be resolved by updating THEORY_continuous.md in the same change as the
 
 ## 5. Per-part results
 
-Not started. Filled in at the Stage 2 gate: decision, J, K/K₀, P/P₀, governing mode, wall range, mass error, run time / GPU-hours, comparison of solid / uniform shell / vshell best / cshell, sign agreement with the manuscript.
+**Provisional (2026-10-31, voxel only; body-fitted check pending the solver decision).** Runs `runs_cshell/FULL`
+(3 starts each, agree ≤ 0.1 %), collect 7877896–98 (watertight export, mass error ≤ 2.1e-4), best design re-scored
+at the optimisation grid / ½h_e-shifted grid / h_e 0.5 (J = w_K ln K/K0 + w_P ln P/P0, constant mass):
+
+| Part | J opt / shift / coarse | K/K0 | P/P0 | Phase-B J (run) | Current decision |
+| --- | --- | --- | --- | --- | --- |
+| MBB | +0.482 / +0.481 / +0.487 | 1.10 | 2.39 | 0.503 | solid kept: body-fitted check could not be run |
+| Cantilever | +0.490 / +0.490 / +0.495 | 0.98 | 2.71 | 0.519 | same |
+| L-bracket | +0.129 / +0.131 / +0.138 | 1.16 | 1.12 | 0.166 (120 it) | same |
+
+Gains are dominated by capacity (P/P0, buckling/strength soft-min); stiffness is about unchanged (K/K0 0.98–1.16).
+Uniform-shell baseline (mounts solid, D1) and vshell rows: `runs_cshell/FULL/<part>/summary.json`.
+
+Template for the gate: decision, J, K/K₀, P/P₀, governing mode, wall range, mass error, run time / GPU-hours, comparison of solid / uniform shell / vshell best / cshell, sign agreement with the manuscript.
