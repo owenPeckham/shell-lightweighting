@@ -91,7 +91,7 @@ class ExportConfig:
     write_stl: bool = True
     trimesh_check_max_faces: int = 2_000_000
     # GPU export (GpuExporter, PLAN_single_run §2-§3)
-    mc_halo: int = 8                  # lattice layers around a tile for the ambiguous-face rule
+    mc_halo: int = 16                 # lattice layers around a tile for the ambiguous-face rule (MBB: ≤ 9 iterations)
     mass_correct: bool = True
     mesh_vol_tol: float = 2.0e-4      # secant steps on δ until |V_mesh/V_target − 1| ≤ this (≤ 2 steps)
     target_volume: float | None = None   # V_target (mm³); None: exact volume of the Γ₀ tessellation
