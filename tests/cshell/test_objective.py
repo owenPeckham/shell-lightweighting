@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 
 from cshell.fe_sparse import ActiveGrid, SparseFE
-from cshell.objective import Settings, capacity, evaluate, stress_pnorm
+from cshell.objective import Settings, capacity, evaluate, evaluate_compliance, stress_pnorm
 
 E, NU = 1760.0, 0.42
 BACKENDS = [pytest.param("cpu", id="cpu"), pytest.param("gpu", id="gpu", marks=pytest.mark.gpu)]
@@ -82,3 +82,42 @@ def test_J_gradient_directional(engine, backend):
     fd = (Jp - Jm) / (2 * h)
     print("J", e0.J, "shares", e0.parts["shares"], "fd", fd, "pred", pred)
     assert abs(fd / pred - 1) < 1e-3, (fd, pred)
+
+
+@pytest.mark.parametrize("engine,backend", ENGINES)
+def test_compliance_constraints_gradients(engine, backend):
+    """PLAN_single_run §4: J = ln(C0/C), g_buckling = ln(μ̃/μ̃0), g_strength = ln(σ_PN/σ_PN0); all three are 0 at the
+    base design, and their ∂/∂ρ̂ match central differences along a smooth direction (< 1e-3)."""
+    g, fe, m = notched_bar(backend, engine)
+    nn = g.node_shape
+    rng = np.random.default_rng(6)
+    rho = rng.uniform(0.6, 1.0, g.Ne)
+    st = Settings(eig_tol=1e-7, num_modes=4, objective="compliance", constraints=("buckling", "strength"))
+    load = np.zeros(nn + (3,)); load[-1] = np.array([-400.0, 0.0, -20.0]) / (nn[1] * nn[2])
+    fe.f = fe.xp.asarray(g.gather_nodes(load).reshape(-1))
+    b = evaluate_compliance(fe, rho, rho, m, st)
+    base = dict(C0=b.C, sigma_pn0=b.sigma_pn, mu0=b.mu_tilde)
+    e0 = evaluate_compliance(fe, rho, rho, m, st, base)
+    assert abs(e0.J) < 1e-12 and all(abs(v) < 1e-9 for v in e0.g.values()) and set(e0.g) == {"buckling", "strength"}
+    x = g.gather_elems(np.indices(g.elem_shape)[0]) / 40
+    d = 0.05 * np.sin(np.pi * x) * (1 + 0.3 * rng.standard_normal(g.Ne))
+    h = 1e-2
+    ep = evaluate_compliance(fe, rho + h * d, rho + h * d, m, st, base)
+    em = evaluate_compliance(fe, rho - h * d, rho - h * d, m, st, base)
+    for name, val, grad in [("J", (ep.J, em.J), e0.dJ)] + [(k, (ep.g[k], em.g[k]), e0.dg[k]) for k in e0.g]:
+        fd = (val[0] - val[1]) / (2 * h)
+        pred = float(grad @ d)
+        print(name, "fd", fd, "pred", pred)
+        assert abs(fd / pred - 1) < 1e-3, (name, fd, pred)
+    # removing material (lower ρ̂) softens: J < 0, and a uniformly weaker bar buckles earlier: g_buckling > 0
+    ew = evaluate_compliance(fe, 0.9 * rho, 0.9 * rho, m, st, base)
+    assert ew.J < 0 and ew.g["buckling"] > 0
+
+
+def test_compliance_without_buckling_mode_is_inactive():
+    """A constraint with no solid reference (μ̃0 = 0: no compressive mode) is reported as g = −∞ (inactive)."""
+    g, fe, m = notched_bar("cpu")
+    rho = np.ones(g.Ne)
+    st = Settings(eig_tol=1e-6, num_modes=2, objective="compliance", constraints=("buckling",))
+    e = evaluate_compliance(fe, rho, rho, m, st, dict(C0=1.0, sigma_pn0=1.0, mu0=0.0))
+    assert e.g["buckling"] == -np.inf and not np.any(e.dg["buckling"]) and e.governing == "stiffness"
