@@ -169,7 +169,8 @@ def test_directional_with_taper_and_projection(as_built):
     dm = DesignMap(ds, disc)
     rng = np.random.default_rng(3)
     nv = len(V)
-    xd, xa = rng.uniform(0.2, 0.6, nv), rng.uniform(0.2, 0.9, nv)
+    xd = rng.uniform(0.2, 0.6, nv)
+    xa = 0.5 + 0.48 * np.sin(0.6 * V[:, 1])                       # smooth: spans open, band and closed after F²
     dd, da = ds.filt.apply(rng.standard_normal(nv)), ds.filt.apply(rng.standard_normal(nv))
     gE = rng.standard_normal(disc.n_elem)
 
