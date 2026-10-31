@@ -450,6 +450,10 @@ def design_space(ctx: Context, phase: int, D_comp: float, hollow=None, h_g: floa
                      filt=ctx.surf.filter(r_f, int(cfg["filter"].get("passes", 1))), t_min=m["t_min_mm"],
                      v_min=m["void_min_mm"], b_v=m["wall_bias_mm"], b_o=m["outer_bias_mm"],
                      soft_w=d["inset_soft_mm"], closure_xi=d.get("closure_xi"))
+    if d.get("closed_raw_depth", True) and getattr(ctx, "r_ma_raw", None) is not None:
+        # smoothed r_MA under-reaches the local depth (MBB: closed design 1.4 % short of V0, job 7903139): closed
+        # vertices blend to the raw depth; open void surfaces keep the smooth a^hi
+        ds.a_cl = np.maximum(a_hi, ctx.r_ma_raw + d["closure_gamma"] * h_g)
     ds.taper_d = taper_weight(dist_p, r_f) if taper else None
     ds.taper_a = taper_a(ctx, passive, H, r_f, dist_p)
     return ds, dict(d_hi_by_comp=d_hi >= D_comp - 1e-9, passive_parts=dict(mount=int(ctx.mount.sum()),

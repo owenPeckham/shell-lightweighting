@@ -28,6 +28,7 @@ DEFAULTS = {
                "inset_soft_mm": 0.1,                             # D1: width of the smoothed (t_min − d)⁺ bound
                "closure_xi": 0.9,           # ξ̃ᵃ ≥ closure_xi is closed (C¹ projection; PLAN_single_run §4); null = linear
                "r_ma_smooth_mm": 1.0,       # Helmholtz radius smoothing r_MA before a^hi and closure (§2); 0 = off
+               "closed_raw_depth": True,    # closed vertices (ξ̂ᵃ → 1) blend to a = max(a^hi, raw r_MA + γh_g)
                "taper": True},              # d → 0 (and a → closed) towards passive regions over r_f (§2); False = hard
     "grid": {"phases": [{"h_e": 0.8, "h_g": 0.2}, {"h_e": 0.4, "h_g": 0.1}], "export_h_mm": 0.05,
              "rho_min": 1e-6, "tessellation_mm": 0.02, "active_margin_mm": 0.5,    # FE active-set dilation

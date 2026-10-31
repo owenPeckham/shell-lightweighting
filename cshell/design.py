@@ -78,6 +78,9 @@ class DesignSpace:
     taper_d: Any = None          # τ_d per vertex (None: ξ̃ᵈ = 0 on passive, hard)
     taper_a: Any = None          # τ_a per vertex (None: ξ̃ᵃ = 1 on passive, hard)
     closure_xi: float | None = None   # ξ_c of the closure projection (None: linear, ξ̂ = ξ̃)
+    a_cl: Any = None             # closed inset ≥ a_hi (None: a_hi): a += (a_cl − a_hi) B(ξ̂), B = S((ξ̂ − ξ_b)/(1 − ξ_b))
+    a_cl_from: float = 0.97      # ξ_b: the blend acts only on nearly closed vertices (above the solid start's ξ̂ᵃ ≈ 0.9-0.95
+                                 # for r_MA ≲ 6 mm), so open void surfaces and the a = r_MA start stay smooth
 
     def tau_d(self, xp=np):
         return xp.asarray(self.taper_d) if self.taper_d is not None else (~xp.asarray(self.passive)).astype(float)
@@ -123,6 +126,7 @@ class State:
     dev: Any = None              # DeviceDesignMap: (d, a_used) on the device; cell fields are recomputed, not stored
     xh_a: Any = None             # ξ̂ᵃ (projected); None: = xit_a
     dxh_a: Any = None            # dξ̂ᵃ/dξ̃ᵃ; None: 1
+    dadxh: Any = None            # ∂a/∂ξ̂ᵃ at fixed d; None: a_hi − a_lo
 
 
 def closure_projection(xp, xt, xi_c):
@@ -158,7 +162,12 @@ def design_vertex_fields(xp, ds: "DesignSpace", xi_d, xi_a) -> dict:
     d = ds.d_hi * xt_d
     a_lo, da_lo = softplus(xp, ds.t_min - d, ds.soft_w)          # D1; da_lo/dd = −σ
     a = a_lo + (ds.a_hi - a_lo) * xh_a
-    return dict(xt_d=xt_d, xt_a=xt_a, xh_a=xh_a, dxh_a=dxh, d=d, a=a, a_lo=a_lo, da_lo=-da_lo)
+    dadxh = ds.a_hi - a_lo
+    if ds.a_cl is not None:                                       # closed vertices reach the raw local depth
+        B, dB = smoothstep(xp, (xh_a - ds.a_cl_from) / (1.0 - ds.a_cl_from))
+        a = a + (ds.a_cl - ds.a_hi) * B
+        dadxh = dadxh + (ds.a_cl - ds.a_hi) * dB / (1.0 - ds.a_cl_from)
+    return dict(xt_d=xt_d, xt_a=xt_a, xh_a=xh_a, dxh_a=dxh, d=d, a=a, a_lo=a_lo, da_lo=-da_lo, dadxh=dadxh)
 
 
 def solid_start_xi_a(ds: "DesignSpace", passes: int = 30) -> np.ndarray:
@@ -208,7 +217,7 @@ class DesignMap:
         else:
             a_used, dab, b_o = a, xp.ones_like(a), 0.0
         st = State(xt_d, xt_a, d, a, a_used, a_lo, da_lo, dab, None, None, None, None, as_built, b_o,
-                   xh_a=f["xh_a"], dxh_a=f["dxh_a"])
+                   xh_a=f["xh_a"], dxh_a=f["dxh_a"], dadxh=f["dadxh"])
         return self._cells(st)
 
     def _cells(self, st: State) -> State:
@@ -278,7 +287,7 @@ class DesignMap:
         g_a = g_aused * st.dab_da
         g_d = g_d + g_a * st.da_lo * (1.0 - xh)                       # a = a_lo(d)(1 − ξ̂ᵃ) + a_hi ξ̂ᵃ
         g_xt_d = g_d * ds.d_hi * ds.tau_d(xp)                         # ξ̃ᵈ = τ_d clip(Fξᵈ)
-        g_xt_a = g_a * (ds.a_hi - st.a_lo)
+        g_xt_a = g_a * (ds.a_hi - st.a_lo if st.dadxh is None else st.dadxh)
         if st.dxh_a is not None:
             g_xt_a = g_xt_a * st.dxh_a
         g_xt_a = g_xt_a * ds.tau_a(xp)                                # ξ̃ᵃ = 1 − τ_a(1 − clip(Fξᵃ))

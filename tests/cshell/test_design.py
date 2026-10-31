@@ -157,6 +157,7 @@ def _tapered_space(closure=0.9):
     ds.taper_d = taper_weight(surface_distance(V, T, ds.passive), 1.5)
     ds.taper_a = taper_weight(surface_distance(V, T, ds.passive | ~H), 1.5)
     ds.closure_xi = closure
+    ds.a_cl = ds.a_hi + 0.3 * (1 + np.sin(V[:, 0]))               # closed inset above a^hi (raw-depth blend)
     return ds, disc, V, T, H
 
 
@@ -167,7 +168,7 @@ def test_directional_with_taper_and_projection(as_built):
     dm = DesignMap(ds, disc)
     rng = np.random.default_rng(3)
     nv = len(V)
-    xd, xa = rng.uniform(0.2, 0.6, nv), rng.uniform(0.2, 0.7, nv)
+    xd, xa = rng.uniform(0.2, 0.6, nv), rng.uniform(0.2, 0.9, nv)
     dd, da = ds.filt.apply(rng.standard_normal(nv)), ds.filt.apply(rng.standard_normal(nv))
     gE = rng.standard_normal(disc.n_elem)
 
@@ -176,6 +177,7 @@ def test_directional_with_taper_and_projection(as_built):
         return np.array([dm.volume(st), float(gE @ dm.rho_hat(st))]), st
 
     f0, st = fun(xd, xa)
+    assert np.any((st.xh_a > ds.a_cl_from) & (st.xh_a < 1))       # the raw-depth blend is exercised
     gv, gr = dm.volume_grad(st), dm.pull_rho_hat(st, gE)
     pred = np.array([gv[0] @ dd + gv[1] @ da, gr[0] @ dd + gr[1] @ da])
     h = 1e-6
@@ -191,7 +193,7 @@ def test_taper_and_hollow_closure():
     dm = DesignMap(ds, disc)
     nv = len(V)
     _, xt_a, d, a, _, _ = dm.vertex_fields(np.full(nv, 0.8), np.full(nv, 0.2))
-    assert np.all(d[ds.passive] == 0) and np.allclose(a[ds.passive | ~H], ds.a_hi[ds.passive | ~H])
+    assert np.all(d[ds.passive] == 0) and np.allclose(a[ds.passive | ~H], ds.a_cl[ds.passive | ~H])
     E = np.unique(np.sort(np.concatenate([T[:, [0, 1]], T[:, [1, 2]], T[:, [2, 0]]]), 1), axis=0)
     jump_taper = np.abs(d[E[:, 0]] - d[E[:, 1]]).max()
     ds_hard = DesignSpace(**{**ds.__dict__, "taper_d": None, "taper_a": None})
