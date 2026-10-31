@@ -1,4 +1,4 @@
-# continuous/cluster: Slurm scripts for cshell (Isambard-AI, GH200)
+# cshell/cluster: Slurm scripts for cshell (Isambard-AI, GH200)
 
 Submit from the repository or worktree root; `env.sh` activates the conda env, puts `TMPDIR` on scratch and `cd`s to
 `$SLURM_SUBMIT_DIR`, so a job runs the checkout it was submitted from. Logs go to `logs/`.
@@ -13,7 +13,7 @@ Submit from the repository or worktree root; `env.sh` activates the conda env, p
 
 Full part, e.g. the cantilever with three starts (3 slots, then 1 for collect):
 
-    continuous/cluster/launch_part.sh examples/cshell/cantilever.json
+    cshell/cluster/launch_part.sh examples/cshell/cantilever.json
 
 Measured resources (2026-10-31, h_e 0.4 / h_g 0.1): a start runs 25–50 s per phase-B iteration, 34–44 min in all,
 ≤ 26 GiB GPU and ≤ 35 GB host — submit with `SBATCH_MEM_PER_NODE=64G CSHELL_TIME=04:00:00`; collect needs 64–80 GiB

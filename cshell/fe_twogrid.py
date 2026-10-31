@@ -1,7 +1,7 @@
 """Two-grid PCG engine for the optimiser: matrix-free fine level, Galerkin coarse level, no fine factor.
 
-Plan `continuous/plans/PLAN_twogrid.md` (THEORY §4.1-4.2); prototype and measurements in
-`continuous/research/gpu_memory/` (twogrid.py, REPORT.md option 4). Same discrete model as `SparseFE`: q1_im element,
+Plan `docs/cshell/plans/PLAN_twogrid.md` (THEORY §4.1-4.2); prototype and measurements in
+`docs/cshell/research/gpu_memory/` (twogrid.py, REPORT.md option 4). Same discrete model as `SparseFE`: q1_im element,
 K = Σ_e E ρ̂_e K̂ on an active element set, clamped DOF as identity rows/columns. Same public interface, so
 `objective.evaluate`, `buckling()` and `optimise.PhaseModel` use it unchanged.
 
@@ -46,7 +46,7 @@ import numpy as np
 
 from .fe_sparse import (CORNERS, Primal, SparseFE, _cuda_ok, _cudss_mtlayer, _host, _release_device_memory,
                         _scatter_add, _stencil_slot)
-from . import fea  # noqa: F401  (puts continuous/reference on sys.path)
+from . import fea  # noqa: F401  (puts docs/cshell/reference on sys.path)
 import gpu_analysis
 
 _CHUNK = 1 << 16                      # elements per batched host-side (NumPy) or set-up chunk

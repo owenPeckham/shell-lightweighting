@@ -1,6 +1,6 @@
 """cshell run configuration: defaults, JSON loading and validation (THEORY §10.2).
 
-Same `supports`, `loads`, `material`, `mounts` keys and face selectors as vshell (see vshell/config.py). Every key has a
+Same `supports`, `loads`, `material`, `mounts` keys and face selectors as dshell (see dshell/config.py). Every key has a
 default except `step_file`, `supports` and `loads`. Phase-indexed lists (`stress_p`, `softmin_beta`, `radius_mm`,
 `max_iter`, `sliver_weight`, `grid.phases`) give one value per continuation phase; a two-element entry is a linear
 ramp over that phase. Units: mm, N, MPa, g/cm³.
@@ -11,7 +11,7 @@ import copy
 import json
 import os
 
-from vshell.config import _merge
+from dshell.config import _merge
 
 DEFAULTS = {
     "name": None,
@@ -47,7 +47,7 @@ DEFAULTS = {
     "objective": {"w_stiffness": 0.5, "w_capacity": 0.5, "min_gain": 0.02, "floor_stiffness": 0.85,
                   "floor_capacity": 0.85, "floors_as_constraints": False},
     "filter": {"radius_mm": [4.0, 3.0, 2.5]},
-    "optimiser": {"method": "mma", "starts": ["uniform", "vshell", "neutral"], "max_iter": [60, 80, 40],
+    "optimiser": {"method": "mma", "starts": ["uniform", "dshell", "neutral"], "max_iter": [60, 80, 40],
                   "move": 0.1, "tol_x": 0.005, "tol_f": 1e-4, "mass_tol": 1e-4,
                   "sliver_weight": [0.0, [0.0, 0.05], 0.1], "seed": 0},
     "validation": {"body_fitted": True, "second_resolution": True},
@@ -73,7 +73,44 @@ def load(path_or_dict, overrides: dict | None = None) -> dict:
             cfg[key] = os.path.normpath(os.path.join(base_dir, cfg[key]))
     if not cfg["name"]:
         cfg["name"] = os.path.splitext(os.path.basename(cfg["step_file"]))[0].replace(" ", "_")
+    normalise_starts(cfg)
     validate(cfg)
+    return cfg
+
+
+# ---- start-name aliases (rename 2026-10-31: the discrete optimiser vshell -> dshell) --------------------------------
+# The S2 start that maps the discrete optimiser's best design is now "dshell". "vshell" stays accepted on input
+# (configs, --start), and run directories written before the rename (history_vshell.csv, xi_vshell_phase*.npy,
+# checkpoints/vshell_*.npz, done_vshell.json, start column "vshell") are still read.
+START_ALIASES = {"vshell": "dshell"}
+LEGACY_START_NAMES = {"dshell": ("vshell",)}
+
+
+def canonical_start(s: str) -> str:
+    """Current name of a start ("vshell" -> "dshell"; others unchanged)."""
+    return START_ALIASES.get(s, s)
+
+
+def start_names(s: str) -> tuple:
+    """Canonical name first, then legacy names whose files may exist in older run directories."""
+    s = canonical_start(s)
+    return (s,) + LEGACY_START_NAMES.get(s, ())
+
+
+def start_file(run_dir, template: str, start: str) -> str:
+    """Path of `template.format(name)` in run_dir for the first name in `start_names(start)` that exists; the
+    canonical name's path when none exists (where new files are written)."""
+    paths = [os.path.join(run_dir, template.format(n)) for n in start_names(start)]
+    return next((q for q in paths if os.path.exists(q)), paths[0])
+
+
+def normalise_starts(cfg: dict) -> dict:
+    """Map aliased start names and the legacy `optimiser.vshell_run` key, in place (also used on config_used.json)."""
+    opt = cfg.get("optimiser") or {}
+    if "starts" in opt:
+        opt["starts"] = list(dict.fromkeys(canonical_start(s) for s in opt["starts"]))
+    if opt.get("vshell_run") and not opt.get("dshell_run"):
+        opt["dshell_run"] = opt["vshell_run"]
     return cfg
 
 

@@ -51,7 +51,7 @@ class Run:
     def setup(self):
         cfg = self.cfg
         t0 = time.time()
-        self.log(f"[vshell] {cfg['name']}: reading {cfg['step_file']}")
+        self.log(f"[dshell] {cfg['name']}: reading {cfg['step_file']}")
         self.shape = geometry.load_step(cfg["step_file"])
         self.faces = geometry.face_table(self.shape)
         self.V0_brep = geometry.volume(self.shape)
@@ -376,7 +376,7 @@ class Run:
                 self.write_info(best, accepted)
             except Exception:
                 self.log("  report failed:\n" + traceback.format_exc())
-        self.log(f"[vshell] done in {time.time() - t_all:.0f} s -> {self.out}")
+        self.log(f"[dshell] done in {time.time() - t_all:.0f} s -> {self.out}")
         return self.decision
 
     def _reason(self, best, accepted):

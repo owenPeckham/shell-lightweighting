@@ -194,7 +194,7 @@ def test_cache_roundtrip(tmp_path, sphere):
 
 def test_build_from_step_cache(tmp_path, monkeypatch):
     from pathlib import Path
-    step = Path(__file__).resolve().parents[2] / "examples" / "step" / "Solid Cantilever.step"
+    step = Path(__file__).resolve().parents[2] / "examples" / "parts" / "Solid Cantilever.step"
     monkeypatch.setenv("CSHELL_CACHE", str(tmp_path))
     b1 = B.build_from_step(step, h_g=1.0, D_comp=2.0, backend="igl")
     assert not b1.info.get("cached") and any(tmp_path.glob("band_*.npz"))

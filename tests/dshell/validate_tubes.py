@@ -8,8 +8,8 @@ little from the paper's roller-contact Abaqus model; the stiffness RATIOS to the
 """
 import sys, os, time, json
 import numpy as np
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from vshell import fe
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+from dshell import fe
 
 E, NU = 1760.0, 0.42
 SIZES = {"A": (15.0, 0.0), "B": (15.8, 5.0), "C": (18.0, 10.0), "D": (21.2, 15.0), "E": (25.0, 20.0)}
@@ -53,7 +53,7 @@ def run(size, h):
     A = np.pi * ((od / 2) ** 2 - (idd / 2) ** 2)
     I = np.pi / 64 * (od ** 4 - idd ** 4)
     k_eb = 48 * E * I / SPAN ** 3 / 1000.0
-    return dict(size=size, h=h, wall=(od - idd) / 2, cells=mesh.n_cells, dof=sol["ndof"], k_vshell=k, k_EB=k_eb,
+    return dict(size=size, h=h, wall=(od - idd) / 2, cells=mesh.n_cells, dof=sol["ndof"], k_dshell=k, k_EB=k_eb,
                 k_abaqus=ABAQUS[size], time=time.time() - t0, area=A, area_vox=float(vf.sum() * h * h / vf.shape[0]))
 
 
@@ -64,15 +64,15 @@ if __name__ == "__main__":
         for s in SIZES:
             r = run(s, h)
             rows.append(r)
-            print(f"h={h} size {s}: wall {r['wall']:.1f} mm, cells {r['cells']}, k = {r['k_vshell']:.5f} kN/mm "
+            print(f"h={h} size {s}: wall {r['wall']:.1f} mm, cells {r['cells']}, k = {r['k_dshell']:.5f} kN/mm "
                   f"(Euler-Bernoulli {r['k_EB']:.5f}, Abaqus {r['k_abaqus']:.4f}), {r['time']:.0f} s", flush=True)
         base = [r for r in rows if r["h"] == h and r["size"] == "A"][0]
         for r in rows:
             if r["h"] == h:
-                r["ratio_vshell"] = r["k_vshell"] / base["k_vshell"]
+                r["ratio_dshell"] = r["k_dshell"] / base["k_dshell"]
                 r["ratio_abaqus"] = r["k_abaqus"] / ABAQUS["A"]
                 r["ratio_EB"] = r["k_EB"] / base["k_EB"]
     for r in rows:
-        print(f"h={r['h']} {r['size']}: ratio to rod A  vshell {r['ratio_vshell']:.3f} | Abaqus {r['ratio_abaqus']:.3f} | E-B {r['ratio_EB']:.3f}")
+        print(f"h={r['h']} {r['size']}: ratio to rod A  dshell {r['ratio_dshell']:.3f} | Abaqus {r['ratio_abaqus']:.3f} | E-B {r['ratio_EB']:.3f}")
     with open(os.path.join(os.path.dirname(__file__), "validate_tubes_results.json"), "w") as f:
         json.dump(rows, f, indent=1)

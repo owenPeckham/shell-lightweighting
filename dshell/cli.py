@@ -1,4 +1,4 @@
-"""Command line: python -m vshell {run, faces, report, init} ..."""
+"""Command line: python -m dshell {run, faces, report, init} ..."""
 from __future__ import annotations
 
 import argparse
@@ -74,12 +74,12 @@ def cmd_init(a):
     out = a.out or (os.path.splitext(a.step)[0] + ".json")
     with open(out, "w") as f:
         json.dump(cfg, f, indent=2)
-    print(f"wrote {out}: check 'supports' and fill in the load face ids (python -m vshell faces {a.step})")
+    print(f"wrote {out}: check 'supports' and fill in the load face ids (python -m dshell faces {a.step})")
     return 0
 
 
 def main(argv=None):
-    p = argparse.ArgumentParser(prog="python -m vshell", description="Constant-mass variable-thickness shelling.")
+    p = argparse.ArgumentParser(prog="python -m dshell", description="Constant-mass variable-thickness shelling.")
     sub = p.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run", help="optimise a part described by a JSON config")
     r.add_argument("config")

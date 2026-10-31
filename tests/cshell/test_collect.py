@@ -1,5 +1,5 @@
 """cshell.collect (THEORY §5.4, §7.4 S2, §8): decision rule, uniform-shell thickness, re-scoring identities, the
-vshell start mapping and an end-to-end run + collect on the B2 rod (CPU, coarse grids)."""
+dshell start mapping and an end-to-end run + collect on the B2 rod (CPU, coarse grids)."""
 import json
 import math
 import os
@@ -242,7 +242,7 @@ def test_end_to_end_run_collect(b2, tmp_path):
     assert cli.main(["collect", str(rd)]) == 0
     S = json.load(open(rd / "summary.json"))
     for k in ("schema", "name", "accepted", "outcome", "reason", "criteria", "mass", "best", "starts", "comparison",
-              "resolutions", "checks", "load_cases", "Lambda", "export", "validation", "sensitivity", "vshell",
+              "resolutions", "checks", "load_cases", "Lambda", "export", "validation", "sensitivity", "dshell",
               "resources", "timings_s", "files"):
         assert k in S, k
     assert S["schema"] == "cshell.summary/1"
@@ -275,18 +275,18 @@ def test_end_to_end_run_collect(b2, tmp_path):
     assert fin == (rd / ("best_candidate.stl" if S["accepted"] else "original.stl")).read_bytes()
 
 
-# ---- S2 vshell start on the cantilever (§7.4) --------------------------------------------------------------------
-def test_vshell_start_cantilever():
+# ---- S2 dshell start on the cantilever (§7.4) --------------------------------------------------------------------
+def test_dshell_start_cantilever():
     from cshell import config
-    from cshell.collect import load_vshell, vshell_run_dir, vshell_start_xi
+    from cshell.collect import load_dshell, dshell_run_dir, dshell_start_xi
     from cshell.optimise import Context
     cfg = config.load(str(ROOT / "examples/cshell/cantilever.json"))
-    vs = load_vshell(vshell_run_dir(cfg))
+    vs = load_dshell(dshell_run_dir(cfg))
     assert vs["hollow"] == {7, 8} and abs(vs["s"] - 1.9127) < 1e-3
     ctx = Context(cfg)
     lo, hi = ctx.V.min(0), ctx.V.max(0)
     assert np.all(vs["xyz"].min(0) >= lo - 1) and np.all(vs["xyz"].max(0) <= hi + 1)   # same frame as the STEP
-    xi = vshell_start_xi(ctx, cfg)
+    xi = dshell_start_xi(ctx, cfg)
     nv = ctx.surf.n_vertices
     assert xi.shape == (2 * nv,) and np.all((xi >= 0) & (xi <= 1))
     from cshell import config as ccfg
@@ -294,5 +294,5 @@ def test_vshell_start_cantilever():
     xt_a = np.clip(filt.apply(xi[nv:]), 0, 1)
     A = ctx.surf.A
     open_share = float((A * (xt_a < 0.5)).sum() / A.sum())
-    print("vshell start: open area share", open_share)
+    print("dshell start: open area share", open_share)
     assert 0.02 < open_share < 0.8                       # two hollow struts of 14 regions

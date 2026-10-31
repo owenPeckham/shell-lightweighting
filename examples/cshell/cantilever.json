@@ -1,6 +1,6 @@
 {
  "name": "Cantilever",
- "step_file": "../step/Solid Cantilever.step",
+ "step_file": "../parts/Solid Cantilever.step",
  "output_dir": "../../runs_cshell",
  "supports": [
   {

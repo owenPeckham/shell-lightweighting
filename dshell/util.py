@@ -13,7 +13,7 @@ from datetime import datetime, timezone
 
 import numpy as np
 
-PACKAGES = ("vshell", "numpy", "scipy", "scikit-image", "skan", "libigl", "pyamg", "trimesh", "matplotlib",
+PACKAGES = ("dshell", "numpy", "scipy", "scikit-image", "skan", "libigl", "pyamg", "trimesh", "matplotlib",
             "build123d", "cadquery-ocp", "OCP")
 CODE_FILES = ("__init__.py", "config.py", "geometry.py", "field.py", "segment.py", "fe.py", "mechanics.py",
               "optimise.py", "report.py", "util.py", "cli.py")

@@ -1,7 +1,7 @@
 #!/bin/bash
 # cshell run, one start per job, auto-resumed across allocations (THEORY §7.6).
-#   sbatch [--time=24:00:00] continuous/cluster/run.sh <cfg.json> --start S [cshell run args]
-#   sbatch ... continuous/cluster/run.sh --resume <run_dir> --start S        (what the chain submits itself)
+#   sbatch [--time=24:00:00] cshell/cluster/run.sh <cfg.json> --start S [cshell run args]
+#   sbatch ... cshell/cluster/run.sh --resume <run_dir> --start S        (what the chain submits itself)
 # --max-hours defaults to the job's time limit minus CSHELL_MARGIN_H (0.4 h). When the run pauses (exit 3) or the job
 # is signalled (TIMEOUT/preemption: SIGTERM), the job submits its continuation with --dependency=afterany:<this job>
 # (one queued job per start at any time). When a start finishes and every configured start has done_<start>.json,
@@ -12,7 +12,7 @@
 #SBATCH --output=logs/%x_%j.out
 set -uo pipefail
 HERE=$(pwd)
-source continuous/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
+source cshell/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
 ARGS=("$@")
 START=""; for ((i=0; i<${#ARGS[@]}; i++)); do [ "${ARGS[$i]}" = "--start" ] && START=${ARGS[$((i+1))]}; done
@@ -39,7 +39,7 @@ resubmit() {
   local extra=(); [ -n "$START" ] && extra=(--start "$START")
   cd "$HERE"
   CSHELL_CHAIN=$((CHAIN + 1)) sbatch --export=ALL,CSHELL_CHAIN=$((CHAIN + 1)) --time="$(squeue -h -j "$SLURM_JOB_ID" -o %l)" \
-    --dependency=afterany:"$SLURM_JOB_ID" continuous/cluster/run.sh --resume "$rd" "${extra[@]}"
+    --dependency=afterany:"$SLURM_JOB_ID" cshell/cluster/run.sh --resume "$rd" "${extra[@]}"
 }
 on_term() { echo "[run.sh] signalled: submitting continuation"; resubmit; exit 143; }
 trap on_term TERM
@@ -49,12 +49,13 @@ if [ $RC -eq 3 ]; then echo "[run.sh] paused (max-hours): submitting continuatio
 if [ $RC -ne 0 ]; then echo "[run.sh] cshell run failed (rc=$RC): no continuation"; exit $RC; fi
 RD=$(cat "$CSHELL_RUNDIR_FILE" 2>/dev/null || true)
 if [ -n "$RD" ] && [ "${CSHELL_AUTO_COLLECT:-1}" = 1 ]; then
-  ALL=$(python -c "import json,os,sys; c=json.load(open(os.path.join(sys.argv[1],'config_used.json'))); \
-print(int(all(os.path.exists(os.path.join(sys.argv[1],f'done_{s}.json')) for s in c['optimiser']['starts'])))" "$RD")
+  ALL=$(python -c "import json,os,sys; from cshell.config import normalise_starts, start_file; \
+c=normalise_starts(json.load(open(os.path.join(sys.argv[1],'config_used.json')))); \
+print(int(all(os.path.exists(start_file(sys.argv[1],'done_{}.json',s)) for s in c['optimiser']['starts'])))" "$RD")
   if [ "$ALL" = 1 ] && mkdir "$RD/.collect_submitted" 2>/dev/null; then
     # collect's own memory (CPU geometry chain at h_g 0.1: more host memory than a run); not the run's SBATCH_MEM_*
     cd "$HERE"; echo "[run.sh] all starts done: submitting collect"
     env -u SBATCH_MEM_PER_NODE -u SLURM_MEM_PER_NODE sbatch ${CSHELL_COLLECT_MEM:+--mem=$CSHELL_COLLECT_MEM} \
-      continuous/cluster/collect.sh "$RD"
+      cshell/cluster/collect.sh "$RD"
   fi
 fi

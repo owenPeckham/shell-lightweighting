@@ -1,6 +1,6 @@
 """Active-set voxel FE with a sparse direct (Cholesky) solver: cshell's production FE engine.
 
-Decision of 28 October 2026 (continuous/STATUS.md §2.2, 0.3; research in continuous/research/fe_engine/REPORT.md):
+Decision of 28 October 2026 (docs/cshell/STATUS.md §2.2, 0.3; research in docs/cshell/research/fe_engine/REPORT.md):
 the reference stack solves the dense bounding box, of which the material fills 1.7-4 %. Here only the elements of an
 **active set** S (every element with ρ_e > 0, usually dilated by a margin so the sparsity pattern survives several
 iterations) are assembled. Elements outside S carry ρ̂ = ρ_min in the dense model, so dropping them changes K by
@@ -24,7 +24,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-from . import fea  # noqa: F401  (puts continuous/reference on sys.path)
+from . import fea  # noqa: F401  (puts docs/cshell/reference on sys.path)
 import gpu_analysis
 
 # local corner order of the reference kernels (gpu_analysis.xi_arr/eta_arr/zeta_arr, hex_dof_map n0..n7)
@@ -199,7 +199,7 @@ class SparseFE:
         # entries kept (free-free) and diagonal entries of fixed DOF (set to 1)
         col = grid.indices
         diag_fixed = np.flatnonzero((grid.row_of == col) & fx[grid.row_of])
-        # Memory (continuous/research/gpu_memory/REPORT.md, option 1): int32 index arrays where they fit, and the entries
+        # Memory (docs/cshell/research/gpu_memory/REPORT.md, option 1): int32 index arrays where they fit, and the entries
         # removed by the clamps kept as a short index list instead of an nnz-long float mask.
         ix = np.int32 if grid.nnz < 2 ** 31 else np.int64
         self._drop = xp.asarray(np.flatnonzero(fx[grid.row_of] | fx[col]).astype(ix))

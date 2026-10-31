@@ -5,7 +5,7 @@ A run is described by one JSON file. Every key has a default except `step_file`,
 `loads`. Units: mm, N, MPa, g/cm^3.
 
 Face selectors (used by `supports`, `loads[].faces` and `mounts.extra_faces`), any of:
-    {"type": "ids", "ids": [9, 16, 24]}                      face indices from `python -m vshell faces`
+    {"type": "ids", "ids": [9, 16, 24]}                      face indices from `python -m dshell faces`
     {"type": "cylinder", "radius": 4.26, "tol": 0.05}         every cylindrical face of that radius
     {"type": "plane", "normal": [0, 0, 1], "tol_deg": 2,      planar faces facing `normal`, optionally
      "box": {"x": [-15, 99]}, "extreme": true}                 inside a centroid box, and only those at the

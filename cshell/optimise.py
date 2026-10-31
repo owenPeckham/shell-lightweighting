@@ -39,7 +39,7 @@ class Context:
     """Phase-independent data: geometry, faces, BCs, design surface and its per-vertex geometry (THEORY §3.4-3.5)."""
 
     def __init__(self, cfg: dict, log=print):
-        from vshell import geometry
+        from dshell import geometry
         self.cfg, self.log = cfg, log
         t0 = time.time()
         shape = geometry.load_step(cfg["step_file"])
@@ -321,7 +321,7 @@ class Run:
     """One start of one part: all phases, checkpoints every iteration (THEORY §7.6)."""
 
     def __init__(self, cfg: dict, start: str, out_dir: str, max_hours: float | None = None, log=None):
-        self.cfg, self.start, self.out = cfg, start, out_dir
+        self.cfg, self.start, self.out = cfg, ccfg.canonical_start(start), out_dir
         os.makedirs(os.path.join(out_dir, "checkpoints"), exist_ok=True)
         self.max_hours = max_hours
         self.t_begin = time.time()
@@ -340,15 +340,15 @@ class Run:
             return np.concatenate([np.full(nv, 0.5), np.full(nv, 0.5)])
         if self.start == "solid":
             return np.concatenate([np.zeros(nv), np.ones(nv)])
-        if self.start == "vshell":                       # S2: map vshell's best design (cshell.collect, §7.4)
-            from .collect import vshell_start_xi
+        if self.start == "dshell":                       # S2: map dshell's best design (cshell.collect, §7.4)
+            from .collect import dshell_start_xi
             ctx = getattr(self, "ctx", None)             # set by the CLI; otherwise build the context once
             if ctx is None:
-                self.log("[cshell] vshell start: no context attached to Run, building one")
+                self.log("[cshell] dshell start: no context attached to Run, building one")
                 ctx = self.ctx = Context(self.cfg, log=self.log)
-            xi = vshell_start_xi(ctx, self.cfg, log=self.log)
+            xi = dshell_start_xi(ctx, self.cfg, log=self.log)
             if len(xi) != 2 * nv:
-                raise ValueError(f"vshell start has {len(xi)} entries, expected {2 * nv}")
+                raise ValueError(f"dshell start has {len(xi)} entries, expected {2 * nv}")
             return xi
         raise NotImplementedError(f"start {self.start!r}")
 
@@ -366,7 +366,9 @@ class Run:
             os.remove(f)
 
     def load_latest(self) -> RunState | None:
-        files = sorted(glob.glob(os.path.join(self.out, "checkpoints", f"{self.start}_*.npz")))
+        files = []
+        for name in ccfg.start_names(self.start):       # canonical first; legacy (vshell_*) only if no new ones
+            files = files or sorted(glob.glob(os.path.join(self.out, "checkpoints", f"{name}_*.npz")))
         if not files:
             return None
         z = np.load(files[-1])
@@ -378,7 +380,7 @@ class Run:
     def _history(self, row: dict):
         """Append to this start's own history_<start>.csv (starts run as concurrent jobs in one run dir), then rebuild
         the merged history.csv atomically."""
-        path = os.path.join(self.out, f"history_{self.start}.csv")
+        path = ccfg.start_file(self.out, "history_{}.csv", self.start)   # legacy history_vshell.csv on resume
         new = not os.path.exists(path)
         cols = HIST_COLS
         if not new:                                      # keep an existing file's columns (runs resumed across versions)
@@ -676,7 +678,10 @@ def merge_history(out_dir: str) -> None:
         with open(fn, newline="") as f:
             r = csv.DictReader(f)
             cols += [c for c in (r.fieldnames or []) if c not in cols]
-            rows += list(r)
+            for row in r:                                # start column "vshell" in runs from before the rename
+                if row.get("start"):
+                    row["start"] = ccfg.canonical_start(row["start"])
+                rows.append(row)
     tmp = os.path.join(out_dir, f".history.csv.{os.getpid()}")
     with open(tmp, "w", newline="") as f:
         w = csv.DictWriter(f, fieldnames=cols, extrasaction="ignore")

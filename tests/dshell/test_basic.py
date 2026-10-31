@@ -1,13 +1,13 @@
 """
-Fast unit tests (about 1 minute):   python -m pytest tests/test_basic.py -q    (or run this file directly)
+Fast unit tests (about 1 minute):   python -m pytest tests/dshell/test_basic.py -q    (or run this file directly)
 """
 import os
 import sys
 
 import numpy as np
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
-from vshell import fe  # noqa: E402
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
+from dshell import fe  # noqa: E402
 
 HERE = os.path.dirname(__file__)
 
@@ -49,10 +49,10 @@ def test_cantilever_beam_against_timoshenko():
 
 
 def test_face_selectors_on_example():
-    p = os.path.join(HERE, "..", "examples", "step", "Solid L-bracket.step")
+    p = os.path.join(HERE, "..", "..", "examples", "parts", "Solid L-bracket.step")
     if not os.path.isfile(p):
         return
-    from vshell import geometry
+    from dshell import geometry
     tab = geometry.face_table(geometry.load_step(p))
     assert geometry.select_faces(tab, {"type": "cylinder", "radius": 4.26, "tol": 0.05}) == [9, 16, 24]
     pad = geometry.select_faces(tab, {"type": "plane", "normal": [0, 0, 1], "box": {"x": [-15, 20]}, "extreme": True})
@@ -60,7 +60,7 @@ def test_face_selectors_on_example():
 
 
 def test_config_defaults():
-    from vshell import config
+    from dshell import config
     cfg = config.load({"step_file": "x.step", "supports": [{"type": "ids", "ids": [1]}],
                        "loads": [{"faces": {"type": "ids", "ids": [2]}, "force_N": [0, 0, -1]}]})
     assert cfg["material"]["E_MPa"] == 1760.0 and cfg["grid"]["fe_factor"] == 2 and cfg["name"] == "x"
@@ -69,8 +69,8 @@ def test_config_defaults():
 
 def test_euler_section_inertia():
     """Strut section inertia from the voxels: solid round bar r = 4 mm -> I = pi r^4 / 4 within 3%."""
-    from vshell import mechanics, config
-    from vshell.segment import Segmentation
+    from dshell import mechanics, config
+    from dshell.segment import Segmentation
     h, r, L = 0.4, 4.0, 40.0
     n = int(L / h)
     m_ = int(np.ceil(2 * (r + h) / h)) + 1

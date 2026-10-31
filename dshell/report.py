@@ -1,7 +1,7 @@
 """
-Report writer: summary.json/.txt, plots/*.png and report.pdf for a vshell run directory.
+Report writer: summary.json/.txt, plots/*.png and report.pdf for a dshell run directory.
 
-Runs at the end of every optimisation and on its own (python -m vshell report <run_dir>) from the
+Runs at the end of every optimisation and on its own (python -m dshell report <run_dir>) from the
 run's files: run_info.json, regions.csv, evaluations.csv, mass_sweep.csv, escape_holes.csv and
 arrays.npz. Matplotlib is driven through its object-oriented API with the Agg canvas (no display,
 no global backend change). Every figure is built in its own try/except; one that fails is listed in
@@ -132,7 +132,7 @@ def compute_summary(c: Ctx) -> dict:
 
 
 def summary_text(S: dict, name: str) -> str:
-    lines = [f"vshell run summary: {name}", "=" * 78]
+    lines = [f"dshell run summary: {name}", "=" * 78]
     for sec, d in S.items():
         if not d:
             continue
@@ -733,7 +733,7 @@ def write_report(run_dir, dpi=130, verbose=True):
                 except Exception as e:
                     c.log.append(f"saving '{fname}' failed: {e}")
         info = pdf.infodict()
-        info["Title"] = f"vshell report: {c.name}"
+        info["Title"] = f"dshell report: {c.name}"
         info["Subject"] = "Constant-mass variable-thickness shelling"
     if c.log:
         with open(log_path, "a") as f:

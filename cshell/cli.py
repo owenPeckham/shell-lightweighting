@@ -1,7 +1,7 @@
 """Command line (THEORY §10.3):
 
-    python -m cshell faces <step> [--png faces.png] [--all]     list faces (= vshell faces)
-    python -m cshell init  <step> [--out cfg.json]              template config (= vshell init)
+    python -m cshell faces <step> [--png faces.png] [--all]     list faces (= dshell faces)
+    python -m cshell init  <step> [--out cfg.json]              template config (= dshell init)
     python -m cshell setup <cfg> [--set k=v ...]                geometry, bands, P per phase; DOF and memory plan
     python -m cshell run   <cfg> [--start S] [--phase P] [--set k=v ...] [--resume DIR] [--max-hours H]
     python -m cshell collect <run_dir> [--allow-incomplete] [--no-validate]   merge starts, export, re-score, decide
@@ -28,7 +28,7 @@ EXIT_PAUSED = 3
 def cmd_run(a):
     from .optimise import Context, Run, run_info
     if a.resume:
-        cfg = json.load(open(os.path.join(a.resume, "config_used.json")))
+        cfg = config.normalise_starts(json.load(open(os.path.join(a.resume, "config_used.json"))))
         out = a.resume
     else:
         cfg = config.load(a.config, config.parse_set(a.set))
@@ -38,9 +38,9 @@ def cmd_run(a):
     if os.environ.get("CSHELL_RUNDIR_FILE"):
         with open(os.environ["CSHELL_RUNDIR_FILE"], "w") as f:
             f.write(os.path.abspath(out) + "\n")
-    starts = [a.start] if a.start else cfg["optimiser"]["starts"]
+    starts = [config.canonical_start(a.start)] if a.start else cfg["optimiser"]["starts"]
     if a.resume:
-        starts = [s for s in starts if not os.path.exists(os.path.join(out, f"done_{s}.json"))]
+        starts = [s for s in starts if not os.path.exists(config.start_file(out, "done_{}.json", s))]
     run_info(out, dict(command="run", starts=starts, resume=bool(a.resume)))
     if not starts:
         print("[cshell] all starts already done")
@@ -48,7 +48,7 @@ def cmd_run(a):
     ctx = Context(cfg)
     for s in starts:
         run = Run(cfg, s, out, max_hours=a.max_hours)
-        run.ctx = ctx                                    # used by the vshell start (Run.initial_xi)
+        run.ctx = ctx                                    # used by the dshell start (Run.initial_xi)
         r = run.run(ctx, resume=bool(a.resume), only_phase=a.phase)
         print(json.dumps(dict(start=s, **r), default=float))
         if r.get("status") == "paused":
@@ -116,20 +116,21 @@ def cmd_bench(a):
     return rc
 
 
-def _vshell(argv):
-    from vshell import cli as vcli
+def _dshell(argv):
+    from dshell import cli as vcli
     return vcli.main(argv)
 
 
 def main(argv=None):
     argv = sys.argv[1:] if argv is None else list(argv)
-    if argv and argv[0] in ("faces", "init"):            # delegate to vshell's identical commands
-        return _vshell(argv)
+    if argv and argv[0] in ("faces", "init"):            # delegate to dshell's identical commands
+        return _dshell(argv)
     p = argparse.ArgumentParser(prog="cshell")
     sub = p.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run", help="optimise one part")
     r.add_argument("config", nargs="?")
-    r.add_argument("--start", choices=["uniform", "neutral", "solid", "vshell"])
+    r.add_argument("--start", choices=["uniform", "neutral", "solid", "dshell", "vshell"],
+                   help="one start (default: the config's optimiser.starts); vshell = old name of dshell")
     r.add_argument("--phase", type=int)
     r.add_argument("--set", nargs="*", help="overrides, e.g. objective.w_capacity=0.8")
     r.add_argument("--resume", help="run directory to resume")
@@ -152,7 +153,7 @@ def main(argv=None):
     b.add_argument("--set", nargs="*")
     b.add_argument("--no-collect", action="store_true")
     b.set_defaults(fn=cmd_bench)
-    sub.add_parser("faces", help="list STEP faces (vshell faces)")
-    sub.add_parser("init", help="template config (vshell init)")
+    sub.add_parser("faces", help="list STEP faces (dshell faces)")
+    sub.add_parser("init", help="template config (dshell init)")
     a = p.parse_args(argv)
     return a.fn(a)
