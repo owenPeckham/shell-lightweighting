@@ -91,3 +91,34 @@ Phase A (direct engine) reproduces to 1e-11; in phase B atomic floating-point ad
 give ~1e-16 noise that MMA amplifies (~10× per 3 iterations) until the convergence stop flips. The FE alone is bitwise
 in the opt-in `fe.twogrid.deterministic = "full"` mode (+150 % FE time); the geometry chain remains non-deterministic
 (`research/twogrid/notes.md`).
+
+## V6 Study 1 parts, full pipeline (§11.1) — 2026-10-31
+
+Runs `runs_cshell/FULL` (3 starts each, agree ≤ 0.1 % in J), collect 7888538–40 (watertight export, mass-matched;
+body-fitted check not run on these parts: model exceeds solver capacity, decision on the voxel criteria per Owen
+2026-10-31). Rescored best design, minimum over the optimisation / shifted / coarse grids:
+
+| Part | Solid | Uniform shell (mounts solid) J, K/K0, P/P0 | vshell best J, K/K0, P/P0 | **cshell** J, K/K0, P/P0 (governing) | Decision |
+| --- | --- | --- | --- | --- | --- |
+| Cantilever | 0 | +0.242, 0.931, 1.744 | +0.479, 0.992, 2.626 | **+0.490, 0.982, 2.711** | accepted |
+| L-bracket | 0 | −0.441, 0.957, 0.432 | +0.004, 1.068, 0.944 | **+0.129, 1.161, 1.115** | accepted |
+| MBB | 0 | −0.076, 0.775, 1.109 | +0.0003, 1.000, 1.000 | **+0.481, 1.096, 2.390** (buckling) | accepted |
+
+Against the manuscript's measured changes (hollow vs solid, Study 1, n = 5; `research/manuscript_numbers.md`). The
+cshell designs are not the tested designs, so this compares predicted trends, as the vshell table does:
+
+| Part | K change cshell / vshell / measured | Pcap change cshell / vshell / measured | Pcap sign (cshell) | K sign (cshell) |
+| --- | --- | --- | --- | --- |
+| Cantilever | −1.8 / +1.2 / +3.5 (n.s.) % | +171 / +148 / +61.1 % | agrees (2.8×) | disagrees (measured n.s.) |
+| L-bracket | +16.1 / +6.9 / −7.0 (n.s.) % | +11.5 / −5.6 / −11.2 % | **disagrees** | disagrees (measured n.s.) |
+| MBB | +9.6 / −6.0 / −14.9 (n.s.) % | +139 / −11.1 / +14.8 % | agrees (9×) | disagrees (measured n.s.) |
+
+Reading (§11.1): the cantilever behaves as expected (J ≥ vshell's +0.48; compression struts hollowed, capacity from
+Euler-buckling relief). The MBB is **not** kept solid by the linear model, contrary to the §11.1 expectation: cshell
+finds a thickness distribution whose linear buckling capacity is 2.4× the solid's; the measured +14.8 % (ductile
+redistribution, §4.5) is far smaller, so the magnitude is over-predicted as for the cantilever (linear eigen-buckling
+vs measured peak load). The L-bracket prediction (+11.5 % capacity) has the opposite sign to the measured −11.2 %,
+which the manuscript attributes to local shell buckling at the short multi-axial joints; cshell's design keeps the
+joints thicker (walls up to 6.5 mm) than the tested uniform-wall part, so the sign difference is between different
+designs, not a contradiction, but it is unverified by test. Stiffness changes are within ±16 % and the measured
+ones are not significant. V6: ✅ (pipeline complete on all three parts; comparison tabulated).

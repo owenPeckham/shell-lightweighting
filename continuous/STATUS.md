@@ -142,15 +142,18 @@ Each will be resolved by updating THEORY_continuous.md in the same change as the
 
 ## 5. Per-part results
 
-**Provisional (2026-10-31, voxel only; body-fitted check pending the solver decision).** Runs `runs_cshell/FULL`
-(3 starts each, agree ≤ 0.1 %), collect 7877896–98 (watertight export, mass error ≤ 2.1e-4), best design re-scored
-at the optimisation grid / ½h_e-shifted grid / h_e 0.5 (J = w_K ln K/K0 + w_P ln P/P0, constant mass):
+**Stage 2 results (2026-10-31).** Runs `runs_cshell/FULL` (3 starts each, agree ≤ 0.1 %; 34–44 min per start on one
+GPU), collect 7888538–40 (30–47 min, 40–80 GiB host, ≤ 57 GiB GPU; watertight export, mass-matched), best design
+re-scored at the optimisation grid / ½h_e-shifted grid / h_e 0.5 (J = w_K ln K/K0 + w_P ln P/P0, constant mass).
+Body-fitted check not run on these parts (model exceeds one-GPU solver capacity, 7–12 M DOF at the coarse level);
+decision on the voxel criteria (Owen, 2026-10-31). Comparison with solid / uniform shell / vshell and the manuscript:
+VALIDATION.md V6.
 
-| Part | J opt / shift / coarse | K/K0 | P/P0 | Phase-B J (run) | Current decision |
+| Part | J opt / shift / coarse | K/K0 | P/P0 | Walls (mm) | Decision |
 | --- | --- | --- | --- | --- | --- |
-| MBB | +0.482 / +0.481 / +0.487 | 1.10 | 2.39 | 0.503 | solid kept: body-fitted check could not be run |
-| Cantilever | +0.490 / +0.490 / +0.495 | 0.98 | 2.71 | 0.519 | same |
-| L-bracket | +0.129 / +0.131 / +0.138 | 1.16 | 1.12 | 0.166 (120 it) | same |
+| MBB | +0.482 / +0.481 / +0.487 | 1.10 | 2.39 (buckling) | 1.50–5.53 | **accepted** |
+| Cantilever | +0.490 / +0.490 / +0.495 | 0.98 | 2.71 | 1.50–6.44 | **accepted** |
+| L-bracket | +0.129 / +0.131 / +0.138 | 1.16 | 1.12 | 1.51–6.50 | **accepted** (120 it) |
 
 Gains are dominated by capacity (P/P0, buckling/strength soft-min); stiffness is about unchanged (K/K0 0.98–1.16).
 Uniform-shell baseline (mounts solid, D1) and vshell rows: `runs_cshell/FULL/<part>/summary.json`.
