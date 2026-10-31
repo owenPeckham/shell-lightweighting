@@ -30,6 +30,12 @@ For the next Claude Code session. Read this first, then `continuous/STATUS.md` (
 5. **K_σ excluded within `exclude_bc_mm` (2 mm) of clamped nodes** in voxel and body-fitted buckling (spec §4.4(c)).
 6. FE memory option 1 adopted (done). V2-b tube E: investigated, no FE change (see VALIDATION.md).
 
+## Stage 2 complete (2026-10-31)
+All three parts accepted (STATUS §5, VALIDATION V6); usage guide `README_cshell.md`; `cshell` fast-forwarded to
+`cshell-stage2` on GitHub. Open for Stage 3 (needs Owen's go-ahead, STATUS §2.5): scalable body-fitted solver
+(iterative/multi-GPU) for full parts; export mass residual on passive mounts (+0.5 % before correction); geometry-chain
+determinism (opt-in bitwise runs); V5-B1b load case; L-bracket capacity sign vs test.
+
 ## Decisions 2026-10-30 (Owen; overnight standing orders)
 - Slot cap 24 for this session. Critical-path work only; ask before anything else.
 - max_iter phase B 120 for the L-bracket (done: converged at 0.1662); fe.engine = twogrid default everywhere;
