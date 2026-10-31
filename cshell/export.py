@@ -44,6 +44,8 @@ from scipy.optimize import brentq
 from scipy.sparse.csgraph import connected_components
 from scipy.spatial import cKDTree
 
+MC_HALO = 32                # lattice layers around a tile for the ambiguous-face rule: flips propagate ≤ 1 node per
+                            # iteration, so tiles agree on shared nodes while every tile converges in < MC_HALO iterations
 A_CLOSED = 1.0e4            # inset used for exactly closed vertices (a = ∞, §8.2 step 1); interpolation keeps it closed
 SIGN_TYPES = ("pseudonormal", "winding_number", "fast_winding_number")
 
@@ -628,27 +630,70 @@ def _vol_tile(tid):
 # =====================================================================================================================
 # stage E: marching cubes
 # =====================================================================================================================
-def _psi_block(tid, delta):
-    """ψ on the (n+1)³ lattice node block of tile tid (one extra layer from the +1 neighbours); ≈ +3h outside."""
+def _psi_block(tid, delta, halo: int = 0):
+    """ψ on the lattice nodes of tile tid: the (n+1)³ block (one extra layer from the +1 neighbours) widened by
+    `halo` layers on every side (from the ±1 neighbours), i.e. global node indices tid·n − halo … tid·n + n + halo;
+    ≈ +3h outside the grid."""
     st: TileStore = _G["store"]
     grid: Grid = _G["grid"]
     n, h = grid.n, grid.h
     BIG = 3.0 * h
-    out = np.full((n + 1,) * 3, BIG, np.float32)
-    for di in (0, 1):
-        for dj in (0, 1):
-            for dk in (0, 1):
+    m = n + 1 + 2 * halo
+    out = np.full((m,) * 3, BIG, np.float32)
+    lo = [tid[a] * n - halo for a in range(3)]                      # global node index of out[0, 0, 0]
+    rng_ = (-1, 0, 1) if halo > 0 else (0, 1)
+    for di in rng_:
+        for dj in rng_:
+            for dk in rng_:
                 t = (tid[0] + di, tid[1] + dj, tid[2] + dk)
-                if any(t[a] >= grid.nt[a] for a in range(3)):
+                if any(t[a] < 0 or t[a] >= grid.nt[a] for a in range(3)):
                     continue
-                sl_o = tuple(slice(0, n) if dd == 0 else slice(n, n + 1) for dd in (di, dj, dk))
-                sl_i = tuple(slice(0, n) if dd == 0 else slice(0, 1) for dd in (di, dj, dk))
+                sl_o, sl_i = [], []
+                for a in range(3):
+                    g0, g1 = max(t[a] * n, lo[a]), min(t[a] * n + n, lo[a] + m)
+                    sl_o.append(slice(g0 - lo[a], g1 - lo[a]))
+                    sl_i.append(slice(g0 - t[a] * n, g1 - t[a] * n))
+                if any(s_.stop <= s_.start for s_ in sl_o):
+                    continue
                 c = st.codes.get(t, 2)
                 if isinstance(c, (int, np.integer)) and st.S.get(t) is None and not _tile_has_hole(t):
-                    out[sl_o] = BIG if c >= 2 or c == 1 else -BIG
+                    out[tuple(sl_o)] = BIG if c >= 2 or c == 1 else -BIG
                 else:
-                    out[sl_o] = _psi_tile(t, delta)[sl_i]
+                    out[tuple(sl_o)] = _psi_tile(t, delta)[tuple(sl_i)]
     return out
+
+
+def resolve_ambiguous_faces(psi: np.ndarray, value: float, max_iter: int = 64):
+    """Remove every ambiguous lattice face (signs + − + − around the face: material {ψ < 0} touching itself only
+    across the face diagonal) by moving its material nodes to the void side (ψ ← +value), repeated until none is left.
+
+    Why: marching cubes resolves an ambiguous face by the asymptotic decider; when the decider ties (ac = bd, e.g. the
+    ±3h values of code-only cells or clipped ψ) or in skimage's Lewiner case 10 the two cubes sharing the face resolve
+    it differently and the mesh gets non-manifold edges (four faces on one edge = duplicated directed edges). Without
+    ambiguous faces every cube face has 0 or 2 crossings and the triangulation is consistent. The rule matches the
+    clean-up's 6-connectivity (`ndimage.label`): material that touches only diagonally is already two components.
+    Removes at most one node per face (≤ h_x of material, sub-cell). In place; returns (nodes flipped, iterations)."""
+    flipped, it = 0, 0
+    for it in range(1, max_iter + 1):
+        mat = psi < 0
+        flip = np.zeros_like(mat)
+        for ax in range(3):
+            a, b = [x for x in range(3) if x != ax]
+            q = np.moveaxis(mat, (a, b), (0, 1))
+            amb = (q[:-1, :-1] == q[1:, 1:]) & (q[1:, :-1] == q[:-1, 1:]) & (q[:-1, :-1] != q[1:, :-1])
+            if not amb.any():
+                continue
+            fl = np.moveaxis(flip, (a, b), (0, 1))                     # view: writes go to `flip`
+            fl[:-1, :-1] |= amb & q[:-1, :-1]
+            fl[1:, 1:] |= amb & q[1:, 1:]
+            fl[1:, :-1] |= amb & q[1:, :-1]
+            fl[:-1, 1:] |= amb & q[:-1, 1:]
+        k = int(flip.sum())
+        if k == 0:
+            return flipped, it - 1
+        psi[flip] = value
+        flipped += k
+    return flipped, -it                                                 # not converged (negative iteration count)
 
 
 def _tile_has_hole(tid):
@@ -676,11 +721,15 @@ def _mesh_tile(args):
     if all(isinstance(c, (int, np.integer)) for c in cs) and len(set(int(c) for c in cs)) == 1 \
             and all(st.S.get(t) is None and not _tile_has_hole(t) for t in nbr):
         return tid, None
-    psi = _psi_block(tid, delta)
-    if stride > 1:
-        psi = psi[::stride, ::stride, ::stride]
+    H = min(MC_HALO, n)
+    psi = _psi_block(tid, delta, H)
     eps = np.float32(1e-3 * h)                       # keep every crossing strictly inside an edge (robust weld keys)
     psi = np.where(np.abs(psi) < eps, np.where(psi < 0, -eps, eps), psi).astype(np.float32)
+    n_flip, n_it = resolve_ambiguous_faces(psi, eps)  # global rule, evaluated with a halo: tiles agree on shared nodes
+    psi = psi[H:H + n + 1, H:H + n + 1, H:H + n + 1]
+    if stride > 1:
+        psi = psi[::stride, ::stride, ::stride]
+    amb = (n_flip, n_it)
     if not (psi.min() < 0 < psi.max()):
         return tid, None
     v, f, _, _ = marching_cubes(psi, 0.0, allow_degenerate=False)
@@ -694,7 +743,8 @@ def _mesh_tile(args):
         lat[np.arange(len(v)), axis] = np.floor(v[np.arange(len(v)), axis]).astype(np.int64)
         lat += base
         keys = ((lat[:, 0] * grid.shape[1] + lat[:, 1]) * grid.shape[2] + lat[:, 2]) * 3 + axis
-    return tid, (pos.astype(np.float32), f.astype(np.int32), keys)
+        keys[(fr > 1e-6).sum(1) != 1] = -1          # not on a lattice edge (MC33 cube-centre vertex): never welded
+    return tid, (pos.astype(np.float32), f.astype(np.int32), keys, amb)
 
 
 # =====================================================================================================================
@@ -732,10 +782,13 @@ def mesh_checks(V: np.ndarray, F: np.ndarray) -> dict:
                 volume=vol, euler=(len(used) - ne + nf if ne >= 0 else None), bodies=bodies)
 
 
-def drop_material_islands(V: np.ndarray, F: np.ndarray, V0: float, min_vol: float = 0.0):
-    """§8.2 step 3 on the final mesh: keep the largest positive-volume body, drop other positive-volume bodies
-    (material specks created by the mass shift) and any body smaller than `min_vol` (single-node pockets); enclosed
-    voids above `min_vol` have negative volume and stay. Returns (F, info)."""
+def drop_material_islands(V: np.ndarray, F: np.ndarray, V0: float, min_vol: float = 0.0, void_fill: float = 0.0,
+                          near_mount=None, mount_tol: float = 0.0):
+    """§8.2 steps 2-3 on the final mesh: keep the largest positive-volume body, drop other positive-volume bodies
+    (material specks created by the mass shift), any body smaller than `min_vol` (single-node pockets) and enclosed
+    voids (negative volume) smaller than `void_fill` (= void_min_mm3: §8.2 fills them; sub-cell slits the grid
+    clean-up cannot see). Larger enclosed voids stay. `near_mount(points) -> distance`: dropped material islands with a
+    vertex within `mount_tol` of a load/support face are counted (they should not exist). Returns (F, info)."""
     nv = len(V)
     g = sparse.coo_matrix((np.ones(3 * len(F)), (np.concatenate([F[:, 0], F[:, 1], F[:, 2]]),
                                                 np.concatenate([F[:, 1], F[:, 2], F[:, 0]]))), shape=(nv, nv))
@@ -747,10 +800,22 @@ def drop_material_islands(V: np.ndarray, F: np.ndarray, V0: float, min_vol: floa
         a, b, c = V[t[:, 0]].astype(np.float64), V[t[:, 1]].astype(np.float64), V[t[:, 2]].astype(np.float64)
         vol += np.bincount(fl[s:s + 2_000_000], weights=np.einsum("ij,ij->i", a, np.cross(b, c)) / 6.0, minlength=nc)
     main = int(np.argmax(vol))
-    drop = ((vol > 0) & (np.arange(nc) != main)) | (np.abs(vol) < min_vol)
-    drop[main] = False
-    info = dict(bodies_before=int(len(np.unique(fl))), islands_dropped=int(drop[np.unique(fl)].sum()),
-                islands_volume_mm3=float(vol[drop].sum()))
+    present = np.zeros(nc, bool)
+    present[np.unique(fl)] = True
+    isl = present & (((vol > 0) & (np.arange(nc) != main)) | ((vol >= 0) & (vol < min_vol)))
+    vfill = present & (vol < 0) & (-vol < max(void_fill, min_vol))
+    isl[main] = vfill[main] = False
+    drop = isl | vfill
+    info = dict(bodies_before=int(present.sum()), islands_dropped=int(isl.sum()),
+                islands_volume_mm3=float(vol[isl].sum()), voids_filled=int(vfill.sum()),
+                voids_filled_mm3=float(-vol[vfill].sum()), islands_on_mount=0, islands_on_mount_mm3=0.0)
+    if near_mount is not None and isl.any():
+        fi = np.flatnonzero(isl[fl])
+        vi = np.unique(F[fi])
+        close = near_mount(V[vi].astype(np.float64)) <= mount_tol
+        if close.any():
+            on = np.unique(lab[vi[close]])
+            info.update(islands_on_mount=int(len(on)), islands_on_mount_mm3=float(vol[on].sum()))
     return (F[~drop[fl]] if drop.any() else F), info
 
 
@@ -1139,11 +1204,13 @@ class Exporter:
         items = [(t, self.delta, 1, True) for t in self.grid.tile_ids()]
         res = _pmap(_mesh_tile, items, self.workers)
         keys, pos, faces = [], [], []
-        base = 0
+        base, n_flip, it_max, n_unconv, n_exc = 0, 0, 0, 0, 0
         for tid, r in res:
             if r is None:
                 continue
-            p, f, k = r
+            p, f, k, (nf_, it_) = r
+            n_flip += nf_; it_max = max(it_max, abs(it_)); n_unconv += it_ < 0
+            n_exc += abs(it_) >= min(MC_HALO, self.grid.n)
             pos.append(p); keys.append(k); faces.append(f.astype(np.int64) + base)
             base += len(p)
         del res
@@ -1152,18 +1219,31 @@ class Exporter:
         if not faces:
             raise RuntimeError("export produced no surface")
         keys = np.concatenate(keys); pos = np.concatenate(pos); F = np.concatenate(faces)
+        free = keys < 0
+        keys[free] = -1 - np.arange(int(free.sum()))    # off-lattice-edge vertices: unique keys (not welded)
         uk, first, inv = np.unique(keys, return_index=True, return_inverse=True)
         V = pos[first]
         F = inv[F].astype(np.int64)
         del keys, pos, faces
         keep = (F[:, 0] != F[:, 1]) & (F[:, 1] != F[:, 2]) & (F[:, 0] != F[:, 2])
-        n_degenerate = int((~keep).sum())          # Lewiner's MC emits a few zero-area triangles (same edge vertex twice)
+        n_degenerate = int((~keep).sum())          # should be 0 (skimage drops its own; weld keys are exact)
         if n_degenerate:
             F = F[keep]
-        F, isl = drop_material_islands(V, F, self.V0, min_vol=10.0 * h ** 3)
+        near_mount = None
+        if self.mount_mesh is not None and len(self.mount_mesh[1]):
+            from .surface import MeshQuery
+            near_mount = MeshQuery(*self.mount_mesh).distance
+        F, isl = drop_material_islands(V, F, self.V0, min_vol=10.0 * h ** 3, void_fill=cfg.void_min_mm3,
+                                       near_mount=near_mount, mount_tol=2.0 * h)
+        if isl.get("islands_on_mount", 0):
+            self.log(f"[export] WARNING {isl['islands_on_mount']} dropped material island(s) "
+                     f"({isl['islands_on_mount_mm3']:.3g} mm³) touch a load/support face")
         chk = mesh_checks(V, F)
         chk["degenerate_removed"] = n_degenerate
         chk["islands"] = isl
+        chk["ambiguous_faces"] = dict(nodes_flipped=int(n_flip), flipped_mm3=float(n_flip * h ** 3),
+                                      max_iterations=int(it_max), tiles_not_converged=int(n_unconv),
+                                      tiles_halo_exceeded=int(n_exc), halo=MC_HALO)
         chk["volume_rel"] = chk["volume"] / self.V0 - 1.0
         chk["volume_ok"] = bool(abs(chk["volume_rel"]) <= cfg.vol_tol)
         if chk["faces"] <= cfg.trimesh_check_max_faces:

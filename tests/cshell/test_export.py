@@ -254,6 +254,66 @@ def test_drop_material_islands():
     assert len(F) == len(big.faces) + len(void.faces)
 
 
+def test_drop_material_islands_fills_small_voids():
+    big = trimesh.creation.icosphere(subdivisions=2, radius=5.0)
+    slit = trimesh.creation.icosphere(subdivisions=1, radius=0.5); slit.invert()          # 0.5 mm³ enclosed void
+    void = trimesh.creation.icosphere(subdivisions=2, radius=2.0); void.invert()          # 33 mm³ enclosed void
+    spk = trimesh.creation.icosphere(subdivisions=1, radius=0.05); spk.apply_translation([5.02, 0, 0])
+    m = trimesh.util.concatenate([big, slit, void, spk])
+    F, info = ex.drop_material_islands(np.asarray(m.vertices), np.asarray(m.faces), 1.0, void_fill=30.0,
+                                       near_mount=lambda P: np.abs(np.linalg.norm(P, axis=1) - 5.0), mount_tol=0.2)
+    assert info["voids_filled"] == 1 and abs(info["voids_filled_mm3"] - (-slit.volume)) < 1e-9
+    assert info["islands_dropped"] == 1 and info["islands_on_mount"] == 1               # speck on the load face: counted
+    assert len(F) == len(big.faces) + len(void.faces)
+
+
+def _dup_directed(f):
+    nv = int(f.max()) + 1
+    d = np.concatenate([f[:, 0] * nv + f[:, 1], f[:, 1] * nv + f[:, 2], f[:, 2] * nv + f[:, 0]]).astype(np.int64)
+    d.sort()
+    return int((d[1:] == d[:-1]).sum())
+
+
+@pytest.mark.parametrize("kind", ["binary_ties", "gaussian"])
+def test_resolve_ambiguous_faces_makes_mc_manifold(kind):
+    """skimage's Lewiner MC is non-manifold at decider ties (±3h code-only cells) and in case 10; without ambiguous
+    faces it is manifold. Removing them flips only material nodes on ambiguous faces."""
+    from skimage.measure import marching_cubes
+    rng = np.random.default_rng(3)
+    dups0 = dups1 = 0
+    for _ in range(6 if kind == "gaussian" else 2):
+        if kind == "binary_ties":
+            p = np.where(rng.random((32,) * 3) < 0.5, 0.15, -0.15).astype(np.float32)
+        else:
+            p = rng.normal(0, 0.05, (48,) * 3).astype(np.float32)
+        dups0 += _dup_directed(marching_cubes(p, 0.0, allow_degenerate=False)[1])
+        q = p.copy()
+        k, it = ex.resolve_ambiguous_faces(q, 5e-5)
+        assert it > 0 and k > 0 and np.all(q[p > 0] == p[p > 0]) and np.all((q != p) <= (p < 0))
+        dups1 += _dup_directed(marching_cubes(q, 0.0, allow_degenerate=False)[1])
+    assert dups1 == 0
+    if kind == "binary_ties":
+        assert dups0 > 0                                    # the regression this guards against
+
+
+def test_edge_contact_boxes_across_tiles_watertight(tmp_path):
+    """Two boxes touching only along an edge that crosses tile boundaries: diagonal (ambiguous) contacts on the
+    lattice; the welded mesh must be closed and manifold (the smaller box is a 6-connectivity island)."""
+    a = trimesh.creation.box(bounds=[[0, 0, 0], [5, 5, 7]])
+    b = trimesh.creation.box(bounds=[[5, 5, 0], [9, 9, 7]])
+    m = trimesh.util.concatenate([a, b])
+    cfg = ex.ExportConfig(h_x=0.1, tile=32, block=16, workers=_workers(), wall_hist=False, write_stl=False,
+                          sign="winding_number", log=lambda *_: None)
+    dz = ex.Design(np.asarray(m.vertices), np.asarray(m.faces), np.asarray(m.vertices), np.asarray(m.faces),
+                   d=np.zeros(len(m.vertices)), a=np.zeros(len(m.vertices)), d_hi=np.full(len(m.vertices), 1.0),
+                   active=np.ones(len(m.vertices), bool), closed=np.ones(len(m.vertices), bool), sign="winding_number")
+    s = ex.Exporter(dz, cfg).run(str(tmp_path))
+    mesh = s["mesh"]
+    assert mesh["duplicate_directed_edges"] == 0 and mesh["missing_reverse_edges"] == 0 and mesh["degenerate"] == 0
+    assert mesh["degenerate_removed"] == 0 and mesh["bodies"] == 1 and mesh["islands"]["islands_dropped"] == 1
+    assert mesh["ambiguous_faces"]["tiles_not_converged"] == 0 and mesh["ambiguous_faces"]["tiles_halo_exceeded"] == 0
+
+
 def test_axis_aligned_faces_single_body(tmp_path):
     """Faces at 'nice' coordinates must not leave single-node bubbles (grid is offset from the CAD lattice)."""
     m = trimesh.creation.box(extents=(10.0, 10.0, 10.0))
