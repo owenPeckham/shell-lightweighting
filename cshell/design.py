@@ -126,6 +126,7 @@ class State:
     dev: Any = None              # DeviceDesignMap: (d, a_used) on the device; cell fields are recomputed, not stored
     xh_a: Any = None             # ξ̂ᵃ (projected); None: = xit_a
     dxh_a: Any = None            # dξ̂ᵃ/dξ̃ᵃ; None: 1
+    cl: Any = None               # closed vertices (1.0 where ξ̃ᵃ ≥ closure_xi) for the cell closure rule; None: off
     dadlo: Any = None            # ∂a/∂a_lo; None: 1 − ξ̂ᵃ
     dadxt: Any = None            # ∂a/∂ξ̃ᵃ at fixed d; None: (a_hi − a_lo) dξ̂ᵃ/dξ̃ᵃ
 
@@ -163,8 +164,10 @@ def design_vertex_fields(xp, ds: "DesignSpace", xi_d, xi_a) -> dict:
     d = ds.d_hi * xt_d
     a_lo, da_lo = softplus(xp, ds.t_min - d, ds.soft_w)          # D1; da_lo/dd = −σ
     a, dadlo, dadxt = inset_map(xp, ds, xt_a, xh_a, dxh, a_lo)
+    # export closure rule (sr-fix 2): closed vertices; a cell with every positive-weight vertex closed has no void
+    cl = None if (ds.closure_xi is None or ds.a_top is None) else (xt_a >= ds.closure_xi).astype(float)
     return dict(xt_d=xt_d, xt_a=xt_a, xh_a=xh_a, dxh_a=dxh, d=d, a=a, a_lo=a_lo, da_lo=-da_lo, dadlo=dadlo,
-                dadxt=dadxt)
+                dadxt=dadxt, cl=cl)
 
 
 def inset_map(xp, ds: "DesignSpace", xt_a, xh_a, dxh, a_lo):
@@ -240,16 +243,19 @@ class DesignMap:
         else:
             a_used, dab, b_o = a, xp.ones_like(a), 0.0
         st = State(xt_d, xt_a, d, a, a_used, a_lo, da_lo, dab, None, None, None, None, as_built, b_o,
-                   xh_a=f["xh_a"], dxh_a=f["dxh_a"], dadlo=f["dadlo"], dadxt=f["dadxt"])
+                   xh_a=f["xh_a"], dxh_a=f["dxh_a"], dadlo=f["dadlo"], dadxt=f["dadxt"], cl=f["cl"])
         return self._cells(st)
 
     def _cells(self, st: State) -> State:
-        """ψ = max(φ − P d + b_o, −φ − P a_used) and χ = H_ε(−ψ) per band cell (THEORY §3.7-3.9)."""
+        """ψ = max(φ − P d + b_o, −φ − P a_used) and χ = H_ε(−ψ) per band cell (THEORY §3.7-3.9); with the export's
+        closure rule (st.cl), cells whose positive-weight vertices are all closed have no void branch."""
         xp, disc = self.xp, self.disc
         d_c = disc.P @ st.d
         a_c = disc.P @ st.a_used
         o = disc.phi - d_c + st.b_o
         i = -disc.phi - a_c
+        if st.cl is not None:
+            i = xp.where(disc.P @ st.cl >= 1.0 - 1e-9, -1e300, i)
         st.outer = o >= i                                             # ties to the outer branch (THEORY §6.1)
         st.psi = xp.where(st.outer, o, i)
         st.chi, st.dchi = heaviside(xp, -st.psi, disc.eps)
@@ -340,7 +346,7 @@ class DesignMap:
 _KERNELS = r"""
 extern "C" {
 __device__ __forceinline__ double cell_psi(long long c, const float* phi, const int* face, const float* bary,
-        const int* Th, const double* d, const double* a, double bo, int solid,
+        const int* Th, const double* d, const double* a, const double* cl, int has_cl, double bo, int solid,
         bool* outer, int* v, double* w) {
     double ph = (double)phi[c];
     if (solid) { *outer = true; return ph + bo; }
@@ -354,6 +360,10 @@ __device__ __forceinline__ double cell_psi(long long c, const float* phi, const 
     double ac = ((w[0] * a[v[0]]) + w[1] * a[v[1]]) + w[2] * a[v[2]];
     double o = ph - dc + bo;
     double i = -ph - ac;
+    if (has_cl) {                       // export closure rule: every positive-weight vertex closed → no void branch
+        double cc = ((w[0] * cl[v[0]]) + w[1] * cl[v[1]]) + w[2] * cl[v[2]];
+        if (cc >= 1.0 - 1e-9) i = -1e300;
+    }
     *outer = o >= i;
     return *outer ? o : i;
 }
@@ -374,13 +384,13 @@ __device__ __forceinline__ double block_sum(double x) {
 
 // χ = H_ε(−ψ): Σχ into vol[0]; if want_rho, χ scattered into rho[elem] (THEORY §3.7, §3.10)
 __global__ void geo_fwd(long long n, const float* phi, const int* face, const float* bary, const int* Th,
-        const int* elem, const double* d, const double* a, double bo, double eps, int solid, int want_rho,
-        double* rho, double* vol) {
+        const int* elem, const double* d, const double* a, const double* cl, int has_cl, double bo, double eps,
+        int solid, int want_rho, double* rho, double* vol) {
     double acc = 0.0;
     int v[3]; double w[3]; bool outer;
     for (long long c = blockIdx.x * (long long)blockDim.x + threadIdx.x; c < n;
          c += (long long)gridDim.x * blockDim.x) {
-        double s = -cell_psi(c, phi, face, bary, Th, d, a, bo, solid, &outer, v, w);
+        double s = -cell_psi(c, phi, face, bary, Th, d, a, cl, has_cl, bo, solid, &outer, v, w);
         double z = fmin(fmax(s / eps, -1.0), 1.0);
         double H = 0.5 + z * (15.0 / 16.0 - z * z * (5.0 / 8.0 - z * z * 3.0 / 16.0));
         if (H != 0.0) {
@@ -394,12 +404,12 @@ __global__ void geo_fwd(long long n, const float* phi, const int* face, const fl
 
 // reverse: g_χ = (gmul g_el[elem]) / gdiv (want_el) or gconst; g_ψ = −H′ g_χ; Pᵀ(−g_ψ) on the active branch
 __global__ void geo_rev(long long n, const float* phi, const int* face, const float* bary, const int* Th,
-        const int* elem, const double* d, const double* a, double bo, double eps, int want_el, const double* gel,
-        double gmul, double gdiv, double gconst, double* gd, double* ga) {
+        const int* elem, const double* d, const double* a, const double* cl, int has_cl, double bo, double eps,
+        int want_el, const double* gel, double gmul, double gdiv, double gconst, double* gd, double* ga) {
     int v[3]; double w[3]; bool outer;
     for (long long c = blockIdx.x * (long long)blockDim.x + threadIdx.x; c < n;
          c += (long long)gridDim.x * blockDim.x) {
-        double s = -cell_psi(c, phi, face, bary, Th, d, a, bo, 0, &outer, v, w);
+        double s = -cell_psi(c, phi, face, bary, Th, d, a, cl, has_cl, bo, 0, &outer, v, w);
         if (fabs(s) < eps) {
             double z = fmin(fmax(s / eps, -1.0), 1.0);
             double t = 1.0 - z * z;
@@ -593,19 +603,23 @@ class DeviceDesignMap(DesignMap):
         sm = cp.cuda.Device().attributes["MultiProcessorCount"]
         return (max(1, min(-(-self.disc.n // self.THREADS), 32 * sm)),), (self.THREADS,)
 
-    def _fwd(self, d, a, b_o: float, solid: bool, want_rho: bool):
+    def _fwd(self, d, a, cl, has_cl, b_o: float, solid: bool, want_rho: bool):
         cp, D = self.cxp, self.disc
         rho = cp.zeros(D.n_elem if want_rho else 1, cp.float64)
         vol = cp.zeros(1, cp.float64)
         if solid:
-            d = a = cp.zeros(1, cp.float64)
+            d = a = cl = cp.zeros(1, cp.float64)
+            has_cl = np.int32(0)
         self._k.get_function("geo_fwd")(*self._grid(), (
-            np.int64(D.n), D.phi, D.face, D.bary, D.Th, D.elem, d, a, np.float64(b_o), np.float64(D.eps),
+            np.int64(D.n), D.phi, D.face, D.bary, D.Th, D.elem, d, a, cl, has_cl, np.float64(b_o), np.float64(D.eps),
             np.int32(solid), np.int32(want_rho), rho, vol))
         return rho, float(vol.get()[0])
 
     def _cells(self, st: State) -> State:
-        st.dev = (self.cxp.asarray(st.d, dtype=np.float64), self.cxp.asarray(st.a_used, dtype=np.float64))
+        cp = self.cxp
+        has = st.cl is not None
+        st.dev = (cp.asarray(st.d, dtype=np.float64), cp.asarray(st.a_used, dtype=np.float64),
+                  cp.asarray(st.cl, dtype=np.float64) if has else cp.zeros(1, cp.float64), np.int32(has))
         return st
 
     def rho(self, st: State) -> np.ndarray:
@@ -617,11 +631,11 @@ class DeviceDesignMap(DesignMap):
         return s * self.disc.h_g ** 3 + self.disc.V_extra
 
     def solid_volume(self) -> float:
-        _, s = self._fwd(None, None, 0.0, True, False)
+        _, s = self._fwd(None, None, None, 0, 0.0, True, False)
         return s * self.disc.h_g ** 3 + self.disc.V_extra
 
     def solid_rho(self, b_o: float) -> np.ndarray:
-        rho, _ = self._fwd(None, None, b_o, True, True)
+        rho, _ = self._fwd(None, None, None, 0, b_o, True, True)
         return (rho / self.disc.k ** 3).get()
 
     def elem_mean(self, v) -> np.ndarray:
