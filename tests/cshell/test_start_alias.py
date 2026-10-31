@@ -92,9 +92,9 @@ def test_legacy_run_dir_resume_side(tmp_path):
     assert rs is not None and rs.phase == n_ph - 1 and rs.it == 2 and rs.hours_used == 1.5
     run._logf.close()
     # --resume with every start done (done_vshell.json counts for dshell): nothing to run, no FE context built
-    assert cli.main(["run", "--resume", d]) == 0
-    assert cli.main(["run", "--resume", d, "--start", "vshell"]) == 0
-    assert cli.main(["run", "--resume", d, "--start", "dshell"]) == 0
+    assert cli.main(["run", "--resume", d, "--no-finalise"]) == 0
+    assert cli.main(["run", "--resume", d, "--start", "vshell", "--no-finalise"]) == 0
+    assert cli.main(["run", "--resume", d, "--start", "dshell", "--no-finalise"]) == 0
 
 
 def test_report_reader_canonicalises(tmp_path):

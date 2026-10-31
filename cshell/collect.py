@@ -535,25 +535,15 @@ class DesignBCs:
         self.fixed_n = model.fixed.any(-1)
         self.loads = [(fea.nodes_near_faces(model.origin, model.h_e, model.node_shape, ctx.V, ctx.T, ctx.TF,
                                             L["faces"]), np.asarray(L["force"], float)) for L in ctx.loads]
-        cap = ctx.cfg["capacity"]
-        self.r_ex = int(np.ceil(cap["exclude_bc_mm"] / model.h_e))
-        self.mount_ok = None
-        if not cap["include_mounts"]:
-            if model.geometry_device == "gpu":
-                model.disc.upload()
-            self.mount_ok = model.dm.elem_mean(ctx.mount.astype(float)).reshape(model.elem_shape) < 0.5
         self.mask0, self.ksig0 = model.stress_mask_dense, model.ksig_mask_dense
-        # same rule as PhaseModel._stress_mask (elem_mean on the GPU sums with atomics: a tie at 0.5 could differ)
         self.mask_mismatch = int(np.count_nonzero(self._stress_mask(self.fixed0, self.load0) != self.mask0))
         self.current = "original"
 
     def _stress_mask(self, fixed, load):
-        from scipy import ndimage
-        bc = fixed.any(-1) | (load != 0).any(-1)
-        m = ~ndimage.binary_dilation(bc, iterations=self.r_ex)[:-1, :-1, :-1]
-        if self.mount_ok is not None:
-            m &= self.mount_ok
-        return m.ravel()
+        """The model's own stress mask (PhaseModel._stress_mask). The exclusion zone is geometric since PLAN_single_run
+        §4 (r_ex = max(exclude_bc_mm, f·r_MA) around the constrained and loaded B-rep faces) and does not depend on
+        which of their nodes touch material, so the adjusted BCs keep it (the old node-dilation mirror is gone)."""
+        return self.mask0
 
     def adjust(self, rho: np.ndarray):
         """(ρ without islands, fixed, load, info) for the design ρ (element box)."""

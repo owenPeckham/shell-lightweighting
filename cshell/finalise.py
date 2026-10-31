@@ -29,7 +29,7 @@ summary.json ("cshell.summary/2", units mm, g, s, GiB; null when not computed)
         V_target_mm3, V_final_mm3, density_g_mm3}
   opt {J, K_K0, lamB_ratio, sig_ratio, mass_err, start, xi_file, phase, D_comp}
   shift {J, K_K0, lamB_ratio, sig_ratio, feasible, governing, mass_err, shift_mm, seconds, error}
-  export {h_mm, faces, watertight, bodies, volume_mm3, volume_rel, holes, voids (enclosed), wall {min, p05, median,
+  export {h_mm, faces, watertight, bodies, volume_mm3, volume_rel, holes, voids {total, enclosed, holes, without_hole, per_void}, wall {min, p05, median,
           max, min_as_built} (nominal, mm, ray casting), delta_mm, opening_removed_mm3, ok, why, file}
   closed_area_frac (closed share of the active Γ_h area), hollow_area_frac (share of the whole Γ_h area over an open
   void), timing {phase_s [Σ t_geometry + t_fe + t_mma + t_restore per phase], finalise_s, export_s, rescore_s,
@@ -130,12 +130,9 @@ def area_fracs(ctx, fields: dict, closed: np.ndarray) -> tuple:
 
 
 def closed_threshold(cfg: dict) -> float:
-    """ξ̃ᵃ at and above which the export closes a vertex: config export.closed_thr; default 0.9 with the smooth
-    closure projection (runs with a `growth` block, PLAN_single_run §4), 0.98 for older runs (Stage 2 maps)."""
-    e = cfg.get("export") or {}
-    if "closed_thr" in e:
-        return float(e["closed_thr"])
-    return 0.9 if "growth" in cfg else 0.98
+    """ξ̃ᵃ at and above which the export closes a vertex: config export.closed_thr (= design.closure_xi, 0.9). Every
+    run, Stage 2 included, is mapped by the single chain design.vertex_fields_final, so there is no legacy value."""
+    return float((cfg.get("export") or {}).get("closed_thr", 0.9))
 
 
 def decide(opt: dict, shift: dict | None, export_ok: bool, export_why: str, crit: float) -> tuple:
@@ -179,7 +176,7 @@ def summary_text(S: dict) -> str:
          f"{g(s.get('sig_ratio'), '{:.3f}'):>8}  {s.get('feasible')}{'  ' + s['error'] if s.get('error') else ''}",
          "",
          f"export h {e.get('h_mm')} mm: {e.get('faces')} faces, watertight {e.get('watertight')}, bodies "
-         f"{e.get('bodies')}, enclosed voids {e.get('voids')}, escape holes {e.get('holes')}",
+         f"{e.get('bodies')}, enclosed voids {(e.get('voids') or {}).get('enclosed')}, escape holes {e.get('holes')}",
          f"wall mm (nominal): min {g(w.get('min'), '{:.3f}')}, p05 {g(w.get('p05'), '{:.3f}')}, median "
          f"{g(w.get('median'), '{:.3f}')}, max {g(w.get('max'), '{:.3f}')}",
          f"closed area {g(S.get('closed_area_frac'), '{:.1%}')} of active, hollow {g(S.get('hollow_area_frac'), '{:.1%}')}"
@@ -189,6 +186,11 @@ def summary_text(S: dict) -> str:
          f"export alone GPU {g(S['peak_export'].get('gpu_gib'), '{:.2f}')} GiB, host "
          f"{g(S['peak_export'].get('host_gib'), '{:.2f}')} GiB"]
     return "\n".join(L) + "\n"
+
+
+def _hk(hollow) -> dict:
+    """`hollow=` keyword only when the run has a hollow-allowed set (C2 runs)."""
+    return {} if hollow is None else {"hollow": hollow}
 
 
 def _evaluate_fn(evaluate):
@@ -207,13 +209,13 @@ def _evaluate_fn(evaluate):
     return fn
 
 
-def rescore_shift(ctx, xi, phase: int, D_comp: float, evaluate=None, log=print) -> dict:
+def rescore_shift(ctx, xi, phase: int, D_comp: float, evaluate=None, log=print, hollow=None) -> dict:
     """C2 evaluate on the final-phase grid shifted by ½ h_e in x, y, z. Errors are recorded, not raised."""
     h_e = float(ctx.cfg["grid"]["phases"][phase]["h_e"])
     s = 0.5 * h_e
     t0 = time.time()
     try:
-        r = dict(_evaluate_fn(evaluate)(ctx, xi, phase, shift=(s, s, s), D_comp=D_comp))
+        r = dict(_evaluate_fn(evaluate)(ctx, xi, phase, shift=(s, s, s), D_comp=D_comp, **_hk(hollow)))
         out = {k: r.get(k) for k in ("J", "K_K0", "lamB_ratio", "sig_ratio", "mass_err", "governing")}
         out["feasible"] = bool(r.get("feasible", False))
         out["error"] = None
@@ -227,7 +229,7 @@ def rescore_shift(ctx, xi, phase: int, D_comp: float, evaluate=None, log=print) 
     return out
 
 
-def sensitivity(ctx, xi, phase: int, D_comp: float, out_dir: str, evaluate=None, log=print) -> dict:
+def sensitivity(ctx, xi, phase: int, D_comp: float, out_dir: str, evaluate=None, log=print, hollow=None) -> dict:
     """Opt-in: C2 evaluate on the optimisation grid for buckling knockdown κ_b × strength σ_f variations
     (collect.KAPPAS × collect.SIGMA_PCT); sensitivity.csv."""
     ev = _evaluate_fn(evaluate)
@@ -240,7 +242,7 @@ def sensitivity(ctx, xi, phase: int, D_comp: float, out_dir: str, evaluate=None,
             c2.cfg["capacity"]["knockdown"] = kb
             c2.cfg["material"]["strength_MPa"] = base["material"]["strength_MPa"] * (1 + sp / 100)
             try:
-                r = ev(c2, xi, phase, shift=None, D_comp=D_comp)
+                r = ev(c2, xi, phase, shift=None, D_comp=D_comp, **_hk(hollow))
                 rows.append(dict(kappa_b=kb, sigma_f=sp, sigma_f_MPa=c2.cfg["material"]["strength_MPa"], J=r.get("J"),
                                  lamB_ratio=r.get("lamB_ratio"), sig_ratio=r.get("sig_ratio"),
                                  feasible=int(bool(r.get("feasible")))))
@@ -350,9 +352,21 @@ def finalise(run_dir: str, ctx=None, *, out_dir: str | None = None, rescore: boo
                 f"{r['start']} {r['status']} feasible {r['feasible']}" for r in rows))
         xi = np.load(os.path.join(run_dir, best["xi_file"]))
         D_comp = float(best["D_comp"])
+        hollow = None
+        try:                                              # C2 run: design_<start>_phase<k>.npz holds H and D_comp
+            from .optimise import load_design
+            dd = load_design(run_dir, best["start"], last)
+            xi, hollow, D_comp = dd["xi"], dd["hollow"], float(dd["D_comp"])
+        except (ImportError, FileNotFoundError, KeyError) as e:
+            log(f"[finalise] no design npz ({e}); xi from {best['xi_file']}, hollowing allowed everywhere")
         opt = dict(J=best["J_opt"], K_K0=best["K_K0_opt"], lamB_ratio=best.get("lamB_ratio_opt"),
                    sig_ratio=best.get("sig_ratio_opt"), mass_err=best["mass_err"], start=best["start"],
                    xi_file=best["xi_file"], phase=last, D_comp=D_comp)
+        tol = float(cfg["objective"].get("feasibility_tol", 1e-3))
+        lb, sg = opt["lamB_ratio"], opt["sig_ratio"]
+        opt["feasible"] = (bool(np.log(1.0 / lb) <= tol and np.log(sg) <= tol)        # C2 constraints from history
+                           if lb is not None and sg is not None and np.isfinite(lb) and np.isfinite(sg) and lb > 0
+                           and sg > 0 else None)
         log(f"[finalise] design: start {best['start']} ({best['xi_file']}, D_comp {D_comp:g} mm), optimiser J "
             f"{opt['J']:+.4f}" + (f" (best of {len(rows)} starts)" if len(rows) > 1 else ""))
         t0 = time.time()
@@ -367,20 +381,20 @@ def finalise(run_dir: str, ctx=None, *, out_dir: str | None = None, rescore: boo
         # 2. shifted-grid re-score ------------------------------------------------------------------------------
         shift = None
         if rescore:
-            shift = rescore_shift(ctx, xi, last, D_comp, evaluate, log)
+            shift = rescore_shift(ctx, xi, last, D_comp, evaluate, log, hollow)
             tim["rescore_s"] = shift["seconds"]
             _free_device()
         sens = None
         if do_sensitivity:
             t0 = time.time()
-            sens = sensitivity(ctx, xi, last, D_comp, out_dir, evaluate, log)
+            sens = sensitivity(ctx, xi, last, D_comp, out_dir, evaluate, log, hollow)
             files["sensitivity.csv"] = "sensitivity.csv"
             tim["sensitivity_s"] = time.time() - t0
 
         # 3. export ---------------------------------------------------------------------------------------------
         h = float(h_mm if h_mm is not None else (cfg.get("export") or {}).get("h_mm", 0.2))
         thr = closed_threshold(cfg)
-        fields = cex.vertex_fields(ctx, xi, D_comp, h_g_last)
+        fields = cex.vertex_fields(ctx, xi, D_comp, h_g_last, **_hk(hollow))
         closed = fields["xt_a"] >= thr
         _free_device()
         hwm_reset()
@@ -432,7 +446,7 @@ def finalise(run_dir: str, ctx=None, *, out_dir: str | None = None, rescore: boo
             opt=opt, shift=shift,
             export=dict(h_mm=h, faces=mesh.get("faces"), watertight=mesh.get("watertight_manifold"),
                         bodies=mesh.get("bodies"), volume_mm3=Vf, volume_rel=mesh.get("volume_rel"),
-                        holes=(ex.get("voids") or {}).get("holes", 0), voids=(ex.get("voids") or {}).get("enclosed", 0),
+                        holes=(ex.get("voids") or {}).get("holes", 0), voids=ex.get("voids") or dict(total=0, enclosed=0),
                         wall=dict(min=w.get("min_nominal"), p05=w.get("p05_nominal"), median=w.get("median_nominal"),
                                   max=w.get("max_nominal"), min_as_built=w.get("min_as_built")),
                         delta_mm=mc.get("delta"), mesh_steps=mc.get("mesh_steps"),

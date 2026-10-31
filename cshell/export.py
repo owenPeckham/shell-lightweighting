@@ -1952,31 +1952,13 @@ class GpuExporter(Exporter):
 # =====================================================================================================================
 # high-level entry points
 # =====================================================================================================================
-def vertex_fields(ctx, xi, D_comp: float = 4.0, h_g: float | None = None):
-    """Nominal per-vertex (d, a, d_hi, xt_a, passive) of Γ_h for the packed design xi = [ξᵈ, ξᵃ] (THEORY §3.4).
-
-    Mirrors `optimise.PhaseModel` (a_hi = r_MA + γ_c h_g, d_hi from clearance and D_comp, D1 bound for a_lo)."""
-    from types import SimpleNamespace
-    from . import config as ccfg
-    from .design import DesignMap, DesignSpace, passive_thin
-    cfg = ctx.cfg
-    nv = ctx.surf.n_vertices
-    m, dsg = cfg["manufacturing"], cfg["design"]
-    if h_g is None:
-        h_g = min(p["h_g"] for p in cfg["grid"]["phases"])
-    a_hi = ctx.r_ma + dsg["closure_gamma"] * h_g
-    d_hi = np.minimum.reduce([ctx.r_out - dsg["gap_mm"], ctx.keepout - dsg["keep_out_clearance_mm"],
-                              np.full(nv, D_comp)]).clip(0.0)
-    if not dsg["allow_outward"]:
-        d_hi[:] = 0.0
-    passive = ctx.mount | passive_thin(a_hi, m["t_min_mm"], m["void_min_mm"])
-    r_f = ccfg.phase_value(cfg["filter"]["radius_mm"], len(cfg["grid"]["phases"]) - 1)
-    ds = DesignSpace(r_ma=ctx.r_ma, a_hi=a_hi, d_hi=d_hi, area=ctx.surf.A, passive=passive, filt=ctx.surf.filter(r_f),
-                     t_min=m["t_min_mm"], v_min=m["void_min_mm"], b_v=m["wall_bias_mm"], b_o=m["outer_bias_mm"],
-                     soft_w=dsg["inset_soft_mm"])
-    xi = np.asarray(xi, np.float64)
-    xt_d, xt_a, d, a, _, _ = DesignMap.vertex_fields(SimpleNamespace(xp=np, ds=ds), xi[:nv], xi[nv:])
-    return dict(d=d, a=a, d_hi=d_hi, xt_a=xt_a, passive=passive, r_ma=ctx.r_ma)
+def vertex_fields(ctx, xi, D_comp: float = 4.0, h_g: float | None = None, hollow=None):
+    """Nominal per-vertex fields (d, a, d_hi, xt_a, passive, r_ma, closed, ...) of Γ_h for the packed design
+    xi = [ξᵈ, ξᵃ]: the optimiser's final-phase chain `design.vertex_fields_final` (F² filter, smoothed r_MA, d taper,
+    hollow-set taper, closure projection). `hollow`: the run's hollow-allowed set (optimise.load_design); None =
+    hollowing allowed everywhere."""
+    from .design import vertex_fields_final
+    return vertex_fields_final(ctx, xi, h_g, D_comp, hollow)
 
 
 def export_design(ctx, xi, out_dir: str, D_comp: float = 4.0, stress=None, name: str = "final_design", h_g=None,

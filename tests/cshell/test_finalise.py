@@ -172,7 +172,7 @@ def test_out_dir_leaves_run_dir_untouched_legacy_run(tmp_path, mocks):
     assert S["opt"]["start"] == "neutral" and S["opt"]["K_K0"] == pytest.approx(1 / 0.9)
     assert S["opt"]["lamB_ratio"] is None                                  # not in a Stage 2 history
     assert mocks["export"][0]["out_dir"] == str(out)
-    assert mocks["export"][0]["closed_thr"] == 0.98                      # Stage 2 map: legacy closure threshold
+    assert mocks["export"][0]["closed_thr"] == 0.9                       # config export.closed_thr (single chain)
 
 
 def test_decide_truth_table():

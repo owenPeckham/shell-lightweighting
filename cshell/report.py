@@ -66,15 +66,20 @@ def _labels(x, n_tri, kind):
             return x.copy()
         m = np.zeros(n_tri, bool)
         if x.size and x.dtype != bool:
-            m[x.astype(int).ravel()] = True
+            x = x.astype(int).ravel()
+            m[x[x >= 0]] = True
         return m
     if x.size == n_tri and x.dtype != bool and x.size and x.min() >= -1:
         return x.astype(int)
     lab = np.full(n_tri, -1, int)
     if x.dtype == bool and x.size == n_tri:
         lab[x] = 0
+    elif x.ndim == 2:                                     # n_loads × max index rows, −1 padded
+        for i, row in enumerate(x.astype(int)):
+            lab[row[row >= 0]] = i
     elif x.size:
-        lab[x.astype(int).ravel()] = 0
+        x = x.astype(int).ravel()
+        lab[x[x >= 0]] = 0
     return lab
 
 
@@ -84,8 +89,9 @@ def load_bc(z, cfg=None):
     if "V" not in keys or "T" not in keys:
         raise NA("bc_faces.npz: V, T")
     V, T = np.asarray(z["V"], float), np.asarray(z["T"], int)
-    sk = "support_faces" if "support_faces" in keys else ("support" if "support" in keys else None)
-    lk = "load_faces" if "load_faces" in keys else ("load" if "load" in keys else None)
+    # per-triangle arrays first: support_faces / load_faces (C2) are B-rep face ids (load_faces −1 padded per load)
+    sk = "support" if "support" in keys else ("support_faces" if "support_faces" in keys else None)
+    lk = "load" if "load" in keys else ("load_faces" if "load_faces" in keys else None)
     if lk is None:
         raise NA("bc_faces.npz: load_faces")
     sup = _labels(z[sk], len(T), "support") if sk else np.zeros(len(T), bool)
