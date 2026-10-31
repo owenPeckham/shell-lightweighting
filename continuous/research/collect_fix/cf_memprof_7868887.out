@@ -1,0 +1,52 @@
+[collect] starts: uniform missing J +nan feasible False; vshell missing J +nan feasible False; neutral missing J +nan feasible False
+[cshell] context: 118478 vertices, mounts 76 faces, r_MA 3.22 mm median, 49 s
+[memprof] Context#1                       49.9 s  rss 0.7->1.7  peak rss 1.7 pss 1.7 cg anon 1.2 GiB
+[collect] host RSS 1.7 GiB after context
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /home/b6bl/owenpeckham.b6bl/.cache/warp/1.18.0
+Module cshell.band ad91966 load on device 'cuda:0' took 3.18 ms  (cached)
+[cshell] phase 1: h_e 0.4 h_g 0.1, band 281.9 M cells, element box (772, 297, 147), passive {'mount': 26272, 'thin': 17762}, V0 85235.6 mm³, 64 s
+[cshell]   geometry chain on the GPU: compact band 6.30 GiB, released from the device during each FE evaluation
+[memprof] make_model#1                    63.9 s  rss 1.7->19.9  peak rss 25.7 pss 26.5 cg anon 25.9 GiB
+[collect] host RSS 19.9 GiB after model opt (parametric)
+[memprof] cell_rescore#1                   0.1 s  rss 19.9->19.9  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[memprof] cell_rescore#2                   0.1 s  rss 19.9->19.9  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[memprof] cell_rescore#3                   0.1 s  rss 19.9->19.9  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[memprof] cell_rescore#4                   0.1 s  rss 19.9->19.9  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[memprof] cell_rescore#5                   0.1 s  rss 19.9->19.9  peak rss 19.9 pss 19.9 cg anon 9.2 GiB
+[memprof] cell_rescore#6                   0.1 s  rss 19.9->19.9  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[memprof] cell_rescore#7                   0.1 s  rss 19.9->19.9  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[collect] uniform shell (mounts solid): t = 2.2140 mm for constant mass on the optimisation band
+[cshell]   active set rebuilt: 1931984 elements, 6346890 DOF, engine twogrid, coarse 930252 DOF (fp32), 91.1 GiB device memory free
+[memprof] raw_responses#1                 83.4 s  rss 19.9->20.1  peak rss 20.6 pss 20.6 cg anon 9.3 GiB
+[memprof] free_model#1                     0.5 s  rss 20.1->4.7  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[collect] host RSS 4.8 GiB after release model opt (parametric)
+[memprof] export_baselines#1               0.1 s  rss 4.7->4.7  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[collect] host RSS 4.5 GiB after export baselines
+[cshell] phase 1: h_e 0.4 h_g 0.1, band 281.9 M cells, element box (772, 297, 147), passive {'mount': 26272, 'thin': 17762}, V0 85235.6 mm³, 63 s
+[cshell]   geometry chain on the GPU: compact band 6.30 GiB, released from the device during each FE evaluation
+[memprof] make_model#2                    63.4 s  rss 4.5->22.2  peak rss 33.1 pss 33.1 cg anon 33.0 GiB
+[collect] host RSS 22.2 GiB after model opt
+[memprof] cell_rescore#8                   0.1 s  rss 22.2->22.2  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[memprof] stl_soup#1                       2.9 s  rss 22.2->25.3  peak rss 23.9 pss 23.9 cg anon 12.7 GiB
+[memprof] mesh_phi#1                      56.7 s  rss 25.3->25.2  peak rss 25.3 pss 25.3 cg anon 15.1 GiB
+[memprof] cell_rescore#9                   0.1 s  rss 22.2->22.2  peak rss 25.2 pss 25.0 cg anon 12.0 GiB
+[cshell]   active set rebuilt: 1931984 elements, 6346890 DOF, engine twogrid, coarse 930252 DOF (fp32), 48.2 GiB device memory free
+[memprof] raw_responses#2                 82.8 s  rss 19.7->21.8  peak rss 21.8 pss 21.7 cg anon 10.9 GiB
+[cshell]   active set rebuilt: 2552569 elements, 8741325 DOF, engine twogrid, coarse 1375224 DOF (fp32), 89.3 GiB device memory free
+[memprof] raw_responses#3                151.0 s  rss 22.0->23.3  peak rss 23.3 pss 23.3 cg anon 12.2 GiB
+[collect] solid re-score vs the parametric pass on the same grid: C -1.95e-14
+[collect] opt: solid               J +0.0000 K/K0 1.0000 P/P0 1.0000 buckling V/V0-1 +0.00e+00 load moved 0.0%
+[collect] opt: uniform_shell       J +0.1233 K/K0 0.7073 P/P0 1.8092 strength V/V0-1 -5.73e-05 load moved 0.0%
+[memprof] free_model#2                     0.4 s  rss 23.3->6.3  peak rss 0.0 pss 0.0 cg anon 0.0 GiB
+[collect] host RSS 5.1 GiB after release model opt
+[cshell] phase 1: h_e 0.4 h_g 0.1, band 281.9 M cells, element box (772, 297, 148), passive {'mount': 26272, 'thin': 17762}, V0 85235.6 mm³, 63 s
+[cshell]   geometry chain on the GPU: compact band 6.30 GiB, released from the device during each FE evaluation
+[memprof] make_model#3                    63.2 s  rss 5.1->22.2  peak rss 33.2 pss 33.1 cg anon 33.0 GiB
+[collect] host RSS 22.2 GiB after model shift
+[2026-10-30T18:37:18.771] error: *** JOB 7868887 ON nid010877 CANCELLED AT 2026-10-30T18:37:18 DUE to SIGNAL Terminated ***

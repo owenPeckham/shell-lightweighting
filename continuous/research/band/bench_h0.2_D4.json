@@ -1,0 +1,30 @@
+{
+ "h_g": 0.2,
+ "D_comp": 4.0,
+ "device": "cuda:0",
+ "gpu": "NVIDIA GH200 120GB",
+ "tess_seconds": 1.699678659439087,
+ "n_vertices": 66764,
+ "n_triangles": 133540,
+ "rss_after_tess_MiB": 252.0,
+ "build_seconds": 3.6456594467163086,
+ "n_cells": 28187883,
+ "band_MiB": 752.697681427002,
+ "grid_shape": [
+  845,
+  745,
+  746
+ ],
+ "dense_cells": 469625650,
+ "peak_rss_MiB": 1906.9375,
+ "warp_mempool_high_MiB": 172.088397026062,
+ "V0": 60957.74654204015,
+ "V0_seconds": 0.9396626949310303,
+ "V0_rel_to_theory_60942": 0.00025838571166270086,
+ "save_seconds": 0.3229689598083496,
+ "load_seconds": 0.334397554397583,
+ "extend_to": 8.0,
+ "extend_seconds": 6.5552356243133545,
+ "extend_n_cells": 58752446,
+ "peak_rss_MiB_after_extend": 5326.875
+}

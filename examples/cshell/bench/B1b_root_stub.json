@@ -1,0 +1,41 @@
+{
+ "name": "B1b_root_stub",
+ "step_file": "B1b_root_stub.step",
+ "output_dir": "../../../runs_cshell/bench",
+ "supports": [
+  {
+   "type": "plane",
+   "normal": [
+    -1,
+    0,
+    0
+   ],
+   "extreme": true
+  }
+ ],
+ "loads": [
+  {
+   "faces": {
+    "type": "plane",
+    "normal": [
+     1,
+     0,
+     0
+    ],
+    "extreme": true
+   },
+   "force_N": [
+    0,
+    0,
+    -20.0
+   ]
+  }
+ ],
+ "mounts": {
+  "auto_analytic": false
+ },
+ "objective": {
+  "w_stiffness": 1.0,
+  "w_capacity": 0.0
+ }
+}

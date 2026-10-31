@@ -1,0 +1,40 @@
+NVIDIA GH200 120GB, 97871 MiB
+[cshell] context: 118478 vertices, mounts 76 faces, r_MA 3.22 mm median, 49 s
+loaded solid: 86687 V 173398 T in 55 s
+[levelset] s = 0.1667 mm, lattice (np.int64(1807), np.int64(667), np.int64(307)), 8247 active blocks of 16^3 cells (173398 input faces), 15.8 s
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /home/b6bl/owenpeckham.b6bl/.cache/warp/1.18.0
+Module cshell.band ad91966 load on device 'cuda:0' took 3.49 ms  (cached)
+[levelset] {'spacing': 0.16666666666666666, 'lattice': [1807, 667, 307], 'active_blocks': 8247, 'sdf_queries': 39905613, 'faces': 3470604, 'vertices': 1735290, 'bodies': 1, 'body_volumes': [85210.21535477397], 'dropped_bodies': 0, 'dropped_mm3': 0.0, 'volume': 85210.21535477397, 'ambiguous_flipped': 8, 'ambiguous_iters': 1, 'duplicate_directed_edges': 0, 'missing_reverse_edges': 0, 'seconds_sdf': 20.721381187438965, 'seconds': 40.982606649398804, 'closed_manifold': True}
+RESULT {"part": "MBB", "which": "solid", "variant": "B0.5", "levelset": {"spacing": 0.16666666666666666, "lattice": [1807, 667, 307], "active_blocks": 8247, "sdf_queries": 39905613, "faces": 3470604, "vertices": 1735290, "bodies": 1, "body_volumes": [85210.21535477397], "dropped_bodies": 0, "dropped_mm3": 0.0, "volume": 85210.21535477397, "ambiguous_flipped": 8, "ambiguous_iters": 1, "duplicate_directed_edges": 0, "missing_reverse_edges": 0, "seconds_sdf": 20.721381187438965, "seconds": 40.982606649398804, "closed_manifold": true}, "dev_mc": {"volume_rel": -0.00023915129961682435, "to_ref": {"max": 0.085052490234375, "q999": 0.04348238782957137, "q99": 0.004757702774368228, "mean": 0.0006094467440055774, "argmax": [-125.095, 54.915, 0.112]}, "from_ref": {"max": 0.16680960357189178, "q999": 0.10288179451227188, "q99": 0.04912925824522972, "mean": 0.00402567811618352, "argmax": [-125.0, -35.0, 5.0], "points": 86687}, "hausdorff": 0.16680960357189178}, "t_mc": 41.606855630874634, "remesh": {"faces": 318396, "faces_in": 3470604, "area": 34924.586812837886, "stages": [318396], "watertight": true, "self_intersections": 0, "repairs": [], "edge_max": 1.0051359884642208, "vol_rel": -0.001018596481495937, "hausdorff": 1.1032019781413452e-13}, "dev_remesh": {"volume_rel": -0.001257504182447522, "to_ref": {"max": 0.08504867553710938, "q999": 0.056250417709350575, "q99": 0.02464223839342594, "mean": 0.0034477512846952944, "argmax": [-125.095, -35.085, 0.112]}, "from_ref": {"max": 0.16680960357189178, "q999": 0.10414514043927176, "q99": 0.05228430382907389, "mean": 0.009416095665675065, "argmax": [-125.0, -35.0, 5.0], "points": 86687}, "hausdorff": 0.16680960357189178}, "t_remesh": 159.97105073928833, "t_gmsh": 836.8959283828735, "gate": {"dihedral_min": 8.202824364483291, "frac_dihedral_lt_5": 0.0, "n_dihedral_lt_5": 0, "edge_max": 1.2273192904941377, "edge_max_over_h": 2.4546385809882754, "layers_p01": 6.477, "passed": true, "failures": []}, "n_tets": 2696389, "n_nodes10": 3924317}
+RESULT {"part": "MBB", "which": "solid", "variant": "B0.354", "levelset": {"spacing": 0.16666666666666666, "lattice": [1807, 667, 307], "active_blocks": 8247, "sdf_queries": 39905613, "faces": 3470604, "vertices": 1735290, "bodies": 1, "body_volumes": [85210.21535477397], "dropped_bodies": 0, "dropped_mm3": 0.0, "volume": 85210.21535477397, "ambiguous_flipped": 8, "ambiguous_iters": 1, "duplicate_directed_edges": 0, "missing_reverse_edges": 0, "seconds_sdf": 20.721381187438965, "seconds": 40.982606649398804, "closed_manifold": true}, "dev_mc": {"volume_rel": -0.00023915129961682435, "to_ref": {"max": 0.085052490234375, "q999": 0.04348238782957137, "q99": 0.004757702774368228, "mean": 0.0006094467440055774, "argmax": [-125.095, 54.915, 0.112]}, "from_ref": {"max": 0.16680960357189178, "q999": 0.10288179451227188, "q99": 0.04912925824522972, "mean": 0.00402567811618352, "argmax": [-125.0, -35.0, 5.0], "points": 86687}, "hausdorff": 0.16680960357189178}, "t_mc": 6.198883056640625e-06, "remesh": {"faces": 613542, "faces_in": 3470604, "thin_faces_in": 0, "area": 34924.586812837886, "stages": [613542], "watertight": true, "self_intersections": 0, "repairs": [], "edge_max": 0.7428367866561679, "vol_rel": -0.0005231834015380077, "hausdorff": 7.105982447430965e-14}, "dev_remesh": {"volume_rel": -0.0007622095811706808, "to_ref": {"max": 0.08812713623046875, "q999": 0.05580964088439899, "q99": 0.013375735841691494, "mean": 0.002193522395353064, "argmax": [-125.111, 54.912, 0.112]}, "from_ref": {"max": 0.18031556904315948, "q999": 0.10441488792002197, "q99": 0.05183562256395814, "mean": 0.007274705173749023, "argmax": [5.0, 55.0, 45.0], "points": 86687}, "hausdorff": 0.18031556904315948}, "t_remesh": 160.84298419952393, "t_gmsh": 2650.0022661685944, "gate": {"dihedral_min": 12.757654661950369, "frac_dihedral_lt_5": 0.0, "n_dihedral_lt_5": 0, "edge_max": 0.9251837222193896, "edge_max_over_h": 2.6135133396027954, "layers_p01": 9.283, "passed": false, "failures": ["longest edge 2.61 h > 2.5 h"]}, "n_tets": 7414309, "n_nodes10": 10522292}
+	Command being timed: "python continuous/research/bodyfit_scale/diag.py /home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/runs_cshell/FULL/MBB solid B0.5,B0.354"
+	User time (seconds): 3937.56
+	System time (seconds): 11.96
+	Percent of CPU this job got: 100%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:05:32
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 6508160
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 6420
+	Minor (reclaiming a frame) page faults: 2438262
+	Voluntary context switches: 140990
+	Involuntary context switches: 89378
+	Swaps: 0
+	File system inputs: 2617822
+	File system outputs: 92416
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 65536
+	Exit status: 0
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 1:05:32
+	Maximum resident set size (kbytes): 6508160

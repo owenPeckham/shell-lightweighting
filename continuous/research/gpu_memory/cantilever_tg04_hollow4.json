@@ -1,0 +1,85 @@
+{
+ "part": "Cantilever",
+ "h_e": 0.4,
+ "hollow": 4,
+ "ndof": 2245206,
+ "nnz": 148823514,
+ "setup_s": 32.872719287872314,
+ "deg": 3,
+ "coarse_prec": "fp32",
+ "mem_fine_K": {
+  "tag": "fine_K",
+  "device_used": 5.41021728515625,
+  "over_base": 4.85791015625,
+  "cupy_used": 4.267146110534668,
+  "cupy_held": 4.849700450897217
+ },
+ "coarse_ndof": 436731,
+ "coarse_nnz": 27145845,
+ "twogrid_host_setup_s": 2.8812880516052246,
+ "coarse_factor_s": 0.931032657623291,
+ "coarse_zero_diag": 0,
+ "mem_after_coarse_factor": {
+  "tag": "coarse_factor",
+  "device_used": 7.19146728515625,
+  "over_base": 6.63916015625,
+  "cupy_used": 5.33388090133667,
+  "cupy_held": 5.342504024505615
+ },
+ "galerkin_rel_err": 2.580490858724944e-16,
+ "matfree_rel_diff": 2.1990017160713888e-16,
+ "matvec_csr_1col_s": 0.0005609512329101563,
+ "matvec_csr_10col_s": 0.0054302215576171875,
+ "matvec_matfree_1col_s": 0.0007606983184814453,
+ "matvec_matfree_10col_s": 0.0053235054016113285,
+ "lmax_DinvK": 4.949316115292217,
+ "pcg_csr": {
+  "its": 25,
+  "rel_res": 6.897978383738608e-11,
+  "seconds": 0.28354549407958984,
+  "compliance": 483.3881901337521,
+  "vcycles": 25
+ },
+ "pcg_matfree": {
+  "its": 25,
+  "rel_res": 6.898025125049535e-11,
+  "seconds": 0.26804447174072266,
+  "compliance": 483.38819008726983,
+  "vcycles": 25
+ },
+ "peak_cupy_GiB": 8.779598236083984,
+ "mem_after_pcg": {
+  "tag": "after_pcg",
+  "device_used": 10.97857666015625,
+  "over_base": 10.42626953125,
+  "cupy_used": 5.42657995223999,
+  "cupy_held": 9.119258880615234
+ },
+ "buckling_twogrid": {
+  "lean": true,
+  "seconds": 17.99786901473999,
+  "iters": 4,
+  "converged": true,
+  "mu": [
+   0.5938985306216326,
+   0.4760256653631084,
+   0.38287158232231167,
+   0.3693439967511722,
+   0.2513167682940526,
+   0.22433466447757913
+  ],
+  "mu_tilde": 0.60909504717765,
+  "peak_extra_GiB": 8.405851364135742,
+  "eig_peak_extra_GiB": 4.851180553436279,
+  "device_before": 7.35552978515625,
+  "inner": "direct32",
+  "total_s": 18.24801540374756,
+  "exact_pcg_its": 43,
+  "exact_calls": 2,
+  "krylov_pcg_its": 151,
+  "inner_tol": 0.0001,
+  "vcycles": 1817,
+  "lambda1": 1.6837893149075511
+ },
+ "total_s": 57.22249889373779
+}

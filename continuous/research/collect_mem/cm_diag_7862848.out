@@ -1,0 +1,71 @@
+[diag 14:44:53 rss 1.3 GiB] [cshell] context: 118478 vertices, mounts 76 faces, r_MA 3.22 mm median, 50 s
+[diag 14:44:53 rss 1.3 GiB] best start uniform D_comp 4.0
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /home/b6bl/owenpeckham.b6bl/.cache/warp/1.18.0
+Module cshell.band ad91966 load on device 'cuda:0' took 3.73 ms  (cached)
+[diag 14:46:18 rss 37.5 GiB] [cshell] phase 1: h_e 0.4 h_g 0.1, band 281.9 M cells, element box (772, 297, 147), passive {'mount': 26272, 'thin': 17762}, V0 85235.6 mm³, 84 s
+[diag 14:46:18 rss 37.5 GiB] [cshell]   geometry chain on the CPU (NumPy/SciPy)
+[diag 14:46:20 rss 37.7 GiB] [cshell]   active set rebuilt: 1931984 elements, 6346890 DOF, engine twogrid, coarse 930252 DOF (fp32), 91.0 GiB device memory free
+[diag 14:46:48 rss 38.3 GiB] cpu solid {'C': 85.69876037986631, 'lam1': 7.3480139927402455, 'sigma_q': 2.7416950049552464, 'error': None, 'pcg': [(1, 17, 1e-10), (1, 15, 1e-10), (7, 2, 0.01)]}
+[diag 14:47:02 rss 38.5 GiB] [cshell]   active set rebuilt: 2449445 elements, 8357652 DOF, engine twogrid, coarse 1283169 DOF (fp32), 89.5 GiB device memory free
+[diag 14:47:50 rss 41.3 GiB] cpu best {'C': 91.20690709119049, 'lam1': 14.180360454161791, 'sigma_q': 2.727732488767785, 'error': None, 'pcg': [(1, 53, 1e-10), (1, 40, 1e-10), (7, 2, 0.01)]}
+[diag 14:47:51 rss 41.3 GiB] cpu best -3.1665650324086414e-06 {'J': 0.3055305580978239, 'K_K0': 0.9396082282911203, 'P_P0': 1.9608016313312469, 'lam_s': 12.521668403854006, 'lam_b': 11.114411311342502, 'lam': 10.917565511779202, 'governing': 'buckling'} None
+[diag 14:48:05 rss 41.8 GiB] [cshell]   active set rebuilt: 2345952 elements, 8086896 DOF, engine twogrid, coarse 1262790 DOF (fp32), 89.6 GiB device memory free
+[diag 14:48:13 rss 41.6 GiB] cpu uniform_start {'C': None, 'lam1': None, 'sigma_q': None, 'error': "RuntimeError('two-grid PCG did not converge in 100 iterations (rel. residual 8.48e-10, tol 1e-10, 1 columns)')", 'pcg': None}
+[diag 14:48:14 rss 41.6 GiB] cpu uniform_start -0.113497420807541 None None
+[diag 14:48:30 rss 57.1 GiB] [cshell]   active set rebuilt: 2543713 elements, 8716446 DOF, engine twogrid, coarse 1372746 DOF (fp32), 89.3 GiB device memory free
+[diag 14:49:21 rss 56.6 GiB] uniform shell asbuilt {'C': 1583.571307466528, 'lam1': 13.61931603327766, 'sigma_q': 3.507184317478657, 'error': None, 'pcg': [(1, 25, 1e-10), (1, 19, 1e-10), (7, 2, 0.01)]}
+[diag 14:49:22 rss 56.6 GiB] uniform asbuilt {'J': -1.1841605047099337, 'K_K0': 0.054117399056043285, 'P_P0': 1.7302718350382615, 'lam_s': 9.929528852217356, 'lam_b': 10.638637865578524, 'lam': 9.633996529976063, 'governing': 'strength'} {'load_nodes_rho<0.001': 1844, 'load_share_rho<0.001': 0.3476621417797888, 'fixed_nodes_with_rho>=0.001': 6280, 'load_nodes_rho<0.05': 2027, 'load_share_rho<0.05': 0.3821644042232278, 'fixed_nodes_with_rho>=0.05': 5998, 'load_nodes_rho<0.2': 2205, 'load_share_rho<0.2': 0.4157239819004525, 'fixed_nodes_with_rho>=0.2': 5671, 'n_load_nodes': 5304, 'n_fixed_nodes': 6280}
+[diag 14:50:24 rss 56.6 GiB] uniform shell nominal {'C': 112.7308906657404, 'lam1': 15.004513653697924, 'sigma_q': 3.0550172705631793, 'error': None, 'pcg': [(1, 26, 1e-10), (1, 20, 1e-10), (7, 2, 0.01)]}
+[diag 14:50:25 rss 56.6 GiB] uniform nominal {'J': 0.19619482578683695, 'K_K0': 0.760206540317087, 'P_P0': 1.9475161095112214, 'lam_s': 11.342603666456156, 'lam_b': 11.663042567756369, 'lam': 10.843592932141034, 'governing': 'strength'} {'load_nodes_rho<0.001': 0, 'load_share_rho<0.001': 0.0, 'fixed_nodes_with_rho>=0.001': 6280, 'load_nodes_rho<0.05': 0, 'load_share_rho<0.05': 0.0, 'fixed_nodes_with_rho>=0.05': 6280, 'load_nodes_rho<0.2': 0, 'load_share_rho<0.2': 0.0, 'fixed_nodes_with_rho>=0.2': 6280, 'n_load_nodes': 5304, 'n_fixed_nodes': 6280}
+[diag 14:50:34 rss 57.1 GiB] [cshell]   active set rebuilt: 2339444 elements, 8028660 DOF, engine twogrid, coarse 1252902 DOF (fp32), 89.7 GiB device memory free
+[diag 14:51:26 rss 56.6 GiB] uniform shell asbuilt_mount_solid {'C': 125.54204411256843, 'lam1': 11.364956530818588, 'sigma_q': 3.7483610965595084, 'error': None, 'pcg': [(1, 20, 1e-10), (1, 18, 1e-10), (7, 2, 0.01)]}
+[diag 14:51:27 rss 56.6 GiB] uniform asbuilt_mount_solid {'J': -0.4184176419267084, 'K_K0': 0.682629958637791, 'P_P0': 0.6344270763075351, 'lam_s': 3.5324373050633318, 'lam_b': 8.832723364166243, 'lam': 3.53243237732902, 'governing': 'strength'} {'load_nodes_rho<0.001': 0, 'load_share_rho<0.001': 0.0, 'fixed_nodes_with_rho>=0.001': 6280, 'load_nodes_rho<0.05': 0, 'load_share_rho<0.05': 0.0, 'fixed_nodes_with_rho>=0.05': 6280, 'load_nodes_rho<0.2': 0, 'load_share_rho<0.2': 0.0, 'fixed_nodes_with_rho>=0.2': 6280, 'n_load_nodes': 5304, 'n_fixed_nodes': 6280}
+[diag 14:51:40 rss 50.3 GiB] best volume decomposition {'vf_nominal': 85235.32617429513, 'vf_nominal_rel': -3.1665650324086414e-06, 'closed_thr': 88469.08222663251, 'closed_thr_rel': 0.03793586596504728, 'n_closed_thr_active': 0, 'n_open_active': 88511, 'n_xt_a_0.5_0.98': 809, 'n_open_void_lt_vmin': 4292, 'area_frac_open_void_lt_vmin': 0.036471269817639346}
+[diag 14:52:44 rss 29.2 GiB] [cshell] phase 1: h_e 0.4 h_g 0.1, band 281.9 M cells, element box (772, 297, 147), passive {'mount': 26272, 'thin': 17762}, V0 85235.6 mm³, 64 s
+[diag 14:52:44 rss 29.2 GiB] [cshell]   geometry chain on the GPU: compact band 6.30 GiB, released from the device during each FE evaluation
+[diag 14:52:45 rss 29.2 GiB] [cshell]   active set rebuilt: 1931984 elements, 6346890 DOF, engine twogrid, coarse 930252 DOF (fp32), 84.1 GiB device memory free
+[diag 14:53:12 rss 29.2 GiB] gpu solid {'C': 85.69876037990647, 'lam1': 7.348013992759738, 'sigma_q': 2.741695004957519, 'error': None, 'pcg': [(1, 17, 1e-10), (1, 15, 1e-10), (7, 2, 0.01)]}
+[diag 14:53:13 rss 29.2 GiB] [cshell]   active set rebuilt: 2449445 elements, 8357652 DOF, engine twogrid, coarse 1283169 DOF (fp32), 83.2 GiB device memory free
+[diag 14:54:01 rss 29.2 GiB] gpu best {'C': 91.20690709121283, 'lam1': 14.180360454797938, 'sigma_q': 2.7277324887682437, 'error': None, 'pcg': [(1, 53, 1e-10), (1, 40, 1e-10), (7, 2, 0.01)]}
+[diag 14:54:02 rss 29.2 GiB] gpu best -3.1665650357393105e-06 {'J': 0.3055305579232888, 'K_K0': 0.9396082282913305, 'P_P0': 1.9608016306463507, 'lam_s': 12.521668403847858, 'lam_b': 11.11441130653696, 'lam': 10.917565507968794, 'governing': 'buckling'} 7.771561172376096e-16
+[diag 14:54:02 rss 29.2 GiB] [cshell]   active set rebuilt: 2345952 elements, 8086896 DOF, engine twogrid, coarse 1262790 DOF (fp32), 83.3 GiB device memory free
+[diag 14:54:11 rss 29.2 GiB] gpu uniform_start {'C': None, 'lam1': None, 'sigma_q': None, 'error': "RuntimeError('two-grid PCG did not converge in 100 iterations (rel. residual 8.48e-10, tol 1e-10, 1 columns)')", 'pcg': None}
+[diag 14:54:12 rss 29.2 GiB] gpu uniform_start -0.11349742080754144 None 9.43689570931383e-16
+[diag 14:55:33 rss 53.3 GiB] [cshell] phase 1: h_e 0.4 h_g 0.1, band 281.9 M cells, element box (772, 297, 148), passive {'mount': 26272, 'thin': 17762}, V0 85235.6 mm³, 81 s
+[diag 14:55:33 rss 53.3 GiB] [cshell]   geometry chain on the CPU (NumPy/SciPy)
+[diag 14:55:34 rss 57.5 GiB] [cshell]   active set rebuilt: 1921401 elements, 6315936 DOF, engine twogrid, coarse 937008 DOF (fp32), 90.3 GiB device memory free
+[diag 14:56:02 rss 57.5 GiB] shift solid {'C': 85.4233213840129, 'lam1': 7.367734715779333, 'sigma_q': 2.7341731786553956, 'error': None, 'pcg': [(1, 18, 1e-10), (1, 15, 1e-10), (7, 2, 0.01)]}
+[diag 14:56:11 rss 63.6 GiB] [cshell]   active set rebuilt: 2539515 elements, 8713119 DOF, engine twogrid, coarse 1365186 DOF (fp32), 89.3 GiB device memory free
+[diag 14:57:03 rss 63.6 GiB] shift uniform {'C': 126.88292001594948, 'lam1': 13.58312153017773, 'sigma_q': 3.4636257007805793, 'error': None, 'pcg': [(1, 25, 1e-10), (1, 19, 1e-10), (7, 2, 0.01)]}
+[diag 14:57:12 rss 63.6 GiB] [cshell]   active set rebuilt: 2438732 elements, 8324940 DOF, engine twogrid, coarse 1287309 DOF (fp32), 89.5 GiB device memory free
+[diag 14:58:01 rss 63.6 GiB] shift best {'C': 91.0188881456594, 'lam1': 14.19288566351391, 'sigma_q': 2.7311008415110742, 'error': None, 'pcg': [(1, 72, 1e-10), (1, 47, 1e-10), (7, 2, 0.01)]}
+[diag 14:58:02 rss 63.6 GiB] done
+	Command being timed: "python continuous/research/collect_mem/diag.py runs_cshell/SMOKE_mbb/MBB runs_cshell/CM_diag_7862848 --shift"
+	User time (seconds): 872.10
+	System time (seconds): 51.44
+	Percent of CPU this job got: 109%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 14:06.33
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 87404864
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 6799
+	Minor (reclaiming a frame) page faults: 13546109
+	Voluntary context switches: 121853
+	Involuntary context switches: 68163
+	Swaps: 0
+	File system inputs: 4058064
+	File system outputs: 4096
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 65536
+	Exit status: 0

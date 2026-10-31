@@ -1,0 +1,40 @@
+{
+ "part": "MBB",
+ "h_e": 0.4,
+ "hollow": 0,
+ "Ne": 1460058,
+ "ndof": 4860336,
+ "nnz": 367575300,
+ "setup_s": 34.91922950744629,
+ "context_GiB": 0.55224609375,
+ "F_N": 200.0,
+ "mem_after_engine_init": {
+  "tag": "engine_init",
+  "device_used": 7.02935791015625,
+  "over_base": 6.47711181640625,
+  "cupy_used": 6.470961570739746,
+  "cupy_held": 6.470961570739746
+ },
+ "_stem": "mbb_h04_devblock",
+ "hybrid": [
+  {
+   "limit_GiB": 0.0,
+   "register_cuda_memory": true,
+   "plan_s": 11.06235671043396,
+   "hybrid_min_device_GiB": 7.390544567257166,
+   "factor_s": 7.97423529624939,
+   "device_used_after_factor": 71.332275390625,
+   "cupy_held_after_factor": 12.046165943145752,
+   "refactor_s": 7.746836423873901,
+   "solve_s": [
+    0.054831743240356445,
+    0.0526123046875,
+    0.05310201644897461
+   ],
+   "compliance_rel_vs_fp64": null,
+   "compliance": 85.61732860155071,
+   "error": "TypeError(\"The shape of 'b' ((4860336, 6)) doesn't match the original one ((4860336, 1)).\")"
+  }
+ ],
+ "total_s": 65.04574728012085
+}

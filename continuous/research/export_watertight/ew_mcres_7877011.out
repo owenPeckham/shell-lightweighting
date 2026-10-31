@@ -1,0 +1,32 @@
+rep 10 edge [ 8.    26.    44.436] -> [ 8.    26.834 45.   ]  cube [ 8 26 44]
+   cube [8, 26, 44] signs [1, 0, 0, 1, 1, 0, 0, 1] amb faces 2
+   cube [7, 26, 44] signs [1, 0, 0, 1, 1, 0, 0, 1] amb faces 2
+   cube [8, 25, 44] signs [0, 1, 1, 0, 1, 0, 1, 0] amb faces 2
+   cube [8, 26, 43] signs [0, 1, 0, 0, 1, 1, 1, 0] amb faces 0
+rep 10 edge [ 8.    26.785 44.   ] -> [ 8.    27.    44.516]  cube [ 8 26 44]
+   cube [8, 26, 44] signs [1, 0, 0, 1, 1, 0, 0, 1] amb faces 2
+   cube [7, 26, 44] signs [1, 0, 0, 1, 1, 0, 0, 1] amb faces 2
+   cube [8, 25, 44] signs [0, 1, 1, 0, 1, 0, 1, 0] amb faces 2
+   cube [8, 26, 43] signs [0, 1, 0, 0, 1, 1, 1, 0] amb faces 0
+rep 13 edge [11.    39.    21.927] -> [11.    39.211 21.   ]  cube [11 39 21]
+   cube [11, 39, 21] signs [0, 1, 1, 0, 0, 1, 1, 0] amb faces 2
+   cube [10, 39, 21] signs [0, 1, 1, 0, 0, 1, 1, 0] amb faces 2
+   cube [11, 38, 21] signs [0, 0, 0, 1, 1, 1, 0, 1] amb faces 0
+   cube [11, 39, 20] signs [1, 0, 0, 1, 0, 0, 0, 1] amb faces 1
+rep 13 edge [11.    39.211 21.   ] -> [11.    39.    21.927]  cube [11 39 21]
+   cube [11, 39, 21] signs [0, 1, 1, 0, 0, 1, 1, 0] amb faces 2
+   cube [10, 39, 21] signs [0, 1, 1, 0, 0, 1, 1, 0] amb faces 2
+   cube [11, 38, 21] signs [0, 0, 0, 1, 1, 1, 0, 1] amb faces 0
+   cube [11, 39, 20] signs [1, 0, 0, 1, 0, 0, 0, 1] amb faces 1
+rep 27 edge [41.     8.     5.028] -> [41.    8.15  6.  ]  cube [41  8  5]
+   cube [41, 8, 5] signs [1, 0, 0, 1, 1, 0, 0, 1] amb faces 2
+   cube [40, 8, 5] signs [1, 0, 0, 1, 1, 0, 0, 1] amb faces 2
+   cube [41, 7, 5] signs [0, 1, 1, 0, 0, 0, 1, 0] amb faces 1
+   cube [41, 8, 4] signs [0, 1, 1, 0, 1, 1, 0, 0] amb faces 2
+rep 27 edge [41.    8.04  5.  ] -> [41.     9.     5.109]  cube [41  8  5]
+   cube [41, 8, 5] signs [1, 0, 0, 1, 1, 0, 0, 1] amb faces 2
+   cube [40, 8, 5] signs [1, 0, 0, 1, 1, 0, 0, 1] amb faces 2
+   cube [41, 7, 5] signs [0, 1, 1, 0, 0, 0, 1, 0] amb faces 1
+   cube [41, 8, 4] signs [0, 1, 1, 0, 1, 1, 0, 0] amb faces 2
+gaussian, 40 fields of 48^3: duplicated directed edges 12
+same fields, ambiguous faces removed: duplicated directed edges 0

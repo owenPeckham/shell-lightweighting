@@ -1,0 +1,39 @@
+{
+ "part": "MBB",
+ "F": [
+  0.0,
+  0.0,
+  -200.0
+ ],
+ "runs": [
+  {
+   "h_e": 0.4,
+   "elem_box": [
+    771,
+    296,
+    146
+   ],
+   "dense_dof": 101114244,
+   "sdf_s": 25.15809178352356,
+   "n_fixed_nodes": 6532,
+   "n_load_nodes": [
+    5304
+   ],
+   "loaded_clamped_dof": 0,
+   "pattern_s": 7.13438868522644,
+   "active_elems": 1460058,
+   "sparse_dof": 4860336,
+   "nnz": 367575300,
+   "first_factor_s": 20.889911651611328,
+   "plan_s": 12.562484502792358,
+   "assemble_s": 0.21609210968017578,
+   "factor_s": 20.67055034637451,
+   "gpu_mem_after_factor_GiB": 71.45782470703125,
+   "refactor_s": 7.784312963485718,
+   "solve_s": 0.12009048461914062,
+   "compliance_Nmm": 85.61732860156233,
+   "K0": 467.19514207396196,
+   "buckling_error": "OutOfMemoryError('Out of memory allocating 3,888,268,800 bytes (allocated so far: 35,792,227,840 bytes).')"
+  }
+ ]
+}

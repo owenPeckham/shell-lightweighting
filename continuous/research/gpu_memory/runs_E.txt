@@ -1,0 +1,3 @@
+gpumem.py mbb h04_dev_nrhs14 0.4 --phases hybrid --hybrid-limits 0 --nrhs 14
+gpumem.py mbb h04_hyb20_nrhs14 0.4 --phases hybrid --hybrid-limits 20 --nrhs 14
+gpumem.py mbb h04_dev_nrhs1 0.4 --phases hybrid --hybrid-limits 0 --nrhs 1

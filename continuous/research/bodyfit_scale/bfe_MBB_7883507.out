@@ -1,0 +1,37 @@
+NVIDIA GH200 120GB, 97871 MiB
+[cshell] context: 118478 vertices, mounts 76 faces, r_MA 3.22 mm median, 50 s
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /home/b6bl/owenpeckham.b6bl/.cache/warp/1.18.0
+Module cshell.band ad91966 load on device 'cuda:0' took 6.08 ms  (cached)
+RESULT {"part": "MBB", "which": "design", "h": 0.5, "c": 1.4142135623730951, "error": "OutOfMemoryError('Out of memory allocating 25,274,181,632 bytes (allocated so far: 51,155,336,704 bytes).')"}
+RESULT {"part": "MBB", "which": "design", "h": 0.35355339059327373, "c": 1.4142135623730951, "error": "OutOfMemoryError('Out of memory allocating 1,440,000,000 bytes (allocated so far: 62,247,257,088 bytes).')"}
+	Command being timed: "python continuous/research/bodyfit_scale/factor_estimate.py /home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/runs_cshell/FULL/MBB design"
+	User time (seconds): 223.29
+	System time (seconds): 10.94
+	Percent of CPU this job got: 99%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:55.26
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 16363008
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 8153
+	Minor (reclaiming a frame) page faults: 1666735
+	Voluntary context switches: 102823
+	Involuntary context switches: 54180
+	Swaps: 0
+	File system inputs: 4200076
+	File system outputs: 512
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 65536
+	Exit status: 0
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:55.26
+	Maximum resident set size (kbytes): 16363008

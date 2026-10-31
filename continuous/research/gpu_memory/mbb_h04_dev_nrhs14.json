@@ -1,0 +1,40 @@
+{
+ "part": "MBB",
+ "h_e": 0.4,
+ "hollow": 0,
+ "Ne": 1460058,
+ "ndof": 4860336,
+ "nnz": 367575300,
+ "setup_s": 35.04065942764282,
+ "context_GiB": 0.55401611328125,
+ "F_N": 200.0,
+ "mem_after_engine_init": {
+  "tag": "engine_init",
+  "device_used": 7.02935791015625,
+  "over_base": 6.475341796875,
+  "cupy_used": 6.470961570739746,
+  "cupy_held": 6.470961570739746
+ },
+ "_stem": "mbb_h04_dev_nrhs14",
+ "hybrid": [
+  {
+   "limit_GiB": 0.0,
+   "register_cuda_memory": true,
+   "nrhs": 14,
+   "plan_s": 11.77356743812561,
+   "hybrid_min_device_GiB": 7.390544567257166,
+   "factor_s": 8.008031606674194,
+   "device_used_after_factor": 71.39569091796875,
+   "cupy_held_after_factor": 12.046165943145752,
+   "refactor_s": 7.757388353347778,
+   "solve_s": [
+    0.18300127983093262,
+    0.18137311935424805,
+    0.18023109436035156
+   ],
+   "compliance_rel_vs_fp64": null,
+   "compliance": 85.6173286015588
+  }
+ ],
+ "total_s": 66.64616751670837
+}

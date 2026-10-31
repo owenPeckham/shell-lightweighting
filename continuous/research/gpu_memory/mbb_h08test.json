@@ -1,0 +1,297 @@
+{
+ "part": "MBB",
+ "h_e": 0.8,
+ "hollow": 0,
+ "Ne": 198755,
+ "ndof": 722592,
+ "nnz": 51617250,
+ "setup_s": 6.884552001953125,
+ "context_GiB": 0.5511474609375,
+ "F_N": 200.0,
+ "mem_after_engine_init": {
+  "tag": "engine_init",
+  "device_used": 1.46099853515625,
+  "over_base": 0.90985107421875,
+  "cupy_used": 0.9049105644226074,
+  "cupy_held": 0.9049105644226074
+ },
+ "estimates": [
+  {
+   "prec": "fp64",
+   "reorder": "DEFAULT",
+   "plan_s": 0.9914596080780029,
+   "permanent_device_memory": 4.567182224243879,
+   "peak_device_memory": 4.567182224243879,
+   "permanent_host_memory": 0.05598466098308563,
+   "peak_host_memory": 0.447105273604393,
+   "hybrid_min_device_memory": 1.2098792903125286,
+   "hybrid_max_device_memory": 3.4795307368040085
+  },
+  {
+   "prec": "fp64",
+   "reorder": "AMD",
+   "plan_s": 2.806915521621704,
+   "permanent_device_memory": 7.131136987358332,
+   "peak_device_memory": 7.131136987358332,
+   "permanent_host_memory": 0.053660035133361816,
+   "peak_host_memory": 0.4459080100059509,
+   "hybrid_min_device_memory": 1.1272985227406025,
+   "hybrid_max_device_memory": 6.261788785457611
+  },
+  {
+   "prec": "fp64",
+   "reorder": "NESTED_DISSECTION",
+   "plan_s": 0.9759395122528076,
+   "permanent_device_memory": 4.567182224243879,
+   "peak_device_memory": 4.567182224243879,
+   "permanent_host_memory": 0.05598466098308563,
+   "peak_host_memory": 0.447105273604393,
+   "hybrid_min_device_memory": 1.2098792903125286,
+   "hybrid_max_device_memory": 3.4795307368040085
+  },
+  {
+   "prec": "fp64",
+   "reorder": "DEFAULT",
+   "use_superpanels": false,
+   "plan_s": 0.9496729373931885,
+   "permanent_device_memory": 4.388536598533392,
+   "peak_device_memory": 4.388536598533392,
+   "permanent_host_memory": 0.06469936668872833,
+   "peak_host_memory": 0.4546615928411484,
+   "hybrid_min_device_memory": 1.26601205393672,
+   "hybrid_max_device_memory": 3.274638459086418
+  },
+  {
+   "prec": "fp32",
+   "reorder": "DEFAULT",
+   "plan_s": 0.9773039817810059,
+   "permanent_device_memory": 2.8473335951566696,
+   "peak_device_memory": 2.8473335951566696,
+   "permanent_host_memory": 0.05598466098308563,
+   "peak_host_memory": 0.447105273604393,
+   "hybrid_min_device_memory": 1.1740658804774284,
+   "hybrid_max_device_memory": 1.767757698893547
+  },
+  {
+   "prec": "fp32",
+   "reorder": "AMD",
+   "plan_s": 2.799114942550659,
+   "permanent_device_memory": 4.0189970172941685,
+   "peak_device_memory": 4.0189970172941685,
+   "permanent_host_memory": 0.053660035133361816,
+   "peak_host_memory": 0.4459080100059509,
+   "hybrid_min_device_memory": 1.0224615298211575,
+   "hybrid_max_device_memory": 3.1577244102954865
+  },
+  {
+   "prec": "fp64",
+   "reorder": "DEFAULT",
+   "hybrid": true,
+   "plan_s": 0.9867415428161621,
+   "permanent_device_memory": 4.599921148270369,
+   "peak_device_memory": 4.599921148270369,
+   "permanent_host_memory": 3.7905212491750717,
+   "peak_host_memory": 3.7905212491750717,
+   "hybrid_min_device_memory": 1.2098792903125286,
+   "hybrid_max_device_memory": 3.7905212491750717
+  }
+ ],
+ "fp64": {
+  "precision": "fp64",
+  "first_factor_s": 1.3929498195648193,
+  "plan_s": 1.0213558673858643,
+  "mem_after_factor": {
+   "tag": "after_factor",
+   "device_used": 6.92010498046875,
+   "over_base": 6.36895751953125,
+   "cupy_used": 1.4913358688354492,
+   "cupy_held": 1.7036895751953125
+  },
+  "mem_after_factor_poolfreed": {
+   "tag": "after_factor_poolfreed",
+   "device_used": 6.90447998046875,
+   "over_base": 6.35333251953125,
+   "cupy_used": 1.4913358688354492,
+   "cupy_held": 1.6888766288757324
+  },
+  "engine_arrays_GiB": {
+   "_keep": 0.38457848131656647,
+   "_perm": 0.38457848131656647,
+   "_pos_blk": 0.09477376937866211,
+   "_dofs": 0.03554016351699829,
+   "_diag_fixed": 4.0411949157714844e-05,
+   "f": 0.005383729934692383,
+   "K": 0.5795595906674862
+  },
+  "lu_nnz": 459500575,
+  "refactor_s": 0.3430929183959961,
+  "primal_s": 0.04970431327819824,
+  "pcg_its_primal": 0,
+  "compliance": 84.4756842695292,
+  "resid_rel": 2.1426385533211962e-11,
+  "random_rhs_solve_s": 0.007397174835205078,
+  "pcg_its_random": 0,
+  "random_resid_rel": 2.452425530362183e-12,
+  "buckling": {
+   "orig": {
+    "lean": false,
+    "seconds": 1.6384563446044922,
+    "iters": 4,
+    "converged": true,
+    "mu": [
+     0.13327145661274817,
+     0.13130384414425292,
+     0.11827504935698757,
+     0.11383087591579218,
+     0.06591743208899041,
+     0.0649366129368112
+    ],
+    "mu_tilde": 0.14990743626285333,
+    "peak_extra_GiB": 2.733790874481201,
+    "device_before": 6.96826171875,
+    "pcg_its": 0,
+    "mem_after": 9.23614501953125,
+    "lambda1": 7.503482181527716,
+    "P_buckle_N": 1500.6964363055433
+   },
+   "lean": {
+    "lean": true,
+    "seconds": 1.7781457901000977,
+    "iters": 4,
+    "converged": true,
+    "mu": [
+     0.13327145661277823,
+     0.1313038441443787,
+     0.11827504935709342,
+     0.11383087591575966,
+     0.06591743208895409,
+     0.0649366129368013
+    ],
+    "mu_tilde": 0.14990743626293154,
+    "peak_extra_GiB": 1.9526567459106445,
+    "device_before": 7.36114501953125,
+    "pcg_its": 0,
+    "mem_after": 9.27520751953125,
+    "lambda1": 7.5034821815260235,
+    "P_buckle_N": 1500.6964363052048
+   }
+  },
+  "device_peak_cupy_GiB": 3.4816789627075195,
+  "lean_vs_orig_mu_rel": 6.566583916770008e-13,
+  "mem_after_free": {
+   "tag": "after_free",
+   "device_used": 6.52911376953125,
+   "over_base": 5.97796630859375,
+   "cupy_used": 0.9440779685974121,
+   "cupy_held": 1.0248589515686035
+  }
+ },
+ "fp32": {
+  "precision": "fp32",
+  "first_factor_s": 1.4020321369171143,
+  "plan_s": 1.0592625141143799,
+  "mem_after_factor": {
+   "tag": "after_factor",
+   "device_used": 7.2828369140625,
+   "over_base": 6.731689453125,
+   "cupy_used": 1.6809334754943848,
+   "cupy_held": 1.7140507698059082
+  },
+  "mem_after_factor_poolfreed": {
+   "tag": "after_factor_poolfreed",
+   "device_used": 7.2691650390625,
+   "over_base": 6.718017578125,
+   "cupy_used": 1.6809334754943848,
+   "cupy_held": 1.7007231712341309
+  },
+  "engine_arrays_GiB": {
+   "_keep": 0.38457848131656647,
+   "_perm": 0.38457848131656647,
+   "_pos_blk": 0.09477376937866211,
+   "_dofs": 0.03554016351699829,
+   "_diag_fixed": 4.0411949157714844e-05,
+   "f": 0.005383729934692383,
+   "K": 0.5795595906674862,
+   "Kf32": 0.19228924065828323
+  },
+  "lu_nnz": 459500575,
+  "refactor_s": 0.28900647163391113,
+  "primal_s": 0.056615591049194336,
+  "pcg_its_primal": 8,
+  "compliance": 84.47568426966136,
+  "resid_rel": 1.264911698790069e-11,
+  "random_rhs_solve_s": 0.0508115291595459,
+  "pcg_its_random": 8,
+  "random_resid_rel": 1.8992981034146176e-12,
+  "buckling": {
+   "lean": {
+    "lean": true,
+    "seconds": 9.435267210006714,
+    "iters": 4,
+    "converged": true,
+    "mu": [
+     0.13327145661286172,
+     0.13130384414469565,
+     0.11827504935711675,
+     0.11383087591586485,
+     0.06591743208906058,
+     0.06493661293687723
+    ],
+    "mu_tilde": 0.14990743626311387,
+    "peak_extra_GiB": 1.9526567459106445,
+    "device_before": 7.272216796875,
+    "pcg_its": 1401,
+    "mem_after": 9.47711181640625,
+    "lambda1": 7.503482181521323,
+    "P_buckle_N": 1500.6964363042646
+   }
+  },
+  "device_peak_cupy_GiB": 3.638974189758301,
+  "vs_fp64": {
+   "compliance_rel": 1.564485094073985e-12,
+   "dC_rel": 3.7449066470587485e-11,
+   "mu_rel": 1.3895129504927245e-12,
+   "mu_tilde_rel": 1.2162597184256644e-12,
+   "dmu_rel": 8.10997156054195e-11
+  },
+  "mem_after_free": {
+   "tag": "after_free",
+   "device_used": 6.54742431640625,
+   "over_base": 5.99627685546875,
+   "cupy_used": 0.9413862228393555,
+   "cupy_held": 1.0381865501403809
+  }
+ },
+ "hybrid": [
+  {
+   "limit_GiB": 1.0,
+   "register_cuda_memory": true,
+   "plan_s": 1.0389463901519775,
+   "hybrid_min_device_GiB": 1.2098792903125286,
+   "error": "cuDSSError('INVALID_VALUE (3)')"
+  },
+  {
+   "limit_GiB": 1.0,
+   "register_cuda_memory": false,
+   "plan_s": 0.9953141212463379,
+   "hybrid_min_device_GiB": 1.26601205393672,
+   "error": "cuDSSError('INVALID_VALUE (3)')"
+  },
+  {
+   "limit_GiB": 2.0,
+   "register_cuda_memory": true,
+   "plan_s": 1.0212016105651855,
+   "hybrid_min_device_GiB": 1.2098792903125286,
+   "factor_s": 0.7896277904510498,
+   "device_used_after_factor": 7.27447509765625,
+   "refactor_s": 0.716623067855835,
+   "solve_s": [
+    0.02867722511291504,
+    0.028426647186279297,
+    0.028394699096679688
+   ],
+   "compliance_rel_vs_fp64": 3.3140168121782263e-14
+  }
+ ],
+ "total_s": 39.70574593544006
+}

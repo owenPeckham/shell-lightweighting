@@ -1,0 +1,5 @@
+binary ±B                    dup directed edges (4 fields): shift +0e+00: 13998, shift +5e-06: 0, shift -5e-06: 0
+binary ±B, 10% material      dup directed edges (4 fields): shift +0e+00: 0, shift +5e-06: 0, shift -5e-06: 0
+gaussian                     dup directed edges (4 fields): shift +0e+00: 4, shift +5e-06: 4, shift -5e-06: 4
+gaussian clipped ±B/3        dup directed edges (4 fields): shift +0e+00: 888, shift +5e-06: 0, shift -5e-06: 0
+ints ±1,±2                   dup directed edges (4 fields): shift +0e+00: 462, shift +5e-06: 0, shift -5e-06: 0

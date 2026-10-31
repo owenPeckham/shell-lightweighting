@@ -1,0 +1,81 @@
+{
+ "part": "MBB",
+ "h_e": 0.8,
+ "hollow": 0,
+ "ndof": 722592,
+ "nnz": 51617250,
+ "setup_s": 7.00931978225708,
+ "deg": 3,
+ "coarse_prec": "fp32",
+ "mem_fine_K": {
+  "tag": "fine_K",
+  "device_used": 2.24615478515625,
+  "over_base": 1.69482421875,
+  "cupy_used": 1.4859519004821777,
+  "cupy_held": 1.6888766288757324
+ },
+ "coarse_ndof": 127122,
+ "coarse_nnz": 8318970,
+ "twogrid_host_setup_s": 0.46705174446105957,
+ "coarse_factor_s": 5.820667028427124,
+ "coarse_zero_diag": 0,
+ "mem_after_coarse_factor": {
+  "tag": "coarse_factor",
+  "device_used": 2.94537353515625,
+  "over_base": 2.39404296875,
+  "cupy_used": 1.8164558410644531,
+  "cupy_held": 1.8219609260559082
+ },
+ "galerkin_rel_err": 2.8497332482390994e-16,
+ "matfree_rel_diff": 2.2313771857646276e-16,
+ "matvec_csr_1col_s": 0.00020966529846191406,
+ "matvec_csr_10col_s": 0.001927947998046875,
+ "matvec_matfree_1col_s": 0.0007729053497314454,
+ "matvec_matfree_10col_s": 0.0020431041717529296,
+ "lmax_DinvK": 4.524875181855226,
+ "pcg_csr": {
+  "its": 22,
+  "rel_res": 4.143282855725942e-11,
+  "seconds": 0.28309082984924316,
+  "compliance": 84.47568426968148,
+  "vcycles": 22
+ },
+ "pcg_matfree": {
+  "its": 22,
+  "rel_res": 4.1433176736976693e-11,
+  "seconds": 0.14930057525634766,
+  "compliance": 84.47568426654641,
+  "vcycles": 22
+ },
+ "peak_cupy_GiB": 3.0518393516540527,
+ "mem_after_pcg": {
+  "tag": "after_pcg",
+  "device_used": 4.30670166015625,
+  "over_base": 3.75537109375,
+  "cupy_used": 1.846445083618164,
+  "cupy_held": 3.173769474029541
+ },
+ "buckling_twogrid": {
+  "lean": true,
+  "seconds": 13.194672346115112,
+  "iters": 4,
+  "converged": true,
+  "mu": [
+   0.13327145661292933,
+   0.13130384414444563,
+   0.11827504935698342,
+   0.11383087591592168,
+   0.06591743208904492,
+   0.06493661293690349
+  ],
+  "mu_tilde": 0.14990743626302758,
+  "peak_extra_GiB": 2.8090996742248535,
+  "device_before": 3.00201416015625,
+  "total_s": 13.29786729812622,
+  "inner_pcg_its": 370,
+  "inner_calls": 18,
+  "vcycles": 3862,
+  "lambda1": 7.503482181517517
+ },
+ "total_s": 28.842605352401733
+}

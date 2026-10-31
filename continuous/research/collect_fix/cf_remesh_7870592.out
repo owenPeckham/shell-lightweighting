@@ -1,0 +1,350 @@
+new STL, exact weld          h 0.500 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, exact weld          h 0.354 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, trimesh process     h 0.500 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, trimesh process     h 0.354 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, exact weld          h 0.500 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, exact weld          h 0.354 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, trimesh process     h 0.500 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, trimesh process     h 0.354 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, exact weld          h 0.500 V 2886924 T 5773848 -> FAILED surface remesh check failed: {'faces': 61716, 'faces_in': 5773848, 'area': 5591.933282343577, 'stages': [61792, 61716], 'watertight': True, 'self_intersections': 0, 'repairs': [4], 'edge_max': 1.5507461506027709, 'vol_rel': -0.0005667892033968114, 'hausdorff': 1.0584138262053695}
+new STL, exact weld          h 0.500 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, exact weld          h 0.354 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, trimesh process     h 0.500 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, trimesh process     h 0.354 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, exact weld          h 0.500 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, exact weld          h 0.354 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, trimesh process     h 0.500 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, trimesh process     h 0.354 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, exact weld          h 0.354 V 2886924 T 5773848 -> ok {'faces': 107292, 'faces_in': 5773848, 'area': 5591.933282343577, 'stages': [107292], 'watertight': True, 'self_intersections': 0, 'repairs': [], 'edge_max': 0.7046020556369073, 'vol_rel': 0.00017603442734603902, 'hausdorff': 0.005791337666766494}
+new STL, exact weld          h 0.500 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, exact weld          h 0.354 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, trimesh process     h 0.500 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, trimesh process     h 0.354 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, exact weld          h 0.500 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, exact weld          h 0.354 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, trimesh process     h 0.500 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, trimesh process     h 0.354 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, trimesh process     h 0.500 V 2886924 T 5773848 -> FAILED surface remesh check failed: {'faces': 62056, 'faces_in': 5773848, 'area': 5591.933282343577, 'stages': [62072, 62056], 'watertight': False, 'self_intersections': 0, 'repairs': [2], 'edge_max': 1.3582430192867443, 'vol_rel': 7.217498855216498e-05, 'hausdorff': 1.5512418390066353e-14}
+new STL, exact weld          h 0.500 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, exact weld          h 0.354 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, trimesh process     h 0.500 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, trimesh process     h 0.354 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, exact weld          h 0.500 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, exact weld          h 0.354 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, trimesh process     h 0.500 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, trimesh process     h 0.354 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, trimesh process     h 0.354 V 2886924 T 5773848 -> ok {'faces': 107340, 'faces_in': 5773848, 'area': 5591.933282343577, 'stages': [107340], 'watertight': True, 'self_intersections': 0, 'repairs': [], 'edge_max': 0.7229590144940667, 'vol_rel': 0.00019823368119920026, 'hausdorff': 0.005791337666766494}
+new STL, exact weld          h 0.500 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, exact weld          h 0.354 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, trimesh process     h 0.500 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, trimesh process     h 0.354 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, exact weld          h 0.500 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, exact weld          h 0.354 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, trimesh process     h 0.500 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, trimesh process     h 0.354 V 2886898 T 5773796 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+old STL, exact weld          h 0.500 V 2886898 T 5773796 -> FAILED surface remesh check failed: {'faces': 61873, 'faces_in': 5773796, 'area': 5591.9166814772125, 'stages': [61968, 61873], 'watertight': False, 'self_intersections': 0, 'repairs': [5], 'edge_max': 0.9738679568637986, 'vol_rel': 0.00033517296827922927, 'hausdorff': 0.19393210681960657}
+new STL, exact weld          h 0.500 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+new STL, exact weld          h 0.354 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+
+[2026-10-30T18:51:57.480] error: *** JOB 7870592 ON nid011277 CANCELLED AT 2026-10-30T18:51:57 DUE to SIGNAL Terminated ***
+new STL, trimesh process     h 0.500 V 2886924 T 5773848 -> FAILED 
+        An attempt has been made to start a new process before the
+        current process has finished its bootstrapping phase.
+
+        This probably means that you are not using fork to start your
+        child processes and you have forgotten to use the proper idiom
+        in the main module:
+

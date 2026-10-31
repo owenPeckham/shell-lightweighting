@@ -1,0 +1,37 @@
+NVIDIA GH200 120GB, 97871 MiB
+[cshell] context: 62334 vertices, mounts 34 faces, r_MA 2.48 mm median, 23 s
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /home/b6bl/owenpeckham.b6bl/.cache/warp/1.18.0
+Module cshell.band ad91966 load on device 'cuda:0' took 3.92 ms  (cached)
+RESULT {"part": "L-bracket", "which": "design", "h": 0.5, "c": 1.4142135623730951, "error": "MemoryError('std::bad_alloc')"}
+RESULT {"part": "L-bracket", "which": "design", "h": 0.35355339059327373, "c": 1.4142135623730951, "error": "OutOfMemoryError('Out of memory allocating 32,172,142,080 bytes (allocated so far: 73,150,737,408 bytes).')"}
+	Command being timed: "python continuous/research/bodyfit_scale/factor_estimate.py /home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/runs_cshell/FULL/L-bracket design"
+	User time (seconds): 148.72
+	System time (seconds): 9.69
+	Percent of CPU this job got: 98%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:40.55
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 6067200
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 8534
+	Minor (reclaiming a frame) page faults: 1436958
+	Voluntary context switches: 75166
+	Involuntary context switches: 52024
+	Swaps: 0
+	File system inputs: 4367598
+	File system outputs: 512
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 65536
+	Exit status: 0
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:40.55
+	Maximum resident set size (kbytes): 6067200

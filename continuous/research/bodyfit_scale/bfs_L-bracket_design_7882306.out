@@ -1,0 +1,58 @@
+NVIDIA GH200 120GB, 97871 MiB
+loaded design: 14549066 V 29098532 T in 13 s
+[levelset] s = 0.1667 mm, lattice (np.int64(751), np.int64(1087), np.int64(494)), 4666 active blocks of 16^3 cells (29098532 input faces), 5.1 s
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /home/b6bl/owenpeckham.b6bl/.cache/warp/1.18.0
+Module cshell.band ad91966 load on device 'cuda:0' took 4.56 ms  (cached)
+[levelset] {'spacing': 0.16666666666666666, 'lattice': [751, 1087, 494], 'active_blocks': 4666, 'sdf_queries': 22592320, 'faces': 2585928, 'vertices': 1292892, 'bodies': 1, 'body_volumes': [41948.652336613995], 'dropped_bodies': 25, 'dropped_mm3': 0.03245288329544711, 'volume': 41948.652336613995, 'ambiguous_flipped': 2934, 'ambiguous_iters': 5, 'duplicate_directed_edges': 0, 'missing_reverse_edges': 0, 'seconds_sdf': 9.504907369613647, 'seconds': 32.857951402664185, 'closed_manifold': True}
+Warp UserWarning: Kernel cache artifacts from a previous Warp version were found in '/lus/lfs1aip2/scratch/b6bl/owenpeckham.b6bl/warp_cache'. These will be ignored. You can safely delete them.
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /lus/lfs1aip2/scratch/b6bl/owenpeckham.b6bl/warp_cache/1.18.0
+Module cshell.validate f53ba04 load on device 'cuda:0' took 3.73 ms  (cached)
+concurrent.futures.process._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/concurrent/futures/process.py", line 264, in _process_worker
+    r = call_item.fn(*call_item.args, **call_item.kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/cshell/validate.py", line 610, in _remesh_surface
+    raise RuntimeError(f"surface remesh check failed: {info}")
+RuntimeError: surface remesh check failed: {'faces': 417986, 'faces_in': 2585928, 'thin_faces_in': 160157, 'area': 26442.476008938975, 'stages': [418496, 417986], 'watertight': True, 'self_intersections': 0, 'repairs': [26], 'edge_max': 1.583512032987323, 'vol_rel': -0.00016759523804765752, 'hausdorff': 1.0387800053861726e-12}
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/continuous/research/bodyfit_scale/diag.py", line 82, in main
+    Vs, Ts, rinfo = cval.remesh_surface(Vs, Ts, hh, **(dict(thin=float(os.environ.get("THIN", 2.0)), fine=s)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/cshell/validate.py", line 493, in remesh_surface
+    max_vol_rel, thin, fine).result()
+                             ^^^^^^^^
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+RuntimeError: surface remesh check failed: {'faces': 417986, 'faces_in': 2585928, 'thin_faces_in': 160157, 'area': 26442.476008938975, 'stages': [418496, 417986], 'watertight': True, 'self_intersections': 0, 'repairs': [26], 'edge_max': 1.583512032987323, 'vol_rel': -0.00016759523804765752, 'hausdorff': 1.0387800053861726e-12}
+RESULT {"part": "L-bracket", "which": "design", "variant": "T0.5", "levelset": {"spacing": 0.16666666666666666, "lattice": [751, 1087, 494], "active_blocks": 4666, "sdf_queries": 22592320, "faces": 2585928, "vertices": 1292892, "bodies": 1, "body_volumes": [41948.652336613995], "dropped_bodies": 25, "dropped_mm3": 0.03245288329544711, "volume": 41948.652336613995, "ambiguous_flipped": 2934, "ambiguous_iters": 5, "duplicate_directed_edges": 0, "missing_reverse_edges": 0, "seconds_sdf": 9.504907369613647, "seconds": 32.857951402664185, "closed_manifold": true}, "dev_mc": {"volume_rel": -0.00017336158707892402, "to_ref": {"max": 0.20881891250610352, "q999": 0.06622385719418517, "q99": 0.031624782644212285, "mean": 0.0028734158866431055, "argmax": [-31.803, -11.289, 138.705]}, "from_ref": {"max": 0.7455074787139893, "q999": 0.15851661153138022, "q99": 0.05042214542627327, "mean": 0.004677583905029531, "argmax": [-38.247, -12.526, 145.775], "points": 14549066}, "hausdorff": 0.7455074787139893}, "t_mc": 36.99049186706543, "error": "RuntimeError(\"surface remesh check failed: {'faces': 417986, 'faces_in': 2585928, 'thin_faces_in': 160157, 'area': 26442.476008938975, 'stages': [418496, 417986], 'watertight': True, 'self_intersections': 0, 'repairs': [26], 'edge_max': 1.583512032987323, 'vol_rel': -0.00016759523804765752, 'hausdorff': 1.0387800053861726e-12}\")"}
+Warp UserWarning: Kernel cache artifacts from a previous Warp version were found in '/lus/lfs1aip2/scratch/b6bl/owenpeckham.b6bl/warp_cache'. These will be ignored. You can safely delete them.
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /lus/lfs1aip2/scratch/b6bl/owenpeckham.b6bl/warp_cache/1.18.0
+Module cshell.validate f53ba04 load on device 'cuda:0' took 1.84 ms  (cached)
+[2026-10-31T03:36:11.559] error: *** JOB 7882306 ON nid010224 CANCELLED AT 2026-10-31T03:36:11 DUE to SIGNAL Terminated ***

@@ -1,0 +1,3 @@
+gpumem.py mbb h04 0.4 --hybrid-limits 20,40
+gpumem.py cantilever h04 0.4 --phases est,fp64,fp32
+gpumem.py cantilever h04_hollow4 0.4 --hollow 4 --phases est,fp64,fp32

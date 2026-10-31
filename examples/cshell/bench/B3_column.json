@@ -1,0 +1,37 @@
+{
+ "name": "B3_column",
+ "step_file": "B3_column.step",
+ "output_dir": "../../../runs_cshell/bench",
+ "supports": [
+  {
+   "type": "plane",
+   "normal": [
+    -1,
+    0,
+    0
+   ],
+   "extreme": true
+  }
+ ],
+ "loads": [
+  {
+   "faces": {
+    "type": "plane",
+    "normal": [
+     1,
+     0,
+     0
+    ],
+    "extreme": true
+   },
+   "force_N": [
+    -50.0,
+    0,
+    0
+   ]
+  }
+ ],
+ "mounts": {
+  "auto_analytic": false
+ }
+}

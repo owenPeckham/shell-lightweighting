@@ -1,0 +1,58 @@
+{
+ "part": "MBB",
+ "h_e": 0.4,
+ "hollow": 0,
+ "Ne": 1460058,
+ "ndof": 4860336,
+ "nnz": 367575300,
+ "setup_s": 34.43601036071777,
+ "context_GiB": 0.552978515625,
+ "F_N": 200.0,
+ "mem_after_engine_init": {
+  "tag": "engine_init",
+  "device_used": 7.02972412109375,
+  "over_base": 6.47674560546875,
+  "cupy_used": 6.470961570739746,
+  "cupy_held": 6.470961570739746
+ },
+ "_stem": "mbb_h04_hyb20",
+ "hybrid": [
+  {
+   "limit_GiB": 20.0,
+   "register_cuda_memory": true,
+   "plan_s": 12.049131155014038,
+   "hybrid_min_device_GiB": 5.309398267418146,
+   "factor_s": 12.92616605758667,
+   "device_used_after_factor": 34.027099609375,
+   "cupy_held_after_factor": 12.046165943145752,
+   "refactor_s": 11.479980945587158,
+   "solve_s": [
+    0.3830242156982422,
+    0.3768000602722168,
+    0.3766615390777588
+   ],
+   "compliance_rel_vs_fp64": null,
+   "compliance": 85.61732860155578,
+   "error": "TypeError(\"The shape of 'b' ((4860336, 6)) doesn't match the original one ((4860336, 1)).\")"
+  },
+  {
+   "limit_GiB": 20.0,
+   "register_cuda_memory": false,
+   "plan_s": 11.648346662521362,
+   "hybrid_min_device_GiB": 6.3595053888857365,
+   "factor_s": 28.870563745498657,
+   "device_used_after_factor": 32.769775390625,
+   "cupy_held_after_factor": 12.046165943145752,
+   "refactor_s": 28.18769907951355,
+   "solve_s": [
+    0.38852715492248535,
+    0.3864603042602539,
+    0.3860640525817871
+   ],
+   "compliance_rel_vs_fp64": null,
+   "compliance": 85.61732860151552,
+   "error": "TypeError(\"The shape of 'b' ((4860336, 6)) doesn't match the original one ((4860336, 1)).\")"
+  }
+ ],
+ "total_s": 145.47254085540771
+}

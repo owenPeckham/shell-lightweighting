@@ -1,0 +1,40 @@
+{
+ "part": "Cantilever",
+ "h_e": 0.2,
+ "hollow": 0,
+ "Ne": 8027186,
+ "ndof": 25521801,
+ "setup_s": 218.1739480495453,
+ "deg": 3,
+ "coarse_prec": "fp32",
+ "mode": "matfree_only",
+ "coarse_ndof": 3546813,
+ "coarse_nnz": 266982777,
+ "twogrid_host_setup_s": 26.88019847869873,
+ "coarse_factor_s": 15.51221513748169,
+ "coarse_plan_s": 9.868992328643799,
+ "mem_after_coarse_factor": {
+  "tag": "coarse_factor",
+  "device_used": 36.15728759765625,
+  "over_base": 35.60614013671875,
+  "cupy_used": 12.50850534439087,
+  "cupy_held": 12.545135498046875
+ },
+ "matvec_matfree_1col_s": 0.006485939025878906,
+ "lmax_DinvK": 4.374146313285488,
+ "pcg_matfree": {
+  "its": 25,
+  "rel_res": 3.0904545298487295e-11,
+  "seconds": 2.350950241088867,
+  "compliance": 159.95053213763887
+ },
+ "peak_cupy_GiB": 17.075019359588623,
+ "mem_after_pcg": {
+  "tag": "after_pcg",
+  "device_used": 40.03228759765625,
+  "over_base": 39.48114013671875,
+  "cupy_used": 13.189617156982422,
+  "cupy_held": 16.40661334991455
+ },
+ "total_s": 264.21818804740906
+}

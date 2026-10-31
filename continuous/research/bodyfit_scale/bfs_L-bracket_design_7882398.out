@@ -1,0 +1,45 @@
+NVIDIA GH200 120GB, 97871 MiB
+loaded design: 14549066 V 29098532 T in 13 s
+[levelset] s = 0.1667 mm, lattice (np.int64(751), np.int64(1087), np.int64(494)), 4666 active blocks of 16^3 cells (29098532 input faces), 5.1 s
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /home/b6bl/owenpeckham.b6bl/.cache/warp/1.18.0
+Module cshell.band ad91966 load on device 'cuda:0' took 3.50 ms  (cached)
+[levelset] {'spacing': 0.16666666666666666, 'lattice': [751, 1087, 494], 'active_blocks': 4666, 'sdf_queries': 22592320, 'faces': 2585928, 'vertices': 1292892, 'bodies': 1, 'body_volumes': [41948.652336613995], 'dropped_bodies': 25, 'dropped_mm3': 0.03245288329544711, 'volume': 41948.652336613995, 'ambiguous_flipped': 2934, 'ambiguous_iters': 5, 'duplicate_directed_edges': 0, 'missing_reverse_edges': 0, 'seconds_sdf': 9.57482099533081, 'seconds': 32.52749943733215, 'closed_manifold': True}
+Warp UserWarning: Kernel cache artifacts from a previous Warp version were found in '/lus/lfs1aip2/scratch/b6bl/owenpeckham.b6bl/warp_cache'. These will be ignored. You can safely delete them.
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /lus/lfs1aip2/scratch/b6bl/owenpeckham.b6bl/warp_cache/1.18.0
+Module cshell.validate f53ba04 load on device 'cuda:0' took 3.09 ms  (cached)
+Command terminated by signal 11
+	Command being timed: "python continuous/research/bodyfit_scale/diag.py /home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/runs_cshell/FULL/L-bracket design T0.5,T0.354"
+	User time (seconds): 3128.32
+	System time (seconds): 18.82
+	Percent of CPU this job got: 100%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 52:15.79
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 6118976
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 2764
+	Minor (reclaiming a frame) page faults: 2565149
+	Voluntary context switches: 60745
+	Involuntary context switches: 93718
+	Swaps: 0
+	File system inputs: 1645374
+	File system outputs: 7473408
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 65536
+	Exit status: 0

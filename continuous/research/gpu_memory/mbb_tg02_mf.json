@@ -1,0 +1,40 @@
+{
+ "part": "MBB",
+ "h_e": 0.2,
+ "hollow": 0,
+ "Ne": 11179761,
+ "ndof": 35404971,
+ "setup_s": 198.34056448936462,
+ "deg": 3,
+ "coarse_prec": "fp32",
+ "mode": "matfree_only",
+ "coarse_ndof": 4887810,
+ "coarse_nnz": 369767592,
+ "twogrid_host_setup_s": 26.3704571723938,
+ "coarse_factor_s": 19.048173904418945,
+ "coarse_plan_s": 12.15306305885315,
+ "mem_after_coarse_factor": {
+  "tag": "coarse_factor",
+  "device_used": 57.30859375,
+  "over_base": 56.75506591796875,
+  "cupy_used": 17.343552112579346,
+  "cupy_held": 23.699013710021973
+ },
+ "matvec_matfree_1col_s": 0.008976618448893229,
+ "lmax_DinvK": 4.445867945307175,
+ "pcg_matfree": {
+  "its": 24,
+  "rel_res": 3.917536232932583e-11,
+  "seconds": 3.0361835956573486,
+  "compliance": 85.99465181227072
+ },
+ "peak_cupy_GiB": 23.68432855606079,
+ "mem_after_pcg": {
+  "tag": "after_pcg",
+  "device_used": 57.30841064453125,
+  "over_base": 56.7548828125,
+  "cupy_used": 18.288715362548828,
+  "cupy_held": 23.699013710021973
+ },
+ "total_s": 248.44236731529236
+}

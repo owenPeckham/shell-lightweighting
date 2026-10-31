@@ -1,0 +1,108 @@
+NVIDIA GH200 120GB, 97871 MiB
+loaded design: 2886898 V 5773796 T in 3 s
+[levelset] s = 0.1667 mm, lattice (np.int64(487), np.int64(78), np.int64(118)), 925 active blocks of 16^3 cells (5773796 input faces), 1.0 s
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /home/b6bl/owenpeckham.b6bl/.cache/warp/1.18.0
+Module cshell.band ad91966 load on device 'cuda:0' took 5.74 ms  (cached)
+[levelset] {'spacing': 0.16666666666666666, 'lattice': [487, 78, 118], 'active_blocks': 925, 'sdf_queries': 4246073, 'faces': 519272, 'vertices': 259636, 'bodies': 1, 'body_volumes': [6271.950706201318], 'dropped_bodies': 0, 'dropped_mm3': 0.0, 'volume': 6271.950706201318, 'ambiguous_flipped': 13, 'ambiguous_iters': 1, 'duplicate_directed_edges': 0, 'missing_reverse_edges': 0, 'seconds_sdf': 3.0775861740112305, 'seconds': 4.591585874557495, 'closed_manifold': True}
+Warp UserWarning: Kernel cache artifacts from a previous Warp version were found in '/lus/lfs1aip2/scratch/b6bl/owenpeckham.b6bl/warp_cache'. These will be ignored. You can safely delete them.
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /lus/lfs1aip2/scratch/b6bl/owenpeckham.b6bl/warp_cache/1.18.0
+Module cshell.validate ce4cca0 load on device 'cuda:0' took 0.37 ms  (error)
+concurrent.futures.process._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/concurrent/futures/process.py", line 264, in _process_worker
+    r = call_item.fn(*call_item.args, **call_item.kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/cshell/validate.py", line 524, in _remesh_surface
+    ms.meshing_surface_subdivision_midpoint(iterations=12, threshold=pymeshlab.PureValue(h))   # starts from a resolved surface
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/cshell/validate.py", line 433, in _thin_faces
+    n = np.cross(X[:, 1] - X[:, 0], X[:, 2] - X[:, 0])
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/site-packages/warp/_src/context.py", line 11712, in launch
+    module_exec = kernel.module.load(device, block_dim)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/site-packages/warp/_src/context.py", line 5059, in load
+    raise e
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/site-packages/warp/_src/context.py", line 5056, in load
+    compiled = self._compile(device, module_dir, output_name, output_arch, options=options)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/site-packages/warp/_src/context.py", line 4807, in _compile
+    source_str, source_code_ext, meta, ltoir_values, fatbin_values = self._run_codegen(options, is_cpu)
+                                                                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/site-packages/warp/_src/codegen.py", line 1822, in locked_call
+    return func(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/site-packages/warp/_src/context.py", line 4677, in _run_codegen
+    builder = ModuleBuilder(
+              ^^^^^^^^^^^^^^
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/site-packages/warp/_src/context.py", line 3415, in __init__
+    self.build_kernel(kernel)
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/site-packages/warp/_src/context.py", line 3532, in build_kernel
+    raise WarpCodegenTypeError(f"'{kernel.key}': {_KERNEL_RETURN_ERROR}")
+warp._src.codegen.WarpCodegenTypeError: '_thin_faces__locals__cast': Warp kernels cannot return values. Write results to output arguments, and omit the return annotation or use `-> None`.
+"""
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/continuous/research/bodyfit_scale/diag.py", line 82, in main
+    Vs, Ts, rinfo = cval.remesh_surface(Vs, Ts, hh, **(dict(thin=float(os.environ.get("THIN", 2.0)), fine=s)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/cshell/validate.py", line 485, in remesh_surface
+    silently does nothing (B2 design: 929k faces instead of 107k at h = 0.354 after a first call at 0.5; same input
+                                                  ^^^^^^^^
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+warp._src.codegen.WarpCodegenTypeError: '_thin_faces__locals__cast': Warp kernels cannot return values. Write results to output arguments, and omit the return annotation or use `-> None`.
+RESULT {"part": "VF_B2", "which": "design", "variant": "T0.5", "levelset": {"spacing": 0.16666666666666666, "lattice": [487, 78, 118], "active_blocks": 925, "sdf_queries": 4246073, "faces": 519272, "vertices": 259636, "bodies": 1, "body_volumes": [6271.950706201318], "dropped_bodies": 0, "dropped_mm3": 0.0, "volume": 6271.950706201318, "ambiguous_flipped": 13, "ambiguous_iters": 1, "duplicate_directed_edges": 0, "missing_reverse_edges": 0, "seconds_sdf": 3.0775861740112305, "seconds": 4.591585874557495, "closed_manifold": true}, "dev_mc": {"volume_rel": -0.00010635994174723606, "to_ref": {"max": 0.0935380756855011, "q999": 0.03174120020121333, "q99": 0.017884228304028554, "mean": 0.0020790920998231995, "argmax": [8.652, 1.347, 3.185]}, "from_ref": {"max": 0.1549939513206482, "q999": 0.048487661492081335, "q99": 0.022619155067950432, "mean": 0.002960101594381916, "argmax": [6.543, 4.747, 4.83], "points": 2886898}, "hausdorff": 0.1549939513206482}, "t_mc": 6.2264299392700195, "error": "WarpCodegenTypeError(\"'_thin_faces__locals__cast': Warp kernels cannot return values. Write results to output arguments, and omit the return annotation or use `-> None`.\")"}
+Warp UserWarning: Kernel cache artifacts from a previous Warp version were found in '/lus/lfs1aip2/scratch/b6bl/owenpeckham.b6bl/warp_cache'. These will be ignored. You can safely delete them.
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /lus/lfs1aip2/scratch/b6bl/owenpeckham.b6bl/warp_cache/1.18.0
+Module cshell.validate f53ba04 load on device 'cuda:0' took 745.23 ms  (compiled)
+RESULT {"part": "VF_B2", "which": "design", "variant": "T0.354", "levelset": {"spacing": 0.16666666666666666, "lattice": [487, 78, 118], "active_blocks": 925, "sdf_queries": 4246073, "faces": 519272, "vertices": 259636, "bodies": 1, "body_volumes": [6271.950706201318], "dropped_bodies": 0, "dropped_mm3": 0.0, "volume": 6271.950706201318, "ambiguous_flipped": 13, "ambiguous_iters": 1, "duplicate_directed_edges": 0, "missing_reverse_edges": 0, "seconds_sdf": 3.0775861740112305, "seconds": 4.591585874557495, "closed_manifold": true}, "dev_mc": {"volume_rel": -0.00010635994174723606, "to_ref": {"max": 0.0935380756855011, "q999": 0.03174120020121333, "q99": 0.017884228304028554, "mean": 0.0020790920998231995, "argmax": [8.652, 1.347, 3.185]}, "from_ref": {"max": 0.1549939513206482, "q999": 0.048487661492081335, "q99": 0.022619155067950432, "mean": 0.002960101594381916, "argmax": [6.543, 4.747, 4.83], "points": 2886898}, "hausdorff": 0.1549939513206482}, "t_mc": 2.384185791015625e-06, "remesh": {"faces": 100108, "faces_in": 519272, "thin_faces_in": 1384, "area": 5540.977573715787, "stages": [100108], "watertight": true, "self_intersections": 0, "repairs": [], "edge_max": 0.7176095660822049, "vol_rel": 0.00010166618968110441, "hausdorff": 6.278795672640785e-06}, "dev_remesh": {"volume_rel": -4.704565286450801e-06, "to_ref": {"max": 0.08283272385597229, "q999": 0.051603453993797455, "q99": 0.029085195139050436, "mean": 0.005187148775741731, "argmax": [8.659, 1.322, 3.199]}, "from_ref": {"max": 0.1514590084552765, "q999": 0.054150143295527364, "q99": 0.03072807751595974, "mean": 0.005904161397561332, "argmax": [6.543, 4.747, 4.83], "points": 2886898}, "hausdorff": 0.1514590084552765}, "t_remesh": 15.812006711959839, "t_gmsh": 112.3614854812622, "gate_before_peel": {"dihedral_min": 1.5446570364873082, "frac_dihedral_lt_5": 5.2093824450757444e-06, "n_dihedral_lt_5": 3, "edge_max": 0.8508805957534038, "edge_max_over_h": 2.4036175021282595, "layers_p01": 2.508, "passed": true, "failures": []}, "peel": {"peeled": 0, "peeled_mm3": 0.0}, "gate": {"dihedral_min": 1.5446570364873082, "frac_dihedral_lt_5": 5.2093824450757444e-06, "n_dihedral_lt_5": 3, "edge_max": 0.8508805957534038, "edge_max_over_h": 2.4036175021282595, "layers_p01": 2.508, "passed": true, "failures": []}, "n_tets": 575884, "n_nodes10": 869412}
+	Command being timed: "python continuous/research/bodyfit_scale/diag.py /home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/runs_cshell/VF_B2 design T0.5,T0.354"
+	User time (seconds): 153.50
+	System time (seconds): 4.32
+	Percent of CPU this job got: 108%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:26.00
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1608576
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 2941
+	Minor (reclaiming a frame) page faults: 239409
+	Voluntary context switches: 21751
+	Involuntary context switches: 58764
+	Swaps: 0
+	File system inputs: 1700954
+	File system outputs: 321664
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 65536
+	Exit status: 0
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 2:26.00
+	Maximum resident set size (kbytes): 1608576
