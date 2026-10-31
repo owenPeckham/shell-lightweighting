@@ -437,7 +437,7 @@ def finalise(run_dir: str, ctx=None, *, out_dir: str | None = None, rescore: boo
         gpu_hist = [x for x in gpu_hist if np.isfinite(x)]
         peak_fin = pk.stop() if pk is not None else float("nan")
         import resource
-        host = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 2 ** 20
+        host = max(resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 2 ** 20, hwm_gib())   # VmHWM after a reset
         tim["finalise_s"] = time.time() - T0
         S = dict(
             schema=SCHEMA, name=cfg["name"], decision=dict(accepted=acc, reason=reason),
