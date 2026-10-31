@@ -45,8 +45,8 @@ summary.json schema ("cshell.summary/1"; units mm, N, MPa, g, s; every key prese
   starts            [{start, status ("done"|"incomplete"|"missing"), feasible, phases_done, iterations, J_opt,
                       K_K0_opt, P_P0_opt, mass_err, hours, closed_area_frac, w_min, w_max}]
   comparison        [{label, source, J, K_K0, P_P0, governing, w_min, w_max}] in the order
-                    solid, uniform shell, vshell best, cshell <start> (optimiser values) ..., cshell export
-                    (re-scored at the optimisation grid); `source` ∈ {"rescored", "optimiser", "vshell"}
+                    solid, uniform shell, dshell best, cshell <start> (optimiser values) ..., cshell export
+                    (re-scored at the optimisation grid); `source` ∈ {"rescored", "optimiser", "dshell"}
   resolutions       [{label ("<res>: <design>"), res ("opt"|"shift"|"coarse"), design ("solid"|"uniform_shell"|
                       "best"), h_e, h_g, shift_mm, J, K_K0, P_P0, C_Nmm, K_N_mm, lam_s, lam_b, lam, lam1,
                       governing, sigma_pn, sigma_q, V_mm3, mass_err, dof, seconds}]
@@ -57,7 +57,7 @@ summary.json schema ("cshell.summary/1"; units mm, N, MPa, g, s; every key prese
                      holes, wall: {min_nominal, min_as_built, median_nominal}}
   validation        {ran, engine, blocking_miss, n_rows, n_failed, file} | {ran: false, why}
   sensitivity       {file, accepted_fraction, kappa_b: [...], sigma_f_pct: [...]}
-  vshell            {run_dir, J, K_K0, P_P0, accepted, s_mm} | null
+  dshell            {run_dir, J, K_K0, P_P0, accepted, s_mm} | null
   resources         {gpu_model, peak_gpu_GiB, gpu_hours (Σ starts' hours_used + collect), collect_s}
   timings_s         {context, starts, param_fe, export_baselines, export_best, rescore_<res>, validation, total}
   files             {name: relative path} of every file written
@@ -70,7 +70,7 @@ buckling_modes.npz: V, T (Γ_h); solid_mag (3, N_v), design_mag (3, N_v) = |mode
   point (max-normalised), solid_lambda, design_lambda (λ_j = 1/μ_j, most critical first).
 bc_faces.npz: V, T (original tessellation), support (bool per triangle), load (int per triangle: load index, −1 none).
 
-S2 vshell start (§7.4) is `vshell_start_xi`, called from `optimise.Run.initial_xi`.
+S2 dshell start (§7.4) is `dshell_start_xi`, called from `optimise.Run.initial_xi`.
 """
 from __future__ import annotations
 
@@ -110,23 +110,23 @@ def _get(cfg: dict, path: str, default):
 
 
 # =====================================================================================================================
-# S2 vshell start (THEORY §7.4)
+# S2 dshell start (THEORY §7.4)
 # =====================================================================================================================
-def vshell_run_dir(cfg: dict) -> Path:
-    """`optimiser.vshell_run` (default examples/runs/<name>, relative paths against the repository root)."""
-    p = _get(cfg, "optimiser.vshell_run", None) or f"examples/runs/{cfg['name']}"
+def dshell_run_dir(cfg: dict) -> Path:
+    """`optimiser.dshell_run` (default examples/dshell/runs/<name>, relative paths against the repository root)."""
+    p = _get(cfg, "optimiser.dshell_run", None) or f"examples/dshell/runs/{cfg['name']}"
     p = Path(p)
     return p if p.is_absolute() else ROOT / p
 
 
-def load_vshell(run_dir) -> dict:
-    """vshell's best design: segmentation cells (seg_xyz, seg_label from arrays.npz), θ per region (1 solid, 0 hollow,
+def load_dshell(run_dir) -> dict:
+    """dshell's best design: segmentation cells (seg_xyz, seg_label from arrays.npz), θ per region (1 solid, 0 hollow,
     from summary.json 'best hollow candidate'), its outer offset s and its own scores."""
     run_dir = Path(run_dir)
     S = json.load(open(run_dir / "summary.json"))
     z = np.load(run_dir / "arrays.npz")
     if "seg_xyz" not in z.files or "seg_label" not in z.files:
-        raise KeyError(f"{run_dir}/arrays.npz has no seg_xyz/seg_label: cannot map vshell regions")
+        raise KeyError(f"{run_dir}/arrays.npz has no seg_xyz/seg_label: cannot map dshell regions")
     best = S.get("best hollow candidate") or {}
     hollow = set(int(i) for i in best.get("hollow regions", []))
     xyz = z["seg_xyz"].astype(np.float64)
@@ -138,14 +138,14 @@ def load_vshell(run_dir) -> dict:
                 and "hollow" in str(S.get("decision", {}).get("outcome", "")).lower(), best=best)
 
 
-def vshell_start_xi(ctx, cfg: dict | None = None, log=print, vs: dict | None = None) -> np.ndarray:
-    """ξ = [ξᵈ, ξᵃ] of the S2 start: θ_i = θ of the vshell region containing p_i − (r_MA,i/2) n_i (nearest
+def dshell_start_xi(ctx, cfg: dict | None = None, log=print, vs: dict | None = None) -> np.ndarray:
+    """ξ = [ξᵈ, ξᵃ] of the S2 start: θ_i = θ of the dshell region containing p_i − (r_MA,i/2) n_i (nearest
     segmentation cell); filtered targets ξ̃ᵃ = θ, ξ̃ᵈ = s(1 − θ)/d^hi (clipped to [0, 1]); raw ξ = F⁻¹ ξ̃ clipped
     (phase-0 filter and d^hi, as `optimise.PhaseModel`). Mass is restored by the caller."""
     from scipy.spatial import cKDTree
     from . import config as ccfg
     cfg = cfg or ctx.cfg
-    vs = vs or load_vshell(vshell_run_dir(cfg))
+    vs = vs or load_dshell(dshell_run_dir(cfg))
     s = ctx.surf
     nv = s.n_vertices
     N = s.projected_normals() if hasattr(s, "projected_normals") else s.N
@@ -156,7 +156,7 @@ def vshell_start_xi(ctx, cfg: dict | None = None, log=print, vs: dict | None = N
     far = dist > 2.0 * vs["h_seg"]
     if far.any():
         theta[far] = 1.0
-        log(f"[cshell] vshell start: {int(far.sum())} of {nv} probe points are > 2 h_seg from any vshell cell: "
+        log(f"[cshell] dshell start: {int(far.sum())} of {nv} probe points are > 2 h_seg from any dshell cell: "
             "θ = 1 (solid) there")
     dsg = cfg["design"]
     D0 = dsg["outward_extent_initial_mm"]
@@ -169,7 +169,7 @@ def vshell_start_xi(ctx, cfg: dict | None = None, log=print, vs: dict | None = N
     xd = np.clip(filt.invert(xt_d), 0.0, 1.0)
     xa = np.clip(filt.invert(theta), 0.0, 1.0)
     A = s.A
-    log(f"[cshell] vshell start: s = {vs['s']:.3f} mm, hollow regions {sorted(vs['hollow'])}, hollow area share "
+    log(f"[cshell] dshell start: s = {vs['s']:.3f} mm, hollow regions {sorted(vs['hollow'])}, hollow area share "
         f"{float((A * (theta == 0)).sum() / A.sum()):.3f}")
     return np.concatenate([xd, xa])
 
@@ -195,20 +195,25 @@ def _f(x):
 
 
 def latest_checkpoint(run_dir, start):
-    files = sorted(glob.glob(os.path.join(run_dir, "checkpoints", f"{start}_*.npz")))
+    from .config import start_names
+    files = []
+    for name in start_names(start):                      # canonical first; legacy (vshell_*) only if no new ones
+        files = files or sorted(glob.glob(os.path.join(run_dir, "checkpoints", f"{name}_*.npz")))
     return np.load(files[-1]) if files else None
 
 
 def start_table(run_dir, cfg: dict) -> list[dict]:
     """One row per configured start (and any other start found in history.csv)."""
-    hist = read_history(run_dir)
+    from .config import canonical_start, start_file
+    hist = read_history(run_dir)                         # start names already canonical (merge_history)
     n_ph = len(cfg["grid"]["phases"])
-    starts = list(dict.fromkeys(list(cfg["optimiser"]["starts"]) + [r["start"] for r in hist]))
+    starts = list(dict.fromkeys([canonical_start(s) for s in cfg["optimiser"]["starts"]] + [r["start"] for r in hist]))
     rows = []
     for s in starts:
         h = [r for r in hist if r["start"] == s]
         z = latest_checkpoint(run_dir, s)
-        done = [k for k in range(n_ph) if os.path.exists(os.path.join(run_dir, f"xi_{s}_phase{k}.npy"))]
+        xi_files = {k: start_file(run_dir, "xi_{}_phase%d.npy" % k, s) for k in range(n_ph)}   # legacy xi_vshell_*
+        done = [k for k in range(n_ph) if os.path.exists(xi_files[k])]
         status = "missing" if not h else ("done" if (n_ph - 1) in done else "incomplete")
         last = h[-1] if h else {}
         # optimiser J of the final phase: last row of that phase (history may contain repeated rows after a resume)
@@ -221,7 +226,7 @@ def start_table(run_dir, cfg: dict) -> list[dict]:
                          P_P0_opt=_f(lr.get("lam_ratio")), mass_err=mass_err,
                          hours=float(z["hours_used"]) if z is not None else float("nan"),
                          D_comp=float(z["D_comp"]) if z is not None else cfg["design"]["outward_extent_initial_mm"],
-                         xi_file=f"xi_{s}_phase{n_ph - 1}.npy" if status == "done" else None))
+                         xi_file=os.path.basename(xi_files[n_ph - 1]) if status == "done" else None))
     return rows
 
 
@@ -1296,15 +1301,15 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
                        w_min=t_shell, w_max=t_shell)]
     vrow = None
     try:
-        vs = load_vshell(vshell_run_dir(cfg))
+        vs = load_dshell(dshell_run_dir(cfg))
         b = vs["best"]
-        vrow = dict(run_dir=str(vshell_run_dir(cfg)), J=b.get("J"), K_K0=b.get("K/K0"), P_P0=b.get("P/P0"),
+        vrow = dict(run_dir=str(dshell_run_dir(cfg)), J=b.get("J"), K_K0=b.get("K/K0"), P_P0=b.get("P/P0"),
                     accepted=vs["accepted"], s_mm=vs["s"])
-        comparison.append(dict(label="vshell best", source="vshell", J=b.get("J"), K_K0=b.get("K/K0"),
+        comparison.append(dict(label="dshell best", source="dshell", J=b.get("J"), K_K0=b.get("K/K0"),
                                P_P0=b.get("P/P0"), governing=b.get("governing mode"),
                                w_min=b.get("as-built wall mm"), w_max=b.get("outer offset / strut wall s mm")))
     except (FileNotFoundError, KeyError) as e:
-        log(f"[collect] vshell row not available: {e}")
+        log(f"[collect] dshell row not available: {e}")
     for r in rows:
         comparison.append(dict(label=f"cshell {r['start']}", source="optimiser", J=r["J_opt"], K_K0=r["K_K0_opt"],
                                P_P0=r["P_P0_opt"], governing=None, w_min=r["w_min"], w_max=r["w_max"]))
@@ -1360,7 +1365,7 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
              validation=val,
              sensitivity=dict(file="sensitivity.csv", accepted_fraction=float(np.mean([r["accepted"] for r in sens])),
                               kappa_b=list(KAPPAS), sigma_f_pct=list(SIGMA_PCT)),
-             vshell=vrow,
+             dshell=vrow,
              resources=dict(gpu_model=gpu_model, peak_gpu_GiB=peak, peak_gpu_collect_GiB=peak_collect_gpu,
                             host_rss_GiB=mem,
                             gpu_hours=float(np.nansum([r["hours"] for r in rows])) + tim["total"] / 3600,

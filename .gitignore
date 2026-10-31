@@ -165,4 +165,10 @@ runs_cshell
 .cache_cshell
 __pycache__/
 core
-continuous/research/tubeE_ccx/runs
+docs/cshell/research/tubeE_ccx/runs
+# examples/parts/ holds the shared STEP files (the generic "parts/" rule above is for Python packaging)
+!examples/parts/
+# results committed on purpose: examples/dshell/runs/, examples/cshell/runs/ (no full STLs or checkpoints)
+examples/cshell/runs/*/*.stl
+!examples/cshell/runs/*/*_preview.stl
+examples/cshell/runs/*/checkpoints/

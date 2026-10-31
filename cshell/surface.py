@@ -17,7 +17,7 @@ Contents
 
 Usage
 -----
-    V, T, TF = vshell.geometry.tessellate(shape, 0.02, 0.2)
+    V, T, TF = dshell.geometry.tessellate(shape, 0.02, 0.2)
     ds = DesignSurface.build(V, T, TF, ell=0.75, hausdorff_tol=0.02, tess_tol=0.02)   # ds.info["hausdorff"], ["hausdorff_ok"]
     F = ds.filter(3.0);  xt = F.apply(xi);  g = F.adjoint(dJ_dxt);  xi = F.invert(xt)
     r_ma, info = ds.depth(h_g=0.1, return_info=True);  r_out = ds.clearance()
@@ -45,7 +45,7 @@ import scipy.sparse as sp
 import scipy.sparse.linalg as spla
 
 _NTHREADS = max(1, min(int(os.environ.get("CSHELL_THREADS", os.cpu_count() or 1)), 64))
-ANALYTIC_TYPES = ("Plane", "Cylinder", "Cone", "Sphere", "Torus")   # = vshell.geometry.ANALYTIC
+ANALYTIC_TYPES = ("Plane", "Cylinder", "Cone", "Sphere", "Torus")   # = dshell.geometry.ANALYTIC
 
 
 # ----------------------------------------------------------------------------------------------------------------
@@ -432,7 +432,7 @@ class DesignSurface:
               verbose: bool = False, **kw) -> "DesignSurface":
         """Isotropic remesh of the tessellation (V, T, TF) to edge ell, Hausdorff check, face ids, operators (§3.4).
 
-        TF (nt,) B-rep face id per input triangle (from `vshell.geometry.tessellate`). The achieved Hausdorff
+        TF (nt,) B-rep face id per input triangle (from `dshell.geometry.tessellate`). The achieved Hausdorff
         distance is in `info["hausdorff"]` (and `info["hausdorff_ok"]`); it is reported, not asserted, because a
         tight fillet can make the bound unreachable within the vertex budget `max_growth`.
         """
@@ -722,9 +722,9 @@ def keepout_distance(P: np.ndarray, N: np.ndarray, keepouts: Iterable[KeepOut], 
 # ----------------------------------------------------------------------------------------------------------------
 def mount_face_ids(analytic_face_ids: Iterable[int], forced_face_ids: Iterable[int], V0: np.ndarray, T0: np.ndarray,
                    TF0: np.ndarray, auto_analytic: bool = True, min_blob_fraction: float = 0.01) -> list[int]:
-    """B-rep faces that make up the mounts, reusing vshell's rule (vshell/segment.py, mounts part only).
+    """B-rep faces that make up the mounts, reusing dshell's rule (dshell/segment.py, mounts part only).
 
-    vshell: analytic faces (plane, cylinder, ...) form `mount` blobs, kept only if the blob is larger than
+    dshell: analytic faces (plane, cylinder, ...) form `mount` blobs, kept only if the blob is larger than
     `min_blob_fraction` of the part (volume there; here the blob's share of the surface *area*, since this module
     has no volume grid); faces carrying supports or loads (`forced_face_ids`, incl. `mounts.extra_faces`) always
     count. A blob is a connected set of analytic faces (faces sharing an input-mesh vertex are connected).

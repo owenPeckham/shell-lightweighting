@@ -1,0 +1,8 @@
+{
+  "name": "MBB",
+  "step_file": "../parts/Solid MBB.step",
+  "output_dir": "runs",
+  "supports": [{"type": "cylinder", "radius": 5.0, "tol": 0.05}],
+  "loads": [{"faces": {"type": "plane", "normal": [0, 0, 1], "box": {"x": [-30, 30]}, "extreme": true},
+             "force_N": [0, 0, -200]}]
+}

@@ -2,7 +2,7 @@
 
     python -m cshell report <run_dir>      ->  cshell.report.build(run_dir) -> <run_dir>/report.pdf
 
-Style follows vshell/report.py: text pages first, one figure per page, each figure in its own try/except with failures
+Style follows dshell/report.py: text pages first, one figure per page, each figure in its own try/except with failures
 in plots/report_log.txt, 3D artists rasterised, PDF well below 5 MB.  A page whose inputs are missing is rendered as a
 "not available" page (listing the missing files), so the page count is always 15 and numbering is stable.
 
@@ -26,8 +26,10 @@ from timeit import default_timer as timer
 
 import numpy as np
 
-from vshell import report as vr
-from vshell import util
+from dshell import report as vr
+from dshell import util
+
+from .config import canonical_start
 
 PAGES = ["summary", "geometry", "design_space", "result_fields", "sections", "convergence", "stress", "buckling",
          "optimality", "capacity_robustness", "resolution", "validation", "voids", "resources", "provenance"]
@@ -50,6 +52,9 @@ class Run:
         self.cfg = self._json("config_used.json")
         self.info = self._json("run_info.json")
         self.hist = util.read_csv(self.p("history.csv"))
+        for r in self.hist:                               # runs written before the vshell -> dshell rename
+            if "start" in r:
+                r["start"] = canonical_start(r["start"])
         self.name = self.summary.get("name") or self.cfg.get("name") or os.path.basename(os.path.normpath(d))
         self._f = None
         self.missing = []
@@ -184,7 +189,7 @@ def p_summary(R):
     lines = []
     for ln in str(reason).split("\n"):
         lines += vr.textwrap.wrap(ln, 110) or [""]
-    lines += ["", "Mass check: " + vr._fmt(S.get("mass")), "", "Comparison (solid, uniform shell, vshell best, cshell starts, export)"]
+    lines += ["", "Mass check: " + vr._fmt(S.get("mass")), "", "Comparison (solid, uniform shell, dshell best, cshell starts, export)"]
     comp = S.get("comparison") or []
     if comp:
         lines += _table(comp, ["label", "K_K0", "P_P0", "J", "governing", "w_min", "w_max"], 13)
@@ -200,7 +205,7 @@ def p_summary(R):
 
 
 def p_geometry(R):
-    """Original geometry with loads (config) and supports; reuses vshell.report.fig_geometry when its arrays exist."""
+    """Original geometry with loads (config) and supports; reuses dshell.report.fig_geometry when its arrays exist."""
     if R.has("arrays.npz") and R.info.get("geometry"):
         c = vr.Ctx.__new__(vr.Ctx)
         c.A, c.info, c.name = dict(np.load(R.p("arrays.npz"))), R.info, R.name
@@ -483,8 +488,8 @@ def p_provenance(R):
     git = prov["git"]
     src = {f"cshell/{f}": util.sha256_of(os.path.join(pkg, f)) for f in SOURCE_FILES if os.path.isfile(os.path.join(pkg, f))}
     for f in REF_FILES:
-        pth = os.path.join(root, "continuous", "reference", f)
-        src[f"continuous/reference/{f}"] = util.sha256_of(pth) if os.path.isfile(pth) else None
+        pth = os.path.join(root, "docs", "cshell", "reference", f)
+        src[f"docs/cshell/reference/{f}"] = util.sha256_of(pth) if os.path.isfile(pth) else None
     pk = dict(prov["packages"])
     from importlib.metadata import version
     for n in ("cupy", "pyvista", "scipy", "cupy-cuda12x"):

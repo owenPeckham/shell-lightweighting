@@ -1,6 +1,6 @@
 {
  "name": "L-bracket",
- "step_file": "../step/Solid L-bracket.step",
+ "step_file": "../parts/Solid L-bracket.step",
  "output_dir": "../../runs_cshell",
  "supports": [
   {

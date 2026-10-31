@@ -1,0 +1,216 @@
+[collect] starts: uniform done J +0.5189 feasible True; vshell done J +0.5193 feasible True; neutral done J +0.5193 feasible True
+[cshell] context: 89840 vertices, mounts 39 faces, r_MA 3.12 mm median, 52 s
+[collect] host RSS 1.5 GiB after context
+[cshell] phase 1: h_e 0.4 h_g 0.1, band 462.9 M cells, element box (442, 392, 392), passive {'mount': 21494, 'thin': 11424}, V0 60945.0 mm³, 99 s
+[cshell]   geometry chain on the GPU: compact band 10.35 GiB, released from the device during each FE evaluation
+[collect] host RSS 23.8 GiB after model opt (parametric)
+[collect] best (vshell) band volume: optimiser V/V0-1 -4.389e-05, export closure rule +1.048e-02 (rule/optimiser - 1 = +1.052e-02)
+[collect] uniform shell (mounts solid): t = 1.9139 mm for constant mass on the optimisation band
+[cshell]   active set rebuilt: 1425997 elements, 4711569 DOF, engine twogrid, coarse 700437 DOF (fp32), 91.9 GiB device memory free
+[cshell]   active set rebuilt: 1744198 elements, 5947860 DOF, engine twogrid, coarse 915138 DOF (fp32), 90.9 GiB device memory free
+[collect] parametric best (vshell) on the optimisation grid: {'J': 0.5089896677282892, 'K_K0': 0.9982656945509956, 'P_P0': 2.772404922380259, 'lam_s': 8.381543116108984, 'lam_b': 7.785990159074589, 'lam': 7.564909705555755, 'governing': 'buckling'}
+[collect] host RSS 20.9 GiB after release model opt (parametric)
+[export] A_geometry: 54.96 s
+[export] D_mass: 5.12 s
+[export] E1_marching_cubes: 4.78 s
+[export] E2_weld_checks: 31.25 s
+[export] E3_stl: 2.25 s
+[export] E4_wall_thickness: 5.86 s
+[export] uniform shell: t = 1.9139 mm (given), mounts solid
+[export] A_geometry: 92.25 s
+[export] D_mass: 57.06 s
+[export] E1_marching_cubes: 9.37 s
+[export] E2_weld_checks: 75.37 s
+[export] E3_stl: 4.72 s
+[export] E4_wall_thickness: 12.34 s
+[collect] host RSS 19.8 GiB after export baselines
+[export] A_geometry: 247.37 s
+[export] B1_opening: 89.06 s
+[export] B2_fill_islands: 14.83 s
+[export] B3_opening_check: 81.67 s
+[export] cleanup: {'void_raw_mm3': 32293.93562500001, 'opening_removed_mm3': 1338.5411250000004, 'void_components_after_opening': 1, 'enclosed_voids_filled': 0, 'enclosed_filled_mm3': 0.0, 'material_components': 543, 'islands_removed': 542, 'islands_removed_mm3': 0.09500000000000003, 'void_clean_mm3': 30955.394500000006, 'reopen_changed_cells': 0, 'opening_rule_ok': True}
+[export] C_holes: 9.83 s
+[export] D_mass: 56.88 s
+[export] E1_marching_cubes: 10.12 s
+[export] E2_weld_checks: 76.1 s
+[export] E3_stl: 4.62 s
+[export] E4_wall_thickness: 12.93 s
+[collect] host RSS 19.9 GiB after export best
+[collect] best_candidate export FAILED its checks: mesh not watertight (1 bodies, 74 duplicated directed edges). The STL is kept for inspection and not re-scored (D2); the original solid is kept.
+[cshell] phase 1: h_e 0.4 h_g 0.1, band 462.9 M cells, element box (442, 392, 392), passive {'mount': 21494, 'thin': 11424}, V0 60945.0 mm³, 101 s
+[cshell]   geometry chain on the GPU: compact band 10.35 GiB, released from the device during each FE evaluation
+[collect] host RSS 40.7 GiB after model opt
+[cshell]   active set rebuilt: 1425997 elements, 4711569 DOF, engine twogrid, coarse 700437 DOF (fp32), 62.7 GiB device memory free
+[cshell]   active set rebuilt: 1766170 elements, 6051237 DOF, engine twogrid, coarse 940434 DOF (fp32), 90.8 GiB device memory free
+[collect] solid re-score vs the parametric pass on the same grid: C -2.32e-14
+[collect] opt: solid               J +0.0000 K/K0 1.0000 P/P0 1.0000 buckling V/V0-1 +0.00e+00 load moved 0.0%
+[collect] opt: uniform_shell       J +0.2425 K/K0 0.9314 P/P0 1.7438 strength V/V0-1 -5.23e-05 load moved 0.0%
+[collect] host RSS 22.2 GiB after release model opt
+[cshell] phase 1: h_e 0.4 h_g 0.1, band 462.9 M cells, element box (442, 392, 393), passive {'mount': 21494, 'thin': 11424}, V0 60945.0 mm³, 101 s
+[cshell]   geometry chain on the GPU: compact band 10.35 GiB, released from the device during each FE evaluation
+[collect] host RSS 43.0 GiB after model shift
+[cshell]   active set rebuilt: 1436352 elements, 4744809 DOF, engine twogrid, coarse 700434 DOF (fp32), 62.6 GiB device memory free
+[cshell]   active set rebuilt: 1776145 elements, 6082827 DOF, engine twogrid, coarse 939912 DOF (fp32), 90.8 GiB device memory free
+[collect] shift: solid             J +0.0000 K/K0 1.0000 P/P0 1.0000 buckling V/V0-1 +0.00e+00 load moved 0.0%
+[collect] shift: uniform_shell     J +0.2367 K/K0 0.9305 P/P0 1.7254 strength V/V0-1 -5.23e-05 load moved 0.0%
+[collect] host RSS 22.2 GiB after release model shift
+[cshell] phase 1: h_e 0.5 h_g 0.125, band 237.9 M cells, element box (354, 314, 314), passive {'mount': 21494, 'thin': 11199}, V0 60947.4 mm³, 52 s
+[cshell]   geometry chain on the GPU: compact band 5.32 GiB, released from the device during each FE evaluation
+[collect] host RSS 33.8 GiB after model coarse
+[cshell]   active set rebuilt: 676152 elements, 2296458 DOF, engine twogrid, coarse 358905 DOF (fp32), 64.0 GiB device memory free
+[cshell]   active set rebuilt: 818344 elements, 2934150 DOF, engine twogrid, coarse 485841 DOF (fp32), 92.5 GiB device memory free
+[collect] coarse: solid            J +0.0000 K/K0 1.0000 P/P0 1.0000 buckling V/V0-1 +0.00e+00 load moved 0.0%
+[collect] coarse: uniform_shell    J +0.2780 K/K0 0.9341 P/P0 1.8665 strength V/V0-1 -8.13e-05 load moved 0.0%
+[collect] host RSS 21.1 GiB after release model coarse
+[collect] DECISION: original solid kept: export failed: mesh not watertight (1 bodies, 74 duplicated directed edges)
+[collect] done in 1846 s (peak host RSS 63.5 GiB, export workers 19.6 GiB, peak GPU 44.6 GiB)
+[collect] starts: uniform done J +0.5189 feasible True; vshell done J +0.5193 feasible True; neutral done J +0.5193 feasible True
+[cshell] context: 89840 vertices, mounts 39 faces, r_MA 3.12 mm median, 53 s
+[collect] host RSS 1.4 GiB after context
+[cshell] phase 1: h_e 0.4 h_g 0.1, band 462.9 M cells, element box (442, 392, 392), passive {'mount': 21494, 'thin': 11424}, V0 60945.0 mm³, 102 s
+[cshell]   geometry chain on the GPU: compact band 10.35 GiB, released from the device during each FE evaluation
+[collect] host RSS 23.9 GiB after model opt (parametric)
+[collect] best (vshell) band volume: optimiser V/V0-1 -4.389e-05, export closure rule +1.048e-02 (rule/optimiser - 1 = +1.052e-02)
+[collect] uniform shell (mounts solid): t = 1.9139 mm for constant mass on the optimisation band
+[cshell]   active set rebuilt: 1425997 elements, 4711569 DOF, engine twogrid, coarse 700437 DOF (fp32), 91.9 GiB device memory free
+[cshell]   active set rebuilt: 1744198 elements, 5947860 DOF, engine twogrid, coarse 915138 DOF (fp32), 90.9 GiB device memory free
+[collect] parametric best (vshell) on the optimisation grid: {'J': 0.5089896676655091, 'K_K0': 0.998265694551029, 'P_P0': 2.7724049220320626, 'lam_s': 8.381543116109732, 'lam_b': 7.785990159412219, 'lam': 7.564909705788121, 'governing': 'buckling'}
+[collect] host RSS 20.0 GiB after release model opt (parametric)
+[export] A_geometry: 56.38 s
+[export] D_mass: 5.19 s
+[export] E1_marching_cubes: 11.79 s
+[export] E2_weld_checks: 31.16 s
+[export] E3_stl: 2.29 s
+[export] E4_wall_thickness: 13.08 s
+[export] uniform shell: t = 1.9139 mm (given), mounts solid
+[export] A_geometry: 95.05 s
+[export] D_mass: 60.55 s
+[export] E1_marching_cubes: 25.34 s
+[export] E2_weld_checks: 76.91 s
+[export] E3_stl: 4.9 s
+[export] E4_wall_thickness: 28.89 s
+[collect] host RSS 19.5 GiB after export baselines
+[export] A_geometry: 253.39 s
+[export] B1_opening: 88.79 s
+[export] B2_fill_islands: 15.73 s
+[export] B3_opening_check: 84.27 s
+[export] cleanup: {'void_raw_mm3': 32293.93562500001, 'opening_removed_mm3': 1338.5411250000004, 'void_components_after_opening': 1, 'enclosed_voids_filled': 0, 'enclosed_filled_mm3': 0.0, 'material_components': 543, 'islands_removed': 542, 'islands_removed_mm3': 0.09500000000000003, 'void_clean_mm3': 30955.394500000006, 'reopen_changed_cells': 0, 'opening_rule_ok': True}
+[export] C_holes: 10.08 s
+[export] D_mass: 56.19 s
+[export] E1_marching_cubes: 28.39 s
+[export] E2_weld_checks: 84.37 s
+[export] E3_stl: 6.91 s
+[export] E4_wall_thickness: 32.04 s
+[collect] host RSS 19.6 GiB after export best
+[cshell] phase 1: h_e 0.4 h_g 0.1, band 462.9 M cells, element box (442, 392, 392), passive {'mount': 21494, 'thin': 11424}, V0 60945.0 mm³, 104 s
+[cshell]   geometry chain on the GPU: compact band 10.35 GiB, released from the device during each FE evaluation
+[collect] host RSS 42.1 GiB after model opt
+[cshell]   active set rebuilt: 1425997 elements, 4711569 DOF, engine twogrid, coarse 700437 DOF (fp32), 62.7 GiB device memory free
+[cshell]   active set rebuilt: 1766170 elements, 6051237 DOF, engine twogrid, coarse 940434 DOF (fp32), 90.8 GiB device memory free
+[cshell]   active set rebuilt: 1719697 elements, 5860944 DOF, engine twogrid, coarse 902670 DOF (fp32), 90.8 GiB device memory free
+[collect] solid re-score vs the parametric pass on the same grid: C +2.11e-13
+[collect] opt: solid               J +0.0000 K/K0 1.0000 P/P0 1.0000 buckling V/V0-1 +0.00e+00 load moved 0.0%
+[collect] opt: uniform_shell       J +0.2424 K/K0 0.9314 P/P0 1.7436 strength V/V0-1 -5.49e-05 load moved 0.0%
+[collect] opt: best                J +0.4900 K/K0 0.9829 P/P0 2.7109 buckling V/V0-1 -5.84e-05 load moved 0.0%
+[collect] host RSS 21.9 GiB after release model opt
+[cshell] phase 1: h_e 0.4 h_g 0.1, band 462.9 M cells, element box (442, 392, 393), passive {'mount': 21494, 'thin': 11424}, V0 60945.0 mm³, 104 s
+[cshell]   geometry chain on the GPU: compact band 10.35 GiB, released from the device during each FE evaluation
+[collect] host RSS 43.6 GiB after model shift
+[cshell]   active set rebuilt: 1436352 elements, 4744809 DOF, engine twogrid, coarse 700434 DOF (fp32), 62.7 GiB device memory free
+[cshell]   active set rebuilt: 1776143 elements, 6082821 DOF, engine twogrid, coarse 939912 DOF (fp32), 90.7 GiB device memory free
+[cshell]   active set rebuilt: 1730183 elements, 5894901 DOF, engine twogrid, coarse 903129 DOF (fp32), 90.8 GiB device memory free
+[collect] shift: solid             J +0.0000 K/K0 1.0000 P/P0 1.0000 buckling V/V0-1 +0.00e+00 load moved 0.0%
+[collect] shift: uniform_shell     J +0.2366 K/K0 0.9305 P/P0 1.7252 strength V/V0-1 -5.49e-05 load moved 0.0%
+[collect] shift: best              J +0.4899 K/K0 0.9820 P/P0 2.7125 buckling V/V0-1 -5.84e-05 load moved 0.0%
+[collect] host RSS 21.9 GiB after release model shift
+[cshell] phase 1: h_e 0.5 h_g 0.125, band 237.9 M cells, element box (354, 314, 314), passive {'mount': 21494, 'thin': 11199}, V0 60947.4 mm³, 53 s
+[cshell]   geometry chain on the GPU: compact band 5.32 GiB, released from the device during each FE evaluation
+[collect] host RSS 34.4 GiB after model coarse
+[cshell]   active set rebuilt: 676152 elements, 2296458 DOF, engine twogrid, coarse 358905 DOF (fp32), 63.9 GiB device memory free
+[cshell]   active set rebuilt: 818343 elements, 2934147 DOF, engine twogrid, coarse 485841 DOF (fp32), 92.5 GiB device memory free
+[cshell]   active set rebuilt: 799667 elements, 2844180 DOF, engine twogrid, coarse 465744 DOF (fp32), 92.6 GiB device memory free
+[collect] coarse: solid            J +0.0000 K/K0 1.0000 P/P0 1.0000 buckling V/V0-1 +0.00e+00 load moved 0.0%
+[collect] coarse: uniform_shell    J +0.2779 K/K0 0.9341 P/P0 1.8664 strength V/V0-1 -8.39e-05 load moved 0.0%
+[collect] coarse: best             J +0.4945 K/K0 0.9839 P/P0 2.7327 buckling V/V0-1 -1.20e-04 load moved 0.0%
+[collect] host RSS 20.9 GiB after release model coarse
+[collect] WARNING body-fitted solid: coarse level h = 0.500 failed (MemoryError('std::bad_alloc')); no level-convergence estimate, the finer level is compared
+[collect] body-fitted solid FAILED: RuntimeError("surface remesh check failed: {'faces': 495006, 'faces_in': 133540, 'area': 27541.03836155509, 'stages': [495162, 495006], 'watertight': True, 'self_intersections': 0, 'repairs': [12], 'edge_max': 1.6548075677092557, 'vol_rel': -0.0006228625963305978, 'hausdorff': 0.8400187712561458}")
+[collect] WARNING body-fitted design: coarse level h = 0.500 failed (RuntimeError("surface remesh check failed: {'faces': 906115, 'faces_in': 60711700, 'area': 54204.62827472466, 'stages': [924380, 913814, 913615, 911880, 911627], 'watertight': False, 'self_intersections': 0, 'repairs': [193, 18, 25, 33, 25, 23], 'edge_max': 2.2701522131552383, 'vol_rel': 0.000799155); no level-convergence estimate, the finer level is compared
+[collect] body-fitted design FAILED: RuntimeError("surface remesh check failed: {'faces': 1348849, 'faces_in': 60711700, 'area': 54204.62827472466, 'stages': [1356220, 1348980, 1349113, 1349168, 1348849], 'watertight': False, 'self_intersections': 0, 'repairs': [194, 35, 19, 10], 'edge_max': 1.397366494356995, 'vol_rel': 0.00037271084345236183, 'hausdorff': 0.6539159779170449}")
+[collect] body-fitted check FAILED: {'solid/coarse_level': "MemoryError('std::bad_alloc')", 'solid/keep': 'RuntimeError("surface remesh check failed: {\'faces\': 495006, \'faces_in\': 133540, \'area\': 27541.03836155509, \'stages\': [495162, 495006], \'watertight\': True, \'self_intersections\': 0, \'repairs\': [12], \'edge_max\': 1.6548075677092557, \'vol_rel\': -0.0006228625963305978, \'hausdorff\': 0.8400187712561458}")', 'design/coarse_level': 'RuntimeError("surface remesh check failed: {\'faces\': 906115, \'faces_in\': 60711700, \'area\': 54204.62827472466, \'stages\': [924380, 913814, 913615, 911880, 911627], \'watertight\': False, \'self_intersections\': 0, \'repairs\': [193, 18, 25, 33, 25, 23], \'edge_max\': 2.2701522131552383, \'vol_rel\': 0.0007991553814106211, \'hausdorff\': 1.050299647132105}")', 'design/keep': 'RuntimeError("surface remesh check failed: {\'faces\': 1348849, \'faces_in\': 60711700, \'area\': 54204.62827472466, \'stages\': [1356220, 1348980, 1349113, 1349168, 1348849], \'watertight\': False, \'self_intersections\': 0, \'repairs\': [194, 35, 19, 10], \'edge_max\': 1.397366494356995, \'vol_rel\': 0.00037271084345236183, \'hausdorff\': 0.6539159779170449}")'}
+[collect] DECISION: original solid kept: body-fitted check could not be run (see validation.errors)
+[collect] done in 8765 s (peak host RSS 63.5 GiB, export workers 63.5 GiB, peak GPU 84.6 GiB)
+[collect] starts: uniform done J +0.5189 feasible True; vshell done J +0.5193 feasible True; neutral done J +0.5193 feasible True
+[cshell] context: 89840 vertices, mounts 39 faces, r_MA 3.12 mm median, 53 s
+[collect] host RSS 1.4 GiB after context
+[cshell] phase 1: h_e 0.4 h_g 0.1, band 462.9 M cells, element box (442, 392, 392), passive {'mount': 21494, 'thin': 11424}, V0 60945.0 mm³, 102 s
+[cshell]   geometry chain on the GPU: compact band 10.35 GiB, released from the device during each FE evaluation
+[collect] host RSS 23.7 GiB after model opt (parametric)
+[collect] best (vshell) band volume: optimiser V/V0-1 -4.389e-05, export closure rule +1.048e-02 (rule/optimiser - 1 = +1.052e-02)
+[collect] uniform shell (mounts solid): t = 1.9139 mm for constant mass on the optimisation band
+[cshell]   active set rebuilt: 1425997 elements, 4711569 DOF, engine twogrid, coarse 700437 DOF (fp32), 91.9 GiB device memory free
+[cshell]   active set rebuilt: 1744198 elements, 5947860 DOF, engine twogrid, coarse 915138 DOF (fp32), 90.9 GiB device memory free
+[collect] parametric best (vshell) on the optimisation grid: {'J': 0.5089896676063791, 'K_K0': 0.9982656945506688, 'P_P0': 2.772404921705198, 'lam_s': 8.381543116109615, 'lam_b': 7.785990159372854, 'lam': 7.56490970576102, 'governing': 'buckling'}
+[collect] host RSS 20.7 GiB after release model opt (parametric)
+[export] A_geometry: 59.89 s
+[export] D_mass: 5.09 s
+[export] E1_marching_cubes: 11.67 s
+[export] E2_weld_checks: 31.58 s
+[export] E3_stl: 2.33 s
+[export] E4_wall_thickness: 12.89 s
+[export] uniform shell: t = 1.9139 mm (given), mounts solid
+[export] A_geometry: 99.56 s
+[export] D_mass: 58.46 s
+[export] E1_marching_cubes: 25.4 s
+[export] E2_weld_checks: 77.24 s
+[export] E3_stl: 5.2 s
+[export] E4_wall_thickness: 28.62 s
+[collect] host RSS 20.2 GiB after export baselines
+[export] A_geometry: 259.92 s
+[export] B1_opening: 88.47 s
+[export] B2_fill_islands: 15.04 s
+[export] B3_opening_check: 83.13 s
+[export] cleanup: {'void_raw_mm3': 32293.93562500001, 'opening_removed_mm3': 1338.5411250000004, 'void_components_after_opening': 1, 'enclosed_voids_filled': 0, 'enclosed_filled_mm3': 0.0, 'material_components': 543, 'islands_removed': 542, 'islands_removed_mm3': 0.09500000000000003, 'void_clean_mm3': 30955.394500000006, 'reopen_changed_cells': 0, 'opening_rule_ok': True}
+[export] C_holes: 10.3 s
+[export] D_mass: 56.36 s
+[export] E1_marching_cubes: 27.65 s
+[export] E2_weld_checks: 73.44 s
+[export] E3_stl: 4.75 s
+[export] E4_wall_thickness: 30.93 s
+[collect] host RSS 20.3 GiB after export best
+[cshell] phase 1: h_e 0.4 h_g 0.1, band 462.9 M cells, element box (442, 392, 392), passive {'mount': 21494, 'thin': 11424}, V0 60945.0 mm³, 103 s
+[cshell]   geometry chain on the GPU: compact band 10.35 GiB, released from the device during each FE evaluation
+[collect] host RSS 41.7 GiB after model opt
+[cshell]   active set rebuilt: 1425997 elements, 4711569 DOF, engine twogrid, coarse 700437 DOF (fp32), 62.7 GiB device memory free
+[cshell]   active set rebuilt: 1766170 elements, 6051237 DOF, engine twogrid, coarse 940434 DOF (fp32), 90.8 GiB device memory free
+[cshell]   active set rebuilt: 1719697 elements, 5860944 DOF, engine twogrid, coarse 902670 DOF (fp32), 90.8 GiB device memory free
+[collect] solid re-score vs the parametric pass on the same grid: C +7.50e-13
+[collect] opt: solid               J +0.0000 K/K0 1.0000 P/P0 1.0000 buckling V/V0-1 +0.00e+00 load moved 0.0%
+[collect] opt: uniform_shell       J +0.2424 K/K0 0.9314 P/P0 1.7436 strength V/V0-1 -5.49e-05 load moved 0.0%
+[collect] opt: best                J +0.4900 K/K0 0.9829 P/P0 2.7109 buckling V/V0-1 -5.84e-05 load moved 0.0%
+[collect] host RSS 23.1 GiB after release model opt
+[cshell] phase 1: h_e 0.4 h_g 0.1, band 462.9 M cells, element box (442, 392, 393), passive {'mount': 21494, 'thin': 11424}, V0 60945.0 mm³, 102 s
+[cshell]   geometry chain on the GPU: compact band 10.35 GiB, released from the device during each FE evaluation
+[collect] host RSS 44.3 GiB after model shift
+[cshell]   active set rebuilt: 1436352 elements, 4744809 DOF, engine twogrid, coarse 700434 DOF (fp32), 62.7 GiB device memory free
+[cshell]   active set rebuilt: 1776143 elements, 6082821 DOF, engine twogrid, coarse 939912 DOF (fp32), 90.8 GiB device memory free
+[cshell]   active set rebuilt: 1730183 elements, 5894901 DOF, engine twogrid, coarse 903129 DOF (fp32), 90.9 GiB device memory free
+[collect] shift: solid             J +0.0000 K/K0 1.0000 P/P0 1.0000 buckling V/V0-1 +0.00e+00 load moved 0.0%
+[collect] shift: uniform_shell     J +0.2366 K/K0 0.9305 P/P0 1.7252 strength V/V0-1 -5.49e-05 load moved 0.0%
+[collect] shift: best              J +0.4899 K/K0 0.9820 P/P0 2.7125 buckling V/V0-1 -5.84e-05 load moved 0.0%
+[collect] host RSS 23.1 GiB after release model shift
+[cshell] phase 1: h_e 0.5 h_g 0.125, band 237.9 M cells, element box (354, 314, 314), passive {'mount': 21494, 'thin': 11199}, V0 60947.4 mm³, 53 s
+[cshell]   geometry chain on the GPU: compact band 5.32 GiB, released from the device during each FE evaluation
+[collect] host RSS 35.0 GiB after model coarse
+[cshell]   active set rebuilt: 676152 elements, 2296458 DOF, engine twogrid, coarse 358905 DOF (fp32), 63.9 GiB device memory free
+[cshell]   active set rebuilt: 818343 elements, 2934147 DOF, engine twogrid, coarse 485841 DOF (fp32), 92.4 GiB device memory free
+[cshell]   active set rebuilt: 799667 elements, 2844180 DOF, engine twogrid, coarse 465744 DOF (fp32), 92.5 GiB device memory free
+[collect] coarse: solid            J +0.0000 K/K0 1.0000 P/P0 1.0000 buckling V/V0-1 +0.00e+00 load moved 0.0%
+[collect] coarse: uniform_shell    J +0.2779 K/K0 0.9341 P/P0 1.8664 strength V/V0-1 -8.39e-05 load moved 0.0%
+[collect] coarse: best             J +0.4945 K/K0 0.9839 P/P0 2.7327 buckling V/V0-1 -1.20e-04 load moved 0.0%
+[collect] host RSS 21.5 GiB after release model coarse
+[collect] body-fitted solid not run: 10000746 DOF > validation.max_bodyfit_dof = 4e+06
+[collect] body-fitted design not run: 11819688 DOF > validation.max_bodyfit_dof = 4e+06
+[collect] body-fitted check not run: model exceeds solver capacity; decision on the voxel criteria at all three resolutions (Owen, 2026-10-31): {'solid': '10000746 DOF > validation.max_bodyfit_dof = 4e+06', 'design': '11819688 DOF > validation.max_bodyfit_dof = 4e+06'}
+[collect] DECISION: cshell design accepted: J = +0.4899 > ln(1 + 0.02) with K/K0 ≥ 0.982, P/P0 ≥ 2.711 at every resolution [body-fitted check not run: model exceeds solver capacity; voxel criteria only]
+[collect] done in 2366 s (peak host RSS 64.0 GiB, export workers 21.1 GiB, peak GPU 44.5 GiB)

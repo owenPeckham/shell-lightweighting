@@ -1,6 +1,6 @@
 {
  "name": "MBB",
- "step_file": "../step/Solid MBB.step",
+ "step_file": "../parts/Solid MBB.step",
  "output_dir": "../../runs_cshell",
  "supports": [
   {

@@ -524,14 +524,14 @@ def cache_path(sha: str, h_g: float, D_comp: float, tol: float, r_in: float = ma
 
 def build_from_step(step_path, h_g: float, D_comp: float = 4.0, tol: float = 0.02, r_in: float = math.inf,
                     use_cache: bool = True, **kw) -> Band:
-    """STEP -> tessellation (`vshell.geometry`, chordal tol mm) -> Band, cached to .npz (§3.1)."""
+    """STEP -> tessellation (`dshell.geometry`, chordal tol mm) -> Band, cached to .npz (§3.1)."""
     sha = step_sha256(step_path)
     path = cache_path(sha, h_g, D_comp, tol, r_in)
     if use_cache and path.exists():
         b = Band.load(path)
         b.info = dict(cached=True, n_cells=b.n)
         return b
-    from vshell.geometry import load_step, tessellate
+    from dshell.geometry import load_step, tessellate
     V, T, _ = tessellate(load_step(str(step_path)), lin=tol)
     b = Band.build(V, T, h_g, D_comp, r_in, **kw)
     if use_cache:

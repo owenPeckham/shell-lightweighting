@@ -275,12 +275,12 @@ def test_mount_and_thin_passive():
 # ---------------------------------------------------------------------------------------------------------------
 # cantilever (the real part; slow: remesh + depth, ~1-3 min). Skip with CSHELL_SKIP_SLOW=1.
 # ---------------------------------------------------------------------------------------------------------------
-STEP = os.path.join(os.path.dirname(__file__), "..", "..", "examples", "step", "Solid Cantilever.step")
+STEP = os.path.join(os.path.dirname(__file__), "..", "..", "examples", "parts", "Solid Cantilever.step")
 
 
 @pytest.mark.skipif(os.environ.get("CSHELL_SKIP_SLOW") == "1", reason="slow")
 def test_cantilever_end_to_end():
-    from vshell import geometry as g
+    from dshell import geometry as g
     t0 = time.time()
     V, T, TF = g.tessellate(g.load_step(STEP), 0.02, 0.2)
     ds = S.DesignSurface.build(V, T, TF, ell=0.75, hausdorff_tol=0.02, tess_tol=0.02)

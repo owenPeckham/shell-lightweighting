@@ -1,4 +1,4 @@
-"""Adapter to Owen's reference FE stack (continuous/reference/analysis.py, gpu_analysis.py).
+"""Adapter to Owen's reference FE stack (docs/cshell/reference/analysis.py, gpu_analysis.py).
 
 THEORY §4.1-4.3 and Appendix A. The reference files are imported, never copied or edited.
 
@@ -19,7 +19,7 @@ from pathlib import Path
 
 import numpy as np
 
-REFERENCE_DIR = Path(__file__).resolve().parents[1] / "continuous" / "reference"
+REFERENCE_DIR = Path(__file__).resolve().parents[1] / "docs" / "cshell" / "reference"
 if str(REFERENCE_DIR) not in sys.path:
     sys.path.insert(0, str(REFERENCE_DIR))
 
@@ -54,7 +54,7 @@ class ShellCG(analysis.ConjugateGradient):
 
     The reference class smears element-wise CSG masks onto the 8 element corners, clamping a one-element slab.
     Here `fixed_dof` (bool, (nx, ny, nz, 3) on NODES) and `nodal_load` (N, same shape) are given directly, as
-    vshell does. An element-shaped zero `csg_domain_data` is still passed because `__init__` requires one and
+    dshell does. An element-shaped zero `csg_domain_data` is still passed because `__init__` requires one and
     `_apply_elastic_engine` sizes the grid from it.
 
     Only q1_im with analysis_refinement = 1 is supported for production (THEORY §4.1).
@@ -133,7 +133,7 @@ class ShellCG(analysis.ConjugateGradient):
 # ---------------------------------------------------------------------------------------------------------------
 def nodes_near_faces(origin, h: float, node_shape, V: np.ndarray, T: np.ndarray, TF: np.ndarray, face_ids,
                      tol_factor: float = 0.75) -> np.ndarray:
-    """Flat node ids within tol_factor·h of the triangles of `face_ids` (vshell's rule)."""
+    """Flat node ids within tol_factor·h of the triangles of `face_ids` (dshell's rule)."""
     import igl
     T_sel = np.ascontiguousarray(T[np.isin(TF, list(face_ids))], np.int64)
     if T_sel.size == 0:

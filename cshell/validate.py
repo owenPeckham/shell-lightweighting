@@ -972,7 +972,7 @@ def tet_volumes(nodes: np.ndarray, tets: np.ndarray) -> np.ndarray:
 # Boundary conditions
 # ---------------------------------------------------------------------------------------------------------------
 def nodes_near_faces(nodes: np.ndarray, V: np.ndarray, T: np.ndarray, TF: np.ndarray, face_ids, tol: float) -> np.ndarray:
-    """Indices of mesh nodes within `tol` of the triangles of `face_ids` (cshell/vshell rule, §4.3)."""
+    """Indices of mesh nodes within `tol` of the triangles of `face_ids` (cshell/dshell rule, §4.3)."""
     import igl
     sel = np.ascontiguousarray(T[np.isin(TF, list(face_ids))], np.int64)
     if sel.size == 0:

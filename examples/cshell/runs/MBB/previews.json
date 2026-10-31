@@ -1,0 +1,80 @@
+{
+  "final_design": {
+    "source": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/FULL/MBB/final_design.stl",
+    "full": {
+      "faces": 82898852,
+      "vertices": 41448308,
+      "volume_mm3": 85238.01848858212,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 1,
+      "watertight": true
+    },
+    "preview": {
+      "faces": 500000,
+      "vertices": 248882,
+      "volume_mm3": 85263.22302383055,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 1,
+      "watertight": true
+    },
+    "rel_volume_change": 0.00029569593117417803,
+    "preview_bytes": 25000084,
+    "seconds": 1766.716180562973
+  },
+  "original": {
+    "source": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/FULL/MBB/original.stl",
+    "full": {
+      "faces": 38570616,
+      "vertices": 19285296,
+      "volume_mm3": 85228.78314325062,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 1,
+      "watertight": true
+    },
+    "preview": {
+      "faces": 500000,
+      "vertices": 249988,
+      "volume_mm3": 85222.9215384859,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 1,
+      "watertight": true
+    },
+    "rel_volume_change": -6.877494372847792e-05,
+    "preview_bytes": 25000084,
+    "seconds": 727.3911809921265
+  },
+  "uniform_shell": {
+    "source": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/FULL/MBB/uniform_shell.stl",
+    "full": {
+      "faces": 86044292,
+      "vertices": 43022042,
+      "volume_mm3": 85230.52104944269,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 3,
+      "watertight": true
+    },
+    "preview": {
+      "faces": 500000,
+      "vertices": 249896,
+      "volume_mm3": 85218.68686685555,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 3,
+      "watertight": true
+    },
+    "rel_volume_change": -0.00013884911697614744,
+    "preview_bytes": 25000084,
+    "seconds": 1793.3242859840393
+  }
+}
