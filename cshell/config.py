@@ -25,7 +25,10 @@ DEFAULTS = {
     "mounts": {"auto_analytic": True, "extra_faces": [], "min_blob_fraction": 0.01, "dilate_mm": 1.5},
     "design": {"allow_outward": True, "outward_extent_initial_mm": 4.0, "gap_mm": 1.0, "keep_out": [],
                "keep_out_clearance_mm": 0.5, "surface_edge_mm": 0.75, "closure_gamma": 0.75,
-               "inset_soft_mm": 0.1},                            # D1: width of the smoothed (t_min − d)⁺ bound
+               "inset_soft_mm": 0.1,                             # D1: width of the smoothed (t_min − d)⁺ bound
+               "closure_xi": 0.9,           # ξ̃ᵃ ≥ closure_xi is closed (C¹ projection; PLAN_single_run §4); null = linear
+               "r_ma_smooth_mm": 1.0,       # Helmholtz radius smoothing r_MA before a^hi and closure (§2); 0 = off
+               "taper": True},              # d → 0 (and a → closed) towards passive regions over r_f (§2); False = hard
     "grid": {"phases": [{"h_e": 0.8, "h_g": 0.2}, {"h_e": 0.4, "h_g": 0.1}], "export_h_mm": 0.05,
              "rho_min": 1e-6, "tessellation_mm": 0.02, "active_margin_mm": 0.5,    # FE active-set dilation
              "geometry_device": "auto",     # band chain ψ → χ → ρ, V, pull-backs: "auto" (GPU if CUDA) | "cpu" | "gpu"
@@ -42,12 +45,27 @@ DEFAULTS = {
                        "maxiter": 100, "nrhs": 7,                # PCG block width (work memory ∝ nrhs)
                        "deterministic": "off"}},         # "off" (atomics, fastest) | "kernels" | "full" (bitwise FE, ~2.5x slower)
     "capacity": {"stress_p": [6, 8, 10], "stress_q": 2, "stress_quantile": 0.995, "exclude_bc_mm": 2.0,
+                 "exclude_rma_factor": 2.0,  # exclusion r_ex = max(exclude_bc_mm, factor·r_MA at the face) (§4)
                  "include_mounts": False, "buckling": True, "buckling_modes": 6, "buckling_p": 8,
                  "knockdown": 0.85, "softmin_beta": [8, 12, 16], "eig_tol": 1e-3, "min_density_geometric": 0.1},
-    "objective": {"w_stiffness": 0.5, "w_capacity": 0.5, "min_gain": 0.02, "floor_stiffness": 0.85,
+    "objective": {"type": "compliance",                     # PLAN_single_run §4: J = ln K/K0 at constant mass
+                  "constraints": ["buckling", "strength"],  # ln(λ_B0/λ_B) ≤ 0, ln(σ_PN/σ_PN0) ≤ 0 (MMA)
+                  "constraint_scale": 0.01,                 # MMA sees g/scale (1 unit = 1 % violation)
+                  "feasibility_tol": 1e-3,                  # evaluate(): feasible if every g ≤ tol
+                  # type "weighted" (Stage 2): J = w_K ln(C0/C) + w_P ln(λ/λ0) with the capacity soft-min
+                  "w_stiffness": 0.5, "w_capacity": 0.5, "min_gain": 0.02, "floor_stiffness": 0.85,
                   "floor_capacity": 0.85, "floors_as_constraints": False},
-    "filter": {"radius_mm": [4.0, 3.0, 2.5]},
-    "optimiser": {"method": "mma", "starts": ["uniform", "dshell", "neutral"], "max_iter": [60, 80, 40],
+    "filter": {"radius_mm": [4.0, 3.0, 2.5],
+               "passes": 2},                # ξ̃ = clip(Fⁿ ξ) (§2: n = 2 removes one-vertex cones)
+    "growth": {"enabled": True,             # solid start: hollow-allowed set H = {R_v ≤ R_k} grows (§4)
+               "phase": 0,                  # continuation phase that grows H; later phases keep it frozen
+               "tol": 1e-3,                 # stop when a step raises J by less than tol
+               "quantiles": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+               "iters_per_step": 8,
+               "samples": 16},              # through-thickness quadrature points of R_v
+    "export": {"h_mm": 0.2, "device": "gpu",
+               "closed_thr": 0.9},          # export closes vertices with ξ̃ᵃ ≥ closed_thr (= design.closure_xi)
+    "optimiser": {"method": "mma", "starts": ["solid"], "max_iter": [60, 80, 40],
                   "move": 0.1, "tol_x": 0.005, "tol_f": 1e-4, "mass_tol": 1e-4,
                   "sliver_weight": [0.0, [0.0, 0.05], 0.1], "seed": 0},
     "validation": {"body_fitted": True, "second_resolution": True},
@@ -150,8 +168,14 @@ def validate(cfg: dict) -> None:
         if "faces" not in L or "force_N" not in L or len(L["force_N"]) != 3:
             raise ValueError("config: each load needs 'faces' (selector) and 'force_N' [fx, fy, fz]")
     o = cfg["objective"]
-    if o["w_stiffness"] < 0 or o["w_capacity"] < 0 or (o["w_stiffness"] + o["w_capacity"]) == 0:
+    if o.get("type", "compliance") not in ("compliance", "weighted"):
+        raise ValueError("objective.type must be 'compliance' or 'weighted'")
+    if o.get("type") == "weighted" and (o["w_stiffness"] < 0 or o["w_capacity"] < 0
+                                        or (o["w_stiffness"] + o["w_capacity"]) == 0):
         raise ValueError("objective weights must be >= 0 and not both zero")
+    bad = set(o.get("constraints", [])) - {"buckling", "strength"}
+    if bad:
+        raise ValueError(f"objective.constraints: unknown {sorted(bad)} (buckling, strength)")
     g = cfg["design"]["closure_gamma"]
     if not 0.6 <= g <= 0.9:
         raise ValueError("design.closure_gamma must lie in [0.6, 0.9] (THEORY §3.8)")

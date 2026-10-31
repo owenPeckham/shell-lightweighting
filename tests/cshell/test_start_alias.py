@@ -51,7 +51,7 @@ def test_alias_names():
     cfg = _cfg(["uniform", "vshell", "dshell", "neutral"])
     assert cfg["optimiser"]["starts"] == ["uniform", "dshell", "neutral"]
     assert cfg["optimiser"]["dshell_run"] == "examples/dshell/runs/X"
-    assert config.DEFAULTS["optimiser"]["starts"] == ["uniform", "dshell", "neutral"]
+    assert config.DEFAULTS["optimiser"]["starts"] == ["solid"]          # PLAN_single_run §1: one start by default
 
 
 def test_start_file_prefers_new_name(tmp_path):
