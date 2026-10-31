@@ -1453,7 +1453,7 @@ __global__ void exp_psi(long long n, const float* phi, const int* face, const fl
 // offsets sorted by |k| (early exit once cap − |k| h ≤ best). With s the depth into the void (1-Lipschitz), the ball
 // of radius s(c) ≥ r at c is inscribed, so {ψ_open > 0} is the union of inscribed balls of radius ≥ r: the opening.
 // ψ_open is distance-like (slope 1) in removed thin void, so the removed region has no terraces. Cells with s ≥ r
-// or s ≤ −2h are unchanged; floor_ where no centre is within R.
+// or s ≤ −2h are unchanged; floor_ (= −2h: continuous with them) where no centre is found.
 __global__ void open_void(const float* s, int m1, int m2, int H, int n0, int n1, int n2, const int* off,
         const float* offd, int noff, float r, float cap, float h, float floor_, float* out) {
     long long N = (long long)n0 * n1 * n2;
@@ -1536,6 +1536,13 @@ def _launch(n: int) -> tuple:
     import cupy as cp
     sm = cp.cuda.Device().attributes["MultiProcessorCount"]
     return (max(1, min(-(-int(n) // 256), 32 * sm)),), (256,)
+
+
+def opening_R(r: float, h: float) -> int:
+    """Search radius (cells) of the smooth opening: a cell 2h outside the void wall needs a centre with s ∈ [r, r + 2h]
+    at distance ≈ r + 2h; 3 cells of lattice slack so that the 2h-thick centre shell is always reached (with
+    ceil((r + 2h)/h) alone, cells just outside the wall found no centre and took the floor value)."""
+    return int(math.ceil((r + 2.0 * h) / h)) + 3
 
 
 def tess_volume(V: np.ndarray, T: np.ndarray) -> float:
@@ -1631,7 +1638,7 @@ class GpuExporter(Exporter):
         self.S_out, self.P_in = {}, {}
         opening = bool(cfg.clean and dz.has_void)
         r = 0.5 * cfg.v_min
-        R = int(math.ceil((r + 2.0 * h) / h)) if opening else 0
+        R = opening_R(r, h) if opening else 0
         Hw = -(-R // (b // 2)) * (b // 2)                     # ≥ R, and (n + 2 Hw) a multiple of the block
         m = n + 2 * Hw
         nb = m // b
@@ -1642,7 +1649,7 @@ class GpuExporter(Exporter):
         order = np.argsort(q2[sel], kind="stable")
         off = cp.asarray(np.ascontiguousarray(D[sel][order], np.int32))
         offd = cp.asarray((np.sqrt(q2[sel][order]) * h).astype(np.float32))
-        cap, floor_ = r + 2.0 * h, -(R + 1) * h
+        cap, floor_ = r + 2.0 * h, -2.0 * h   # −2h: 1-Lipschitz next to unchanged cells
         ext = dz.V0.max(0) - dz.V0.min(0)
         band_out = dz.d_out_max + delta_shell + 3.0 * h       # beyond: o > Δ + 2h for every δ in the bracket
         maxd = max(band_out + h, 0.5 * float(ext.min()) + 2.0 * h)   # interior points lie within ½ min extent of Γ₀

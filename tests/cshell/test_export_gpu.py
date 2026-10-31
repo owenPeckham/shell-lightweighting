@@ -78,7 +78,7 @@ def test_gpu_hollow_sphere(hollow):
 
 def _open(s_region, H, n, r, h):
     import cupy as cp
-    R = int(math.ceil((r + 2 * h) / h))
+    R = ex.opening_R(r, h)
     rng_ = np.arange(-R, R + 1)
     D = np.stack(np.meshgrid(rng_, rng_, rng_, indexing="ij"), -1).reshape(-1, 3)
     q2 = (D * D).sum(1)
@@ -91,13 +91,13 @@ def _open(s_region, H, n, r, h):
     k = ex._gpu_module().get_function("open_void")
     k(*ex._launch(n ** 3), (cp.asarray(s_region, dtype=cp.float32), np.int32(m), np.int32(m), np.int32(H), np.int32(n),
                             np.int32(n), np.int32(n), off, offd, np.int32(len(offd)), np.float32(r),
-                            np.float32(r + 2 * h), np.float32(h), np.float32(-(R + 1) * h), out))
+                            np.float32(r + 2 * h), np.float32(h), np.float32(-2 * h), out))
     return out.get().reshape(n, n, n)
 
 
 def test_smooth_opening_ball_and_thin_slab():
     h, r = 0.1, 1.5
-    R = int(math.ceil((r + 2 * h) / h))
+    R = ex.opening_R(r, h)
     H, n = 24, 96
     assert H >= R
     m = n + 4 * H
