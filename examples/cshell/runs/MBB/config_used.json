@@ -1,0 +1,172 @@
+{
+ "name": "MBB",
+ "step_file": "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/examples/step/Solid MBB.step",
+ "output_dir": "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/runs_cshell/FULL",
+ "supports": [
+  {
+   "type": "cylinder",
+   "radius": 5.0,
+   "tol": 0.05
+  }
+ ],
+ "loads": [
+  {
+   "faces": {
+    "type": "plane",
+    "normal": [
+     0,
+     0,
+     1
+    ],
+    "box": {
+     "x": [
+      -30,
+      30
+     ]
+    },
+    "extreme": true
+   },
+   "force_N": [
+    0,
+    0,
+    -200
+   ]
+  }
+ ],
+ "material": {
+  "E_MPa": 1760.0,
+  "nu": 0.42,
+  "density_g_cm3": 1.04,
+  "strength_MPa": 36.6
+ },
+ "manufacturing": {
+  "t_min_mm": 1.5,
+  "wall_bias_mm": 0.2,
+  "outer_bias_mm": 0.0,
+  "void_min_mm": 3.0,
+  "void_min_mm3": 30.0,
+  "escape_holes_per_void": 2,
+  "escape_hole_diameter_mm": 3.0
+ },
+ "mounts": {
+  "auto_analytic": true,
+  "extra_faces": [],
+  "min_blob_fraction": 0.01,
+  "dilate_mm": 1.5
+ },
+ "design": {
+  "allow_outward": true,
+  "outward_extent_initial_mm": 4.0,
+  "gap_mm": 1.0,
+  "keep_out": [],
+  "keep_out_clearance_mm": 0.5,
+  "surface_edge_mm": 0.75,
+  "closure_gamma": 0.75,
+  "inset_soft_mm": 0.1
+ },
+ "grid": {
+  "phases": [
+   {
+    "h_e": 0.8,
+    "h_g": 0.2
+   },
+   {
+    "h_e": 0.4,
+    "h_g": 0.1
+   }
+  ],
+  "export_h_mm": 0.05,
+  "rho_min": 1e-06,
+  "tessellation_mm": 0.02,
+  "active_margin_mm": 0.5,
+  "geometry_device": "auto",
+  "geometry_offload": true
+ },
+ "fe": {
+  "engine": "auto",
+  "auto_direct_max_dof": 2000000,
+  "element_type": "q1_im",
+  "backend": "auto",
+  "precision": "auto",
+  "twogrid": {
+   "coarse_precision": "auto",
+   "degree": 5,
+   "smoothing_range": 30.0,
+   "tol": 1e-10,
+   "krylov_tol": 0.01,
+   "maxiter": 100,
+   "nrhs": 7
+  }
+ },
+ "capacity": {
+  "stress_p": [
+   6,
+   8,
+   10
+  ],
+  "stress_q": 2,
+  "stress_quantile": 0.995,
+  "exclude_bc_mm": 2.0,
+  "include_mounts": false,
+  "buckling": true,
+  "buckling_modes": 6,
+  "buckling_p": 8,
+  "knockdown": 0.85,
+  "softmin_beta": [
+   8,
+   12,
+   16
+  ],
+  "eig_tol": 0.001,
+  "min_density_geometric": 0.1
+ },
+ "objective": {
+  "w_stiffness": 0.5,
+  "w_capacity": 0.5,
+  "min_gain": 0.02,
+  "floor_stiffness": 0.85,
+  "floor_capacity": 0.85,
+  "floors_as_constraints": false
+ },
+ "filter": {
+  "radius_mm": [
+   4.0,
+   3.0,
+   2.5
+  ]
+ },
+ "optimiser": {
+  "method": "mma",
+  "starts": [
+   "uniform",
+   "dshell",
+   "neutral"
+  ],
+  "max_iter": [
+   60,
+   80,
+   40
+  ],
+  "move": 0.1,
+  "tol_x": 0.005,
+  "tol_f": 0.0001,
+  "mass_tol": 0.0001,
+  "sliver_weight": [
+   0.0,
+   [
+    0.0,
+    0.05
+   ],
+   0.1
+  ],
+  "seed": 0
+ },
+ "validation": {
+  "body_fitted": true,
+  "second_resolution": true
+ },
+ "report": {
+  "enabled": true,
+  "dpi": 130
+ }
+}

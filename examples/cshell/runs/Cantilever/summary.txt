@@ -1,0 +1,26 @@
+cshell summary: Cantilever
+
+DECISION: cshell design accepted
+  cshell design accepted: J = +0.4899 > ln(1 + 0.02) with K/K0 ≥ 0.982, P/P0 ≥ 2.711 at every resolution [body-fitted check not run: model exceeds solver capacity; voxel criteria only]
+
+mass target 63.38 g, final 63.38 g, best-candidate mesh V/V0-1 +4.70e-05
+
+design                source            J    K/K0    P/P0  governing   wall mm
+solid                 rescored    +0.0000   1.000   1.000  buckling    ---
+uniform shell         rescored    +0.2424   0.931   1.744  strength    1.91-1.91
+dshell best           dshell      +0.4788   0.992   2.626  Euler buckling 1.71-1.91
+cshell uniform        optimiser   +0.5189   0.998   2.828  -           1.50-6.44
+cshell dshell         optimiser   +0.5193   0.998   2.830  -           1.50-6.47
+cshell neutral        optimiser   +0.5193   0.999   2.829  -           1.50-6.47
+cshell export         rescored    +0.4900   0.983   2.711  buckling    0.01-6.47
+
+resolution checks (best export):
+  opt     J +0.4900 K/K0 0.983 P/P0 2.711  pass J/K/P True/True/True
+  shift   J +0.4899 K/K0 0.982 P/P0 2.712  pass J/K/P True/True/True
+  coarse  J +0.4945 K/K0 0.984 P/P0 2.733  pass J/K/P True/True/True
+
+validation: {'ran': False, 'scale_limited': True, 'blocking_miss': False, 'scale': {'solid': '10000746 DOF > validation.max_bodyfit_dof = 4e+06', 'design': '11819688 DOF > validation.max_bodyfit_dof = 4e+06'}, 'why': 'body-fitted check not run: model exceeds solver capacity; decision on the voxel criteria at all three resolutions (Owen, 2026-10-31)'}
+sensitivity: accepted in 100% of the κ_b × σ_f grid
+
+starts: uniform done J +0.5189; dshell done J +0.5193; neutral done J +0.5193
+timings s: starts 0, context 54, param_fe 176, export_baselines 419, export_best 651, rescore_opt 364, rescore_shift 365, rescore_coarse 201, validation 130, total 2366

@@ -1,0 +1,26 @@
+cshell summary: L-bracket
+
+DECISION: cshell design accepted
+  cshell design accepted: J = +0.1290 > ln(1 + 0.02) with K/K0 ≥ 1.161, P/P0 ≥ 1.115 at every resolution [body-fitted check not run: model exceeds solver capacity; voxel criteria only]
+
+mass target 43.63 g, final 43.63 g, best-candidate mesh V/V0-1 +2.07e-04
+
+design                source            J    K/K0    P/P0  governing   wall mm
+solid                 rescored    +0.0000   1.000   1.000  strength    ---
+uniform shell         rescored    -0.4413   0.957   0.432  strength    1.87-1.87
+dshell best           dshell      +0.0043   1.068   0.944  strength    1.61-1.81
+cshell uniform        optimiser   +0.1662   1.179   1.183  -           1.51-6.50
+cshell dshell         optimiser   +0.1661   1.179   1.183  -           1.51-6.39
+cshell neutral        optimiser   +0.1662   1.179   1.183  -           1.51-6.51
+cshell export         rescored    +0.1290   1.161   1.115  strength    0.02-6.51
+
+resolution checks (best export):
+  opt     J +0.1290 K/K0 1.161 P/P0 1.115  pass J/K/P True/True/True
+  shift   J +0.1312 K/K0 1.161 P/P0 1.120  pass J/K/P True/True/True
+  coarse  J +0.1383 K/K0 1.165 P/P0 1.132  pass J/K/P True/True/True
+
+validation: {'ran': False, 'scale_limited': True, 'blocking_miss': False, 'scale': {'solid': '6861810 DOF > validation.max_bodyfit_dof = 4e+06', 'design': '7478496 DOF > validation.max_bodyfit_dof = 4e+06'}, 'why': 'body-fitted check not run: model exceeds solver capacity; decision on the voxel criteria at all three resolutions (Owen, 2026-10-31)'}
+sensitivity: accepted in 100% of the κ_b × σ_f grid
+
+starts: uniform done J +0.1662; dshell done J +0.1661; neutral done J +0.1662
+timings s: starts 0, context 24, param_fe 168, export_baselines 247, export_best 631, rescore_opt 242, rescore_shift 282, rescore_coarse 142, validation 76, total 1817

@@ -1,0 +1,80 @@
+{
+  "final_design": {
+    "source": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/FULL/Cantilever/final_design.stl",
+    "full": {
+      "faces": 60711700,
+      "vertices": 30355580,
+      "volume_mm3": 60944.1478904973,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 1,
+      "watertight": true
+    },
+    "preview": {
+      "faces": 500000,
+      "vertices": 249730,
+      "volume_mm3": 60959.16775669538,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 1,
+      "watertight": true
+    },
+    "rel_volume_change": 0.000246452969119737,
+    "preview_bytes": 25000084,
+    "seconds": 1273.0905227661133
+  },
+  "original": {
+    "source": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/FULL/Cantilever/original.stl",
+    "full": {
+      "faces": 29631268,
+      "vertices": 14815628,
+      "volume_mm3": 60939.21525840238,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 1,
+      "watertight": true
+    },
+    "preview": {
+      "faces": 500000,
+      "vertices": 249994,
+      "volume_mm3": 60935.8979704137,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 1,
+      "watertight": true
+    },
+    "rel_volume_change": -5.443601422516764e-05,
+    "preview_bytes": 25000084,
+    "seconds": 553.809422492981
+  },
+  "uniform_shell": {
+    "source": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/FULL/Cantilever/uniform_shell.stl",
+    "full": {
+      "faces": 62536188,
+      "vertices": 31268078,
+      "volume_mm3": 60940.576588447184,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 2,
+      "watertight": true
+    },
+    "preview": {
+      "faces": 500000,
+      "vertices": 249984,
+      "volume_mm3": 60934.341128382024,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 2,
+      "watertight": true
+    },
+    "rel_volume_change": -0.000102320332596606,
+    "preview_bytes": 25000084,
+    "seconds": 1284.2589123249054
+  }
+}

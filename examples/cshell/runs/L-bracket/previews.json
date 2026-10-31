@@ -1,0 +1,80 @@
+{
+  "final_design": {
+    "source": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/FULL/L-bracket/final_design.stl",
+    "full": {
+      "faces": 29098532,
+      "vertices": 14549066,
+      "volume_mm3": 41955.925882699725,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 1,
+      "watertight": true
+    },
+    "preview": {
+      "faces": 500000,
+      "vertices": 249800,
+      "volume_mm3": 41956.3647997534,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 1,
+      "watertight": true
+    },
+    "rel_volume_change": 1.0461384046145383e-05,
+    "preview_bytes": 25000084,
+    "seconds": 582.6643943786621
+  },
+  "original": {
+    "source": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/FULL/L-bracket/original.stl",
+    "full": {
+      "faces": 18947100,
+      "vertices": 9473540,
+      "volume_mm3": 41946.30837331411,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 1,
+      "watertight": true
+    },
+    "preview": {
+      "faces": 500000,
+      "vertices": 249990,
+      "volume_mm3": 41945.20782733452,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 1,
+      "watertight": true
+    },
+    "rel_volume_change": -2.6237016373387156e-05,
+    "preview_bytes": 25000084,
+    "seconds": 347.9198262691498
+  },
+  "uniform_shell": {
+    "source": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/FULL/L-bracket/uniform_shell.stl",
+    "full": {
+      "faces": 35351688,
+      "vertices": 17675758,
+      "volume_mm3": 41946.896743856094,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 2,
+      "watertight": true
+    },
+    "preview": {
+      "faces": 500000,
+      "vertices": 249914,
+      "volume_mm3": 41944.54638043953,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 2,
+      "watertight": true
+    },
+    "rel_volume_change": -5.603187837499579e-05,
+    "preview_bytes": 25000084,
+    "seconds": 689.8767311573029
+  }
+}

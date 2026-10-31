@@ -1,0 +1,393 @@
+[cshell] vshell start: s = 1.765 mm, hollow regions [26], hollow area share 0.053
+[cshell] phase 0: h_e 0.8 h_g 0.2, band 36.0 M cells, element box (387, 149, 74), passive {'mount': 26272, 'thin': 16726}, V0 85248.7 mm³, 12 s
+[cshell]   geometry chain on the GPU: compact band 0.80 GiB, released from the device during each FE evaluation
+[cshell] phase 0: h_e 0.8 h_g 0.2, band 36.0 M cells, element box (387, 149, 74), passive {'mount': 26272, 'thin': 16726}, V0 85248.7 mm³, 11 s
+[cshell]   geometry chain on the GPU: compact band 0.80 GiB, released from the device during each FE evaluation
+[cshell]   active set rebuilt: 265570 elements, 942990 DOF, engine direct, fp64, 85.8 GiB device memory free
+[cshell] phase 0: h_e 0.8 h_g 0.2, band 36.0 M cells, element box (387, 149, 74), passive {'mount': 26272, 'thin': 16726}, V0 85248.7 mm³, 13 s
+[cshell]   geometry chain on the GPU: compact band 0.80 GiB, released from the device during each FE evaluation
+[cshell] phase 0 solid: C0 84.9164 N·mm, K0 471.05 N/mm, λ_s0 13.623466008732558, λ_b0 5.661707883810782, c 1.705
+[cshell]   active set rebuilt: 265570 elements, 942990 DOF, engine direct, fp64, 85.8 GiB device memory free
+[cshell] phase 0 solid: C0 84.9164 N·mm, K0 471.05 N/mm, λ_s0 13.623466008728752, λ_b0 5.66170788381418, c 1.705
+[cshell]   active set rebuilt: 265570 elements, 942990 DOF, engine direct, fp64, 85.8 GiB device memory free
+[cshell]   active set rebuilt: 348589 elements, 1292508 DOF, engine direct, fp64, 82.3 GiB device memory free
+[cshell] phase 0 solid: C0 84.9164 N·mm, K0 471.05 N/mm, λ_s0 13.623466008729071, λ_b0 5.661707883810953, c 1.705
+[uniform] ph 0 it   0  J +0.24207  C/C0 1.1278  V/V0-1 +2.5e-05  Gs 0.014  |dξ̃| 0.0220 (raw 0.04)  FE 7.0s geo 0.0s
+[cshell]   active set rebuilt: 317453 elements, 1149816 DOF, engine direct, fp64, 83.4 GiB device memory free
+[neutral] ph 0 it   0  J +0.14715  C/C0 1.0826  V/V0-1 -1.8e-06  Gs 0.169  |dξ̃| 0.0343 (raw 0.05)  FE 6.2s geo 0.0s
+[uniform] ph 0 it   1  J +0.26716  C/C0 1.1071  V/V0-1 +5.2e-05  Gs 0.014  |dξ̃| 0.0220 (raw 0.04)  FE 1.6s geo 0.0s
+[cshell]   active set rebuilt: 278137 elements, 988302 DOF, engine direct, fp64, 85.0 GiB device memory free
+[neutral] ph 0 it   1  J +0.16622  C/C0 1.0701  V/V0-1 -2.3e-06  Gs 0.165  |dξ̃| 0.0331 (raw 0.06)  FE 1.5s geo 0.0s
+[uniform] ph 0 it   2  J +0.28652  C/C0 1.0888  V/V0-1 +9.5e-05  Gs 0.014  |dξ̃| 0.0238 (raw 0.05)  FE 1.6s geo 0.0s
+[vshell] ph 0 it   0  J +0.03938  C/C0 1.0025  V/V0-1 +1.7e-05  Gs 0.006  |dξ̃| 0.0297 (raw 0.03)  FE 5.6s geo 0.0s
+[neutral] ph 0 it   2  J +0.18395  C/C0 1.0580  V/V0-1 -3.5e-06  Gs 0.161  |dξ̃| 0.0349 (raw 0.06)  FE 1.5s geo 0.0s
+[vshell] ph 0 it   1  J +0.05645  C/C0 0.9930  V/V0-1 -8.8e-05  Gs 0.006  |dξ̃| 0.0292 (raw 0.03)  FE 1.3s geo 0.0s
+[neutral] ph 0 it   3  J +0.20220  C/C0 1.0451  V/V0-1 -6.3e-06  Gs 0.157  |dξ̃| 0.0354 (raw 0.06)  FE 1.5s geo 0.0s
+[vshell] ph 0 it   2  J +0.07056  C/C0 0.9858  V/V0-1 -3.1e-06  Gs 0.007  |dξ̃| 0.0363 (raw 0.04)  FE 1.3s geo 0.0s
+[cshell]   active set rebuilt: 347998 elements, 1290075 DOF, engine direct, fp64, 82.2 GiB device memory free
+[vshell] ph 0 it   3  J +0.08359  C/C0 0.9799  V/V0-1 -2.3e-06  Gs 0.010  |dξ̃| 0.0440 (raw 0.05)  FE 1.3s geo 0.0s
+[uniform] ph 0 it   3  J +0.30408  C/C0 1.0711  V/V0-1 -3.1e-06  Gs 0.015  |dξ̃| 0.0252 (raw 0.05)  FE 6.9s geo 0.0s
+[cshell]   active set rebuilt: 318988 elements, 1156470 DOF, engine direct, fp64, 83.4 GiB device memory free
+[vshell] ph 0 it   4  J +0.09506  C/C0 0.9768  V/V0-1 -9.0e-06  Gs 0.038  |dξ̃| 0.0646 (raw 0.07)  FE 1.7s geo 0.0s
+[uniform] ph 0 it   4  J +0.32117  C/C0 1.0533  V/V0-1 -6.9e-06  Gs 0.016  |dξ̃| 0.0273 (raw 0.06)  FE 1.4s geo 0.0s
+[neutral] ph 0 it   4  J +0.22110  C/C0 1.0316  V/V0-1 -1.0e-05  Gs 0.153  |dξ̃| 0.0345 (raw 0.07)  FE 6.7s geo 0.0s
+[uniform] ph 0 it   5  J +0.33835  C/C0 1.0351  V/V0-1 -1.6e-05  Gs 0.017  |dξ̃| 0.0319 (raw 0.06)  FE 1.4s geo 0.0s
+[neutral] ph 0 it   5  J +0.24042  C/C0 1.0173  V/V0-1 -1.3e-05  Gs 0.148  |dξ̃| 0.0343 (raw 0.07)  FE 1.3s geo 0.0s
+[uniform] ph 0 it   6  J +0.35522  C/C0 1.0170  V/V0-1 -2.9e-05  Gs 0.018  |dξ̃| 0.0386 (raw 0.08)  FE 1.4s geo 0.0s
+[cshell]   active set rebuilt: 281324 elements, 998214 DOF, engine direct, fp64, 84.7 GiB device memory free
+[neutral] ph 0 it   6  J +0.26012  C/C0 1.0021  V/V0-1 -1.6e-05  Gs 0.144  |dξ̃| 0.0354 (raw 0.07)  FE 1.3s geo 0.0s
+[uniform] ph 0 it   7  J +0.37146  C/C0 0.9994  V/V0-1 -2.7e-05  Gs 0.020  |dξ̃| 0.0490 (raw 0.08)  FE 1.4s geo 0.0s
+[vshell] ph 0 it   5  J +0.10563  C/C0 0.9732  V/V0-1 -1.0e-06  Gs 0.093  |dξ̃| 0.0782 (raw 0.08)  FE 5.7s geo 0.0s
+[neutral] ph 0 it   7  J +0.28008  C/C0 0.9861  V/V0-1 -1.6e-05  Gs 0.140  |dξ̃| 0.0396 (raw 0.08)  FE 1.3s geo 0.0s
+[neutral] ph 0 it   8  J +0.30031  C/C0 0.9697  V/V0-1 -1.5e-05  Gs 0.136  |dξ̃| 0.0471 (raw 0.08)  FE 1.3s geo 0.0s
+[vshell] ph 0 it   6  J +0.11699  C/C0 0.9683  V/V0-1 -2.6e-06  Gs 0.178  |dξ̃| 0.0781 (raw 0.09)  FE 1.9s geo 0.0s
+[vshell] ph 0 it   7  J +0.13000  C/C0 0.9626  V/V0-1 -3.4e-06  Gs 0.285  |dξ̃| 0.0785 (raw 0.10)  FE 1.4s geo 0.0s
+[cshell]   active set rebuilt: 345411 elements, 1278633 DOF, engine direct, fp64, 82.3 GiB device memory free
+[vshell] ph 0 it   8  J +0.14459  C/C0 0.9559  V/V0-1 -3.9e-06  Gs 0.393  |dξ̃| 0.0816 (raw 0.10)  FE 1.2s geo 0.0s
+[uniform] ph 0 it   8  J +0.38702  C/C0 0.9825  V/V0-1 -1.6e-05  Gs 0.024  |dξ̃| 0.0620 (raw 0.09)  FE 6.8s geo 0.0s
+[cshell]   active set rebuilt: 320193 elements, 1163133 DOF, engine direct, fp64, 83.2 GiB device memory free
+[uniform] ph 0 it   9  J +0.40239  C/C0 0.9660  V/V0-1 -1.2e-05  Gs 0.031  |dξ̃| 0.0762 (raw 0.10)  FE 1.4s geo 0.0s
+[cshell] 14 vertices reach 0.8 D_comp = 3.20 mm (§3.5)
+[neutral] ph 0 it   9  J +0.32068  C/C0 0.9531  V/V0-1 -1.2e-05  Gs 0.131  |dξ̃| 0.0568 (raw 0.10)  FE 6.3s geo 0.0s
+[cshell] outward extent extended 4.0 -> 8.0 mm at phase 0 iteration 10
+[neutral] ph 0 it  10  J +0.34095  C/C0 0.9369  V/V0-1 -8.5e-06  Gs 0.126  |dξ̃| 0.0684 (raw 0.10)  FE 1.4s geo 0.0s
+[cshell]   active set rebuilt: 288007 elements, 1019310 DOF, engine direct, fp64, 84.5 GiB device memory free
+[neutral] ph 0 it  11  J +0.36091  C/C0 0.9213  V/V0-1 -3.4e-06  Gs 0.119  |dξ̃| 0.0638 (raw 0.10)  FE 1.4s geo 0.0s
+[vshell] ph 0 it   9  J +0.16065  C/C0 0.9485  V/V0-1 -4.9e-06  Gs 0.477  |dξ̃| 0.0872 (raw 0.10)  FE 6.4s geo 0.0s
+[neutral] ph 0 it  12  J +0.38002  C/C0 0.9075  V/V0-1 -2.8e-06  Gs 0.112  |dξ̃| 0.0576 (raw 0.10)  FE 1.4s geo 0.0s
+[vshell] ph 0 it  10  J +0.17843  C/C0 0.9404  V/V0-1 -6.0e-06  Gs 0.516  |dξ̃| 0.0908 (raw 0.10)  FE 1.2s geo 0.0s
+[vshell] ph 0 it  11  J +0.19805  C/C0 0.9316  V/V0-1 -6.8e-06  Gs 0.506  |dξ̃| 0.0963 (raw 0.10)  FE 1.4s geo 0.0s
+[cshell]   active set rebuilt: 322927 elements, 1177722 DOF, engine direct, fp64, 83.1 GiB device memory free
+[neutral] ph 0 it  13  J +0.39715  C/C0 0.8972  V/V0-1 -2.8e-05  Gs 0.105  |dξ̃| 0.0552 (raw 0.10)  FE 6.3s geo 0.0s
+[cshell]   active set rebuilt: 296222 elements, 1050258 DOF, engine direct, fp64, 84.1 GiB device memory free
+[neutral] ph 0 it  14  J +0.41329  C/C0 0.8903  V/V0-1 +5.0e-05  Gs 0.099  |dξ̃| 0.0614 (raw 0.10)  FE 1.3s geo 0.0s
+[vshell] ph 0 it  12  J +0.21950  C/C0 0.9221  V/V0-1 -7.8e-06  Gs 0.455  |dξ̃| 0.0974 (raw 0.10)  FE 6.3s geo 0.0s
+[neutral] ph 0 it  15  J +0.42863  C/C0 0.8867  V/V0-1 -4.0e-05  Gs 0.094  |dξ̃| 0.0585 (raw 0.10)  FE 1.3s geo 0.0s
+[cshell] 120 vertices reach 0.8 D_comp = 3.20 mm (§3.5)
+[cshell] outward extent extended 4.0 -> 8.0 mm at phase 0 iteration 16
+[cshell] phase 0: h_e 0.8 h_g 0.2, band 72.3 M cells, element box (397, 159, 84), passive {'mount': 26272, 'thin': 16726}, V0 85248.7 mm³, 17 s
+[cshell]   geometry chain on the GPU: compact band 1.62 GiB, released from the device during each FE evaluation
+[vshell] ph 0 it  13  J +0.24296  C/C0 0.9123  V/V0-1 -8.7e-06  Gs 0.391  |dξ̃| 0.0958 (raw 0.10)  FE 1.3s geo 0.0s
+[vshell] ph 0 it  14  J +0.26821  C/C0 0.9021  V/V0-1 -1.1e-05  Gs 0.330  |dξ̃| 0.0887 (raw 0.10)  FE 1.3s geo 0.0s
+[cshell]   active set rebuilt: 265570 elements, 942990 DOF, engine direct, fp64, 85.5 GiB device memory free
+[cshell] phase 0 solid: C0 84.9164 N·mm, K0 471.05 N/mm, λ_s0 13.623466008733585, λ_b0 5.66170788381296, c 1.705
+[cshell]   active set rebuilt: 304831 elements, 1092279 DOF, engine direct, fp64, 83.7 GiB device memory free
+[vshell] ph 0 it  15  J +0.29233  C/C0 0.8945  V/V0-1 -1.3e-05  Gs 0.277  |dξ̃| 0.0826 (raw 0.10)  FE 6.4s geo 0.0s
+[cshell]   active set rebuilt: 348192 elements, 1289574 DOF, engine direct, fp64, 82.2 GiB device memory free
+[vshell] ph 0 it  16  J +0.31679  C/C0 0.8884  V/V0-1 -1.2e-05  Gs 0.234  |dξ̃| 0.0887 (raw 0.10)  FE 1.5s geo 0.0s
+[uniform] ph 0 it  10  J +0.36808  C/C0 1.0102  V/V0-1 -2.1e-05  Gs 0.019  |dξ̃| 0.0173 (raw 0.02)  FE 7.1s geo 0.0s
+[uniform] ph 0 it  11  J +0.38457  C/C0 0.9947  V/V0-1 -1.8e-05  Gs 0.021  |dξ̃| 0.0195 (raw 0.02)  FE 1.7s geo 0.0s
+[cshell]   active set rebuilt: 311147 elements, 1122567 DOF, engine direct, fp64, 83.5 GiB device memory free
+[cshell] phase 0: h_e 0.8 h_g 0.2, band 72.3 M cells, element box (397, 159, 84), passive {'mount': 26272, 'thin': 16726}, V0 85248.7 mm³, 17 s
+[cshell]   geometry chain on the GPU: compact band 1.62 GiB, released from the device during each FE evaluation
+[vshell] ph 0 it  17  J +0.34181  C/C0 0.8836  V/V0-1 -9.2e-06  Gs 0.200  |dξ̃| 0.0920 (raw 0.10)  FE 6.5s geo 0.0s
+[uniform] ph 0 it  12  J +0.39883  C/C0 0.9807  V/V0-1 -1.6e-05  Gs 0.024  |dξ̃| 0.0208 (raw 0.03)  FE 1.7s geo 0.0s
+[cshell]   active set rebuilt: 265570 elements, 942990 DOF, engine direct, fp64, 85.2 GiB device memory free
+[uniform] ph 0 it  13  J +0.41155  C/C0 0.9672  V/V0-1 -1.3e-05  Gs 0.027  |dξ̃| 0.0212 (raw 0.04)  FE 1.5s geo 0.0s
+[vshell] ph 0 it  18  J +0.36692  C/C0 0.8802  V/V0-1 -5.9e-06  Gs 0.173  |dξ̃| 0.0934 (raw 0.10)  FE 1.6s geo 0.0s
+[cshell] phase 0 solid: C0 84.9164 N·mm, K0 471.05 N/mm, λ_s0 13.623466008727702, λ_b0 5.661707883808663, c 1.705
+[cshell]   active set rebuilt: 317677 elements, 1153014 DOF, engine direct, fp64, 83.3 GiB device memory free
+[cshell]   active set rebuilt: 345128 elements, 1276059 DOF, engine direct, fp64, 82.1 GiB device memory free
+[vshell] ph 0 it  19  J +0.39066  C/C0 0.8786  V/V0-1 -4.4e-06  Gs 0.153  |dξ̃| 0.0889 (raw 0.10)  FE 6.4s geo 0.0s
+[cshell] 70 vertices reach 0.8 D_comp = 3.20 mm (§3.5)
+[cshell] outward extent extended 4.0 -> 8.0 mm at phase 0 iteration 20
+[cshell]   active set rebuilt: 333650 elements, 1224840 DOF, engine direct, fp64, 82.7 GiB device memory free
+[uniform] ph 0 it  14  J +0.42217  C/C0 0.9551  V/V0-1 -8.7e-06  Gs 0.030  |dξ̃| 0.0213 (raw 0.06)  FE 6.8s geo 0.0s
+[uniform] ph 0 it  15  J +0.43140  C/C0 0.9444  V/V0-1 -5.1e-06  Gs 0.033  |dξ̃| 0.0215 (raw 0.08)  FE 1.4s geo 0.0s
+[neutral] ph 0 it  16  J +0.41788  C/C0 0.9193  V/V0-1 -1.4e-05  Gs 0.075  |dξ̃| 0.0196 (raw 0.03)  FE 6.7s geo 0.0s
+[uniform] ph 0 it  16  J +0.43977  C/C0 0.9358  V/V0-1 -4.1e-06  Gs 0.038  |dξ̃| 0.0276 (raw 0.10)  FE 1.4s geo 0.0s
+[neutral] ph 0 it  17  J +0.42817  C/C0 0.9125  V/V0-1 -1.0e-05  Gs 0.075  |dξ̃| 0.0180 (raw 0.04)  FE 1.6s geo 0.0s
+[uniform] ph 0 it  17  J +0.44776  C/C0 0.9284  V/V0-1 -3.4e-06  Gs 0.042  |dξ̃| 0.0355 (raw 0.10)  FE 1.6s geo 0.0s
+[neutral] ph 0 it  18  J +0.43595  C/C0 0.9069  V/V0-1 -7.7e-06  Gs 0.075  |dξ̃| 0.0168 (raw 0.05)  FE 1.4s geo 0.0s
+[uniform] ph 0 it  18  J +0.45577  C/C0 0.9216  V/V0-1 -3.0e-06  Gs 0.048  |dξ̃| 0.0396 (raw 0.10)  FE 1.4s geo 0.0s
+[neutral] ph 0 it  19  J +0.44263  C/C0 0.9023  V/V0-1 -3.6e-06  Gs 0.075  |dξ̃| 0.0205 (raw 0.07)  FE 1.6s geo 0.0s
+[neutral] ph 0 it  20  J +0.44890  C/C0 0.8993  V/V0-1 +4.9e-05  Gs 0.075  |dξ̃| 0.0246 (raw 0.08)  FE 1.4s geo 0.0s
+[cshell]   active set rebuilt: 341974 elements, 1262373 DOF, engine direct, fp64, 82.3 GiB device memory free
+[uniform] ph 0 it  19  J +0.46372  C/C0 0.9155  V/V0-1 -2.8e-06  Gs 0.053  |dξ̃| 0.0420 (raw 0.10)  FE 7.0s geo 0.0s
+[cshell]   active set rebuilt: 334342 elements, 1228068 DOF, engine direct, fp64, 82.7 GiB device memory free
+[cshell] phase 0: h_e 0.8 h_g 0.2, band 72.3 M cells, element box (397, 159, 84), passive {'mount': 26272, 'thin': 16726}, V0 85248.7 mm³, 17 s
+[cshell]   geometry chain on the GPU: compact band 1.62 GiB, released from the device during each FE evaluation
+[uniform] ph 0 it  20  J +0.47142  C/C0 0.9103  V/V0-1 +8.8e-05  Gs 0.058  |dξ̃| 0.0433 (raw 0.10)  FE 1.7s geo 0.0s
+[neutral] ph 0 it  21  J +0.45522  C/C0 0.8973  V/V0-1 +2.8e-05  Gs 0.075  |dξ̃| 0.0264 (raw 0.10)  FE 7.0s geo 0.0s
+[cshell]   active set rebuilt: 265570 elements, 942990 DOF, engine direct, fp64, 85.4 GiB device memory free
+[neutral] ph 0 it  22  J +0.46140  C/C0 0.8961  V/V0-1 +1.7e-05  Gs 0.075  |dξ̃| 0.0301 (raw 0.10)  FE 1.4s geo 0.0s
+[uniform] ph 0 it  21  J +0.47883  C/C0 0.9053  V/V0-1 +9.9e-05  Gs 0.062  |dξ̃| 0.0413 (raw 0.10)  FE 1.7s geo 0.0s
+[neutral] ph 0 it  23  J +0.46757  C/C0 0.8953  V/V0-1 +1.0e-05  Gs 0.075  |dξ̃| 0.0330 (raw 0.10)  FE 1.4s geo 0.0s
+[cshell] phase 0 solid: C0 84.9164 N·mm, K0 471.05 N/mm, λ_s0 13.623466008727904, λ_b0 5.6617078838073445, c 1.705
+[uniform] ph 0 it  22  J +0.48542  C/C0 0.9008  V/V0-1 -4.9e-06  Gs 0.065  |dξ̃| 0.0416 (raw 0.10)  FE 1.7s geo 0.0s
+[neutral] ph 0 it  24  J +0.47376  C/C0 0.8951  V/V0-1 +1.2e-05  Gs 0.074  |dξ̃| 0.0346 (raw 0.10)  FE 1.4s geo 0.0s
+[cshell]   active set rebuilt: 325317 elements, 1186932 DOF, engine direct, fp64, 83.1 GiB device memory free
+[cshell]   active set rebuilt: 338841 elements, 1249809 DOF, engine direct, fp64, 82.5 GiB device memory free
+[cshell]   active set rebuilt: 336179 elements, 1237098 DOF, engine direct, fp64, 82.5 GiB device memory free
+[vshell] ph 0 it  20  J +0.38865  C/C0 0.9089  V/V0-1 -2.9e-05  Gs 0.129  |dξ̃| 0.0216 (raw 0.03)  FE 6.7s geo 0.0s
+[uniform] ph 0 it  23  J +0.49015  C/C0 0.8987  V/V0-1 -1.3e-05  Gs 0.068  |dξ̃| 0.0437 (raw 0.10)  FE 7.2s geo 0.0s
+[neutral] ph 0 it  25  J +0.47963  C/C0 0.8951  V/V0-1 +3.0e-05  Gs 0.074  |dξ̃| 0.0379 (raw 0.10)  FE 6.7s geo 0.0s
+[vshell] ph 0 it  21  J +0.39999  C/C0 0.9027  V/V0-1 -1.7e-05  Gs 0.127  |dξ̃| 0.0169 (raw 0.04)  FE 1.6s geo 0.0s
+[uniform] ph 0 it  24  J +0.49025  C/C0 0.8986  V/V0-1 -2.6e-05  Gs 0.070  |dξ̃| 0.0477 (raw 0.10)  FE 1.8s geo 0.0s
+[neutral] ph 0 it  26  J +0.48505  C/C0 0.8949  V/V0-1 +9.8e-05  Gs 0.074  |dξ̃| 0.0498 (raw 0.10)  FE 1.6s geo 0.0s
+[vshell] ph 0 it  22  J +0.40870  C/C0 0.8981  V/V0-1 -9.3e-06  Gs 0.125  |dξ̃| 0.0214 (raw 0.05)  FE 1.6s geo 0.0s
+[neutral] ph 0 it  27  J +0.48879  C/C0 0.8956  V/V0-1 -1.3e-05  Gs 0.074  |dξ̃| 0.0484 (raw 0.10)  FE 1.6s geo 0.0s
+[vshell] ph 0 it  23  J +0.41645  C/C0 0.8949  V/V0-1 +6.9e-05  Gs 0.122  |dξ̃| 0.0263 (raw 0.06)  FE 1.6s geo 0.0s
+[cshell]   active set rebuilt: 338242 elements, 1247124 DOF, engine direct, fp64, 82.2 GiB device memory free
+[neutral] ph 0 it  28  J +0.48978  C/C0 0.8960  V/V0-1 -1.7e-05  Gs 0.074  |dξ̃| 0.0369 (raw 0.10)  FE 1.6s geo 0.0s
+[vshell] ph 0 it  24  J +0.42393  C/C0 0.8931  V/V0-1 +3.1e-05  Gs 0.118  |dξ̃| 0.0296 (raw 0.07)  FE 1.4s geo 0.0s
+[uniform] ph 0 it  25  J +0.49368  C/C0 0.8965  V/V0-1 -1.8e-05  Gs 0.071  |dξ̃| 0.0614 (raw 0.10)  FE 7.0s geo 0.0s
+[neutral] ph 0 it  29  J +0.49251  C/C0 0.8959  V/V0-1 -1.2e-05  Gs 0.074  |dξ̃| 0.0416 (raw 0.10)  FE 1.6s geo 0.0s
+[vshell] ph 0 it  25  J +0.43130  C/C0 0.8924  V/V0-1 +4.4e-05  Gs 0.113  |dξ̃| 0.0371 (raw 0.08)  FE 1.6s geo 0.0s
+[neutral] ph 0 it  30  J +0.49471  C/C0 0.8956  V/V0-1 -1.1e-05  Gs 0.075  |dξ̃| 0.0447 (raw 0.10)  FE 1.6s geo 0.0s
+[uniform] ph 0 it  26  J +0.49449  C/C0 0.8968  V/V0-1 -1.6e-05  Gs 0.072  |dξ̃| 0.0584 (raw 0.10)  FE 1.7s geo 0.0s
+[uniform] ph 0 it  27  J +0.49701  C/C0 0.8955  V/V0-1 -1.0e-05  Gs 0.073  |dξ̃| 0.0433 (raw 0.10)  FE 1.7s geo 0.0s
+[cshell]   active set rebuilt: 327961 elements, 1199502 DOF, engine direct, fp64, 82.9 GiB device memory free
+[uniform] ph 0 it  28  J +0.49787  C/C0 0.8954  V/V0-1 -8.3e-06  Gs 0.073  |dξ̃| 0.0437 (raw 0.10)  FE 1.7s geo 0.0s
+[cshell]   active set rebuilt: 337239 elements, 1242483 DOF, engine direct, fp64, 82.6 GiB device memory free
+[vshell] ph 0 it  26  J +0.43873  C/C0 0.8920  V/V0-1 +4.1e-05  Gs 0.109  |dξ̃| 0.0362 (raw 0.10)  FE 6.6s geo 0.0s
+[vshell] ph 0 it  27  J +0.44612  C/C0 0.8919  V/V0-1 +1.4e-05  Gs 0.104  |dξ̃| 0.0420 (raw 0.10)  FE 1.4s geo 0.0s
+[uniform] ph 0 it  29  J +0.49937  C/C0 0.8947  V/V0-1 -7.2e-06  Gs 0.074  |dξ̃| 0.0395 (raw 0.10)  FE 1.7s geo 0.0s
+[neutral] ph 0 it  31  J +0.49673  C/C0 0.8947  V/V0-1 -6.2e-06  Gs 0.075  |dξ̃| 0.0543 (raw 0.10)  FE 7.1s geo 0.0s
+[vshell] ph 0 it  28  J +0.45357  C/C0 0.8923  V/V0-1 +1.3e-05  Gs 0.100  |dξ̃| 0.0481 (raw 0.10)  FE 1.4s geo 0.0s
+[uniform] ph 0 it  30  J +0.50030  C/C0 0.8951  V/V0-1 -9.7e-06  Gs 0.074  |dξ̃| 0.0294 (raw 0.10)  FE 1.7s geo 0.0s
+[neutral] ph 0 it  32  J +0.49817  C/C0 0.8956  V/V0-1 -5.9e-06  Gs 0.075  |dξ̃| 0.0635 (raw 0.10)  FE 1.7s geo 0.0s
+[vshell] ph 0 it  29  J +0.46095  C/C0 0.8927  V/V0-1 -1.6e-06  Gs 0.096  |dξ̃| 0.0497 (raw 0.10)  FE 1.4s geo 0.0s
+[uniform] ph 0 it  31  J +0.50106  C/C0 0.8947  V/V0-1 -1.2e-05  Gs 0.074  |dξ̃| 0.0285 (raw 0.10)  FE 1.7s geo 0.0s
+[neutral] ph 0 it  33  J +0.49897  C/C0 0.8941  V/V0-1 -7.8e-06  Gs 0.075  |dξ̃| 0.0780 (raw 0.10)  FE 1.7s geo 0.0s
+[uniform] ph 0 it  32  J +0.50158  C/C0 0.8951  V/V0-1 -1.2e-05  Gs 0.074  |dξ̃| 0.0185 (raw 0.10)  FE 1.7s geo 0.0s
+[neutral] ph 0 it  34  J +0.49952  C/C0 0.8949  V/V0-1 -1.0e-05  Gs 0.075  |dξ̃| 0.0787 (raw 0.10)  FE 1.7s geo 0.0s
+[cshell]   active set rebuilt: 331440 elements, 1216137 DOF, engine direct, fp64, 82.2 GiB device memory free
+[uniform] ph 0 it  33  J +0.50199  C/C0 0.8950  V/V0-1 -1.1e-05  Gs 0.074  |dξ̃| 0.0115 (raw 0.10)  FE 1.5s geo 0.0s
+[neutral] ph 0 it  35  J +0.50039  C/C0 0.8939  V/V0-1 -1.1e-05  Gs 0.076  |dξ̃| 0.0737 (raw 0.10)  FE 1.7s geo 0.0s
+[vshell] ph 0 it  30  J +0.46823  C/C0 0.8934  V/V0-1 -5.2e-06  Gs 0.092  |dξ̃| 0.0543 (raw 0.10)  FE 6.8s geo 0.0s
+[uniform] ph 0 it  34  J +0.50234  C/C0 0.8951  V/V0-1 -1.1e-05  Gs 0.075  |dξ̃| 0.0112 (raw 0.10)  FE 1.4s geo 0.0s
+[neutral] ph 0 it  36  J +0.50087  C/C0 0.8941  V/V0-1 -1.2e-05  Gs 0.076  |dξ̃| 0.0729 (raw 0.10)  FE 1.7s geo 0.0s
+[vshell] ph 0 it  31  J +0.47523  C/C0 0.8935  V/V0-1 +2.2e-05  Gs 0.088  |dξ̃| 0.0675 (raw 0.10)  FE 1.7s geo 0.0s
+[uniform] ph 0 it  35  J +0.50264  C/C0 0.8951  V/V0-1 -1.1e-05  Gs 0.075  |dξ̃| 0.0135 (raw 0.10)  FE 1.4s geo 0.0s
+[neutral] ph 0 it  37  J +0.50170  C/C0 0.8936  V/V0-1 -1.3e-05  Gs 0.076  |dξ̃| 0.0535 (raw 0.10)  FE 1.7s geo 0.0s
+[vshell] ph 0 it  32  J +0.48156  C/C0 0.8939  V/V0-1 -9.1e-06  Gs 0.085  |dξ̃| 0.0649 (raw 0.10)  FE 1.7s geo 0.0s
+[uniform] ph 0 it  36  J +0.50292  C/C0 0.8952  V/V0-1 -1.1e-05  Gs 0.075  |dξ̃| 0.0093 (raw 0.10)  FE 1.4s geo 0.0s
+[neutral] ph 0 it  38  J +0.50227  C/C0 0.8945  V/V0-1 -1.4e-05  Gs 0.076  |dξ̃| 0.0307 (raw 0.10)  FE 1.7s geo 0.0s
+[uniform] ph 0 it  37  J +0.50319  C/C0 0.8951  V/V0-1 -1.1e-05  Gs 0.075  |dξ̃| 0.0110 (raw 0.10)  FE 1.4s geo 0.0s
+[neutral] ph 0 it  39  J +0.50271  C/C0 0.8940  V/V0-1 -1.4e-05  Gs 0.076  |dξ̃| 0.0273 (raw 0.10)  FE 1.4s geo 0.0s
+[cshell]   active set rebuilt: 334338 elements, 1229523 DOF, engine direct, fp64, 82.7 GiB device memory free
+[uniform] ph 0 it  38  J +0.50346  C/C0 0.8953  V/V0-1 -1.2e-05  Gs 0.075  |dξ̃| 0.0199 (raw 0.10)  FE 1.5s geo 0.0s
+[neutral] ph 0 it  40  J +0.50307  C/C0 0.8946  V/V0-1 -1.5e-05  Gs 0.076  |dξ̃| 0.0075 (raw 0.10)  FE 1.4s geo 0.0s
+[vshell] ph 0 it  33  J +0.48533  C/C0 0.8955  V/V0-1 -3.2e-05  Gs 0.083  |dξ̃| 0.0526 (raw 0.10)  FE 6.7s geo 0.0s
+[uniform] ph 0 it  39  J +0.50367  C/C0 0.8953  V/V0-1 -1.2e-05  Gs 0.075  |dξ̃| 0.0168 (raw 0.10)  FE 1.7s geo 0.0s
+[neutral] ph 0 it  41  J +0.50338  C/C0 0.8945  V/V0-1 -1.4e-05  Gs 0.076  |dξ̃| 0.0103 (raw 0.10)  FE 1.4s geo 0.0s
+[vshell] ph 0 it  34  J +0.48689  C/C0 0.8955  V/V0-1 -3.6e-05  Gs 0.082  |dξ̃| 0.0625 (raw 0.10)  FE 1.6s geo 0.0s
+[neutral] ph 0 it  42  J +0.50366  C/C0 0.8947  V/V0-1 -1.5e-05  Gs 0.076  |dξ̃| 0.0097 (raw 0.10)  FE 1.4s geo 0.0s
+[uniform] ph 0 it  40  J +0.50386  C/C0 0.8952  V/V0-1 -1.2e-05  Gs 0.075  |dξ̃| 0.0227 (raw 0.10)  FE 1.7s geo 0.0s
+[vshell] ph 0 it  35  J +0.49046  C/C0 0.8946  V/V0-1 -2.6e-05  Gs 0.081  |dξ̃| 0.0766 (raw 0.10)  FE 1.6s geo 0.0s
+[neutral] ph 0 it  43  J +0.50393  C/C0 0.8946  V/V0-1 -1.4e-05  Gs 0.076  |dξ̃| 0.0082 (raw 0.10)  FE 1.4s geo 0.0s
+[uniform] ph 0 it  41  J +0.50398  C/C0 0.8956  V/V0-1 -1.4e-05  Gs 0.075  |dξ̃| 0.0198 (raw 0.10)  FE 1.7s geo 0.0s
+[vshell] ph 0 it  36  J +0.49317  C/C0 0.8956  V/V0-1 -2.0e-05  Gs 0.080  |dξ̃| 0.0771 (raw 0.10)  FE 1.6s geo 0.0s
+[neutral] ph 0 it  44  J +0.50418  C/C0 0.8948  V/V0-1 -1.6e-05  Gs 0.076  |dξ̃| 0.0293 (raw 0.10)  FE 1.7s geo 0.0s
+[vshell] ph 0 it  37  J +0.49605  C/C0 0.8945  V/V0-1 -1.7e-05  Gs 0.080  |dξ̃| 0.0816 (raw 0.10)  FE 1.6s geo 0.0s
+[neutral] ph 0 it  45  J +0.50436  C/C0 0.8949  V/V0-1 -1.5e-05  Gs 0.076  |dξ̃| 0.0223 (raw 0.10)  FE 1.7s geo 0.0s
+[cshell]   active set rebuilt: 337710 elements, 1244664 DOF, engine direct, fp64, 82.6 GiB device memory free
+[neutral] ph 0 it  46  J +0.50448  C/C0 0.8946  V/V0-1 -1.6e-05  Gs 0.076  |dξ̃| 0.0251 (raw 0.10)  FE 1.7s geo 0.0s
+[uniform] ph 0 it  42  J +0.50418  C/C0 0.8948  V/V0-1 -1.5e-05  Gs 0.075  |dξ̃| 0.0230 (raw 0.10)  FE 6.9s geo 0.0s
+[cshell]   active set rebuilt: 336249 elements, 1238190 DOF, engine direct, fp64, 82.6 GiB device memory free
+[neutral] ph 0 it  47  J +0.50417  C/C0 0.8950  V/V0-1 -1.0e-05  Gs 0.076  |dξ̃| 0.0324 (raw 0.10)  FE 1.7s geo 0.0s
+[uniform] ph 0 it  43  J +0.50443  C/C0 0.8956  V/V0-1 -1.7e-05  Gs 0.075  |dξ̃| 0.0138 (raw 0.10)  FE 1.6s geo 0.0s
+[vshell] ph 0 it  38  J +0.49753  C/C0 0.8954  V/V0-1 -2.1e-05  Gs 0.079  |dξ̃| 0.0820 (raw 0.10)  FE 6.8s geo 0.0s
+[neutral] ph 0 it  48  J +0.50416  C/C0 0.8948  V/V0-1 -1.0e-05  Gs 0.076  |dξ̃| 0.0298 (raw 0.10)  FE 1.7s geo 0.0s
+[uniform] ph 0 it  44  J +0.50472  C/C0 0.8952  V/V0-1 -1.6e-05  Gs 0.075  |dξ̃| 0.0084 (raw 0.10)  FE 1.6s geo 0.0s
+[vshell] ph 0 it  39  J +0.49788  C/C0 0.8957  V/V0-1 -2.0e-05  Gs 0.079  |dξ̃| 0.0860 (raw 0.10)  FE 1.6s geo 0.0s
+[neutral] ph 0 it  49  J +0.50462  C/C0 0.8948  V/V0-1 -2.2e-05  Gs 0.076  |dξ̃| 0.0204 (raw 0.10)  FE 1.7s geo 0.0s
+[uniform] ph 0 it  45  J +0.50490  C/C0 0.8951  V/V0-1 -1.5e-05  Gs 0.075  |dξ̃| 0.0070 (raw 0.10)  FE 1.4s geo 0.0s
+[vshell] ph 0 it  40  J +0.49824  C/C0 0.8941  V/V0-1 -1.5e-05  Gs 0.079  |dξ̃| 0.0854 (raw 0.10)  FE 1.6s geo 0.0s
+[uniform] ph 0 it  46  J +0.50503  C/C0 0.8951  V/V0-1 -1.4e-05  Gs 0.075  |dξ̃| 0.0083 (raw 0.10)  FE 1.4s geo 0.0s
+[neutral] ph 0 it  50  J +0.50521  C/C0 0.8946  V/V0-1 -2.3e-05  Gs 0.076  |dξ̃| 0.0086 (raw 0.10)  FE 1.7s geo 0.0s
+[uniform] ph 0 it  47  J +0.50515  C/C0 0.8951  V/V0-1 -1.4e-05  Gs 0.075  |dξ̃| 0.0058 (raw 0.10)  FE 1.4s geo 0.0s
+[vshell] ph 0 it  41  J +0.49917  C/C0 0.8943  V/V0-1 -1.1e-05  Gs 0.079  |dξ̃| 0.0766 (raw 0.10)  FE 1.8s geo 0.0s
+[neutral] ph 0 it  51  J +0.50535  C/C0 0.8946  V/V0-1 -2.1e-05  Gs 0.076  |dξ̃| 0.0067 (raw 0.10)  FE 1.7s geo 0.0s
+[uniform] ph 0 it  48  J +0.50527  C/C0 0.8952  V/V0-1 -1.4e-05  Gs 0.075  |dξ̃| 0.0056 (raw 0.10)  FE 1.4s geo 0.0s
+[neutral] ph 0 it  52  J +0.50543  C/C0 0.8947  V/V0-1 -1.9e-05  Gs 0.077  |dξ̃| 0.0067 (raw 0.10)  FE 1.4s geo 0.0s
+[vshell] ph 0 it  42  J +0.49978  C/C0 0.8935  V/V0-1 -1.1e-05  Gs 0.079  |dξ̃| 0.0765 (raw 0.10)  FE 1.8s geo 0.0s
+[uniform] ph 0 it  49  J +0.50538  C/C0 0.8952  V/V0-1 -1.4e-05  Gs 0.075  |dξ̃| 0.0048 (raw 0.10)  FE 1.4s geo 0.0s
+[neutral] ph 0 it  53  J +0.50552  C/C0 0.8946  V/V0-1 -1.8e-05  Gs 0.077  |dξ̃| 0.0077 (raw 0.10)  FE 1.4s geo 0.0s
+[vshell] ph 0 it  43  J +0.50120  C/C0 0.8940  V/V0-1 -1.6e-05  Gs 0.079  |dξ̃| 0.0380 (raw 0.10)  FE 1.6s geo 0.0s
+[uniform] ph 0 it  50  J +0.50550  C/C0 0.8952  V/V0-1 -1.3e-05  Gs 0.075  |dξ̃| 0.0061 (raw 0.10)  FE 1.4s geo 0.0s
+[neutral] ph 0 it  54  J +0.50559  C/C0 0.8947  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0087 (raw 0.10)  FE 1.4s geo 0.0s
+[vshell] ph 0 it  44  J +0.50217  C/C0 0.8940  V/V0-1 -1.7e-05  Gs 0.078  |dξ̃| 0.0261 (raw 0.10)  FE 1.7s geo 0.0s
+[uniform] ph 0 it  51  J +0.50562  C/C0 0.8952  V/V0-1 -1.3e-05  Gs 0.075  |dξ̃| 0.0101 (raw 0.10)  FE 1.4s geo 0.0s
+[neutral] ph 0 it  55  J +0.50568  C/C0 0.8947  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0090 (raw 0.10)  FE 1.4s geo 0.0s
+[vshell] ph 0 it  45  J +0.50281  C/C0 0.8945  V/V0-1 -1.7e-05  Gs 0.078  |dξ̃| 0.0216 (raw 0.10)  FE 1.8s geo 0.0s
+[uniform] ph 0 it  52  J +0.50573  C/C0 0.8952  V/V0-1 -1.3e-05  Gs 0.075  |dξ̃| 0.0118 (raw 0.10)  FE 1.4s geo 0.0s
+[neutral] ph 0 it  56  J +0.50576  C/C0 0.8947  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0087 (raw 0.10)  FE 1.4s geo 0.0s
+[vshell] ph 0 it  46  J +0.50327  C/C0 0.8947  V/V0-1 -1.7e-05  Gs 0.078  |dξ̃| 0.0146 (raw 0.10)  FE 1.4s geo 0.0s
+[uniform] ph 0 it  53  J +0.50585  C/C0 0.8952  V/V0-1 -1.3e-05  Gs 0.076  |dξ̃| 0.0133 (raw 0.10)  FE 1.4s geo 0.0s
+[neutral] ph 0 it  57  J +0.50584  C/C0 0.8947  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0084 (raw 0.10)  FE 1.4s geo 0.0s
+[vshell] ph 0 it  47  J +0.50358  C/C0 0.8950  V/V0-1 -1.7e-05  Gs 0.078  |dξ̃| 0.0132 (raw 0.10)  FE 1.4s geo 0.0s
+[uniform] ph 0 it  54  J +0.50594  C/C0 0.8952  V/V0-1 -1.3e-05  Gs 0.076  |dξ̃| 0.0107 (raw 0.10)  FE 1.4s geo 0.0s
+[neutral] ph 0 it  58  J +0.50593  C/C0 0.8947  V/V0-1 -1.6e-05  Gs 0.077  |dξ̃| 0.0083 (raw 0.10)  FE 1.4s geo 0.0s
+[vshell] ph 0 it  48  J +0.50384  C/C0 0.8947  V/V0-1 -1.6e-05  Gs 0.078  |dξ̃| 0.0143 (raw 0.10)  FE 1.4s geo 0.0s
+[uniform] ph 0 it  55  J +0.50606  C/C0 0.8952  V/V0-1 -1.3e-05  Gs 0.076  |dξ̃| 0.0092 (raw 0.10)  FE 1.4s geo 0.0s
+[neutral] ph 0 it  59  J +0.50601  C/C0 0.8947  V/V0-1 -1.6e-05  Gs 0.077  |dξ̃| 0.0055 (raw 0.10)  FE 1.4s geo 0.0s
+[cshell] phase 0 design: {"active_vertices": 89128, "closed_area_frac": 0.00208360587961054, "snap_closed_area_frac": 0.0, "d_max": 4.894084419212344, "d_mean": 1.7928408264130122, "wall_open_min": 1.5049063495460797, "wall_open_max": 5.023742091872333}
+[vshell] ph 0 it  49  J +0.50406  C/C0 0.8951  V/V0-1 -1.8e-05  Gs 0.078  |dξ̃| 0.0116 (raw 0.10)  FE 1.6s geo 0.0s
+[uniform] ph 0 it  56  J +0.50616  C/C0 0.8953  V/V0-1 -1.4e-05  Gs 0.076  |dξ̃| 0.0158 (raw 0.10)  FE 1.4s geo 0.0s
+[uniform] ph 0 it  57  J +0.50618  C/C0 0.8950  V/V0-1 -1.7e-05  Gs 0.076  |dξ̃| 0.0262 (raw 0.10)  FE 1.6s geo 0.0s
+[vshell] ph 0 it  50  J +0.50428  C/C0 0.8948  V/V0-1 -1.7e-05  Gs 0.078  |dξ̃| 0.0095 (raw 0.10)  FE 1.6s geo 0.0s
+[vshell] ph 0 it  51  J +0.50448  C/C0 0.8949  V/V0-1 -1.7e-05  Gs 0.078  |dξ̃| 0.0137 (raw 0.10)  FE 1.6s geo 0.0s
+[uniform] ph 0 it  58  J +0.50580  C/C0 0.8955  V/V0-1 -1.0e-05  Gs 0.076  |dξ̃| 0.0336 (raw 0.10)  FE 1.6s geo 0.0s
+[vshell] ph 0 it  52  J +0.50467  C/C0 0.8950  V/V0-1 -1.8e-05  Gs 0.078  |dξ̃| 0.0160 (raw 0.10)  FE 1.6s geo 0.0s
+[uniform] ph 0 it  59  J +0.50491  C/C0 0.8957  V/V0-1 -1.8e-05  Gs 0.076  |dξ̃| 0.0351 (raw 0.10)  FE 1.6s geo 0.0s
+[cshell] phase 0 design: {"active_vertices": 89128, "closed_area_frac": 0.002011602501284068, "snap_closed_area_frac": 0.0, "d_max": 4.9051235242948605, "d_mean": 1.8052255663303085, "wall_open_min": 1.5049055217905685, "wall_open_max": 5.03659962662952}
+[vshell] ph 0 it  53  J +0.50484  C/C0 0.8948  V/V0-1 -1.8e-05  Gs 0.078  |dξ̃| 0.0144 (raw 0.10)  FE 1.6s geo 0.0s
+[vshell] ph 0 it  54  J +0.50505  C/C0 0.8950  V/V0-1 -1.8e-05  Gs 0.078  |dξ̃| 0.0131 (raw 0.10)  FE 1.6s geo 0.0s
+[vshell] ph 0 it  55  J +0.50521  C/C0 0.8945  V/V0-1 -1.6e-05  Gs 0.078  |dξ̃| 0.0134 (raw 0.10)  FE 1.6s geo 0.0s
+[vshell] ph 0 it  56  J +0.50535  C/C0 0.8951  V/V0-1 -1.7e-05  Gs 0.078  |dξ̃| 0.0170 (raw 0.10)  FE 1.6s geo 0.0s
+[vshell] ph 0 it  57  J +0.50547  C/C0 0.8941  V/V0-1 -1.7e-05  Gs 0.078  |dξ̃| 0.0193 (raw 0.10)  FE 1.6s geo 0.0s
+[vshell] ph 0 it  58  J +0.50559  C/C0 0.8952  V/V0-1 -1.7e-05  Gs 0.078  |dξ̃| 0.0149 (raw 0.10)  FE 1.6s geo 0.0s
+[vshell] ph 0 it  59  J +0.50573  C/C0 0.8943  V/V0-1 -1.6e-05  Gs 0.078  |dξ̃| 0.0204 (raw 0.10)  FE 1.4s geo 0.0s
+[cshell] phase 0 design: {"active_vertices": 89128, "closed_area_frac": 0.0020989545867267367, "snap_closed_area_frac": 0.0, "d_max": 4.893838954099553, "d_mean": 1.78497332334085, "wall_open_min": 1.5049044795575355, "wall_open_max": 5.022767626121453}
+[cshell] phase 1: h_e 0.4 h_g 0.1, band 570.0 M cells, element box (792, 317, 167), passive {'mount': 26272, 'thin': 17762}, V0 85235.6 mm³, 126 s
+[cshell]   geometry chain on the GPU: compact band 12.74 GiB, released from the device during each FE evaluation
+[cshell]   active set rebuilt: 1931984 elements, 6346890 DOF, engine twogrid, coarse 930252 DOF (fp32), 90.5 GiB device memory free
+[cshell] phase 1: h_e 0.4 h_g 0.1, band 570.0 M cells, element box (792, 317, 167), passive {'mount': 26272, 'thin': 17762}, V0 85235.6 mm³, 126 s
+[cshell]   geometry chain on the GPU: compact band 12.74 GiB, released from the device during each FE evaluation
+[cshell]   active set rebuilt: 1931984 elements, 6346890 DOF, engine twogrid, coarse 930252 DOF (fp32), 90.4 GiB device memory free
+[cshell] phase 1: h_e 0.4 h_g 0.1, band 570.0 M cells, element box (792, 317, 167), passive {'mount': 26272, 'thin': 17762}, V0 85235.6 mm³, 128 s
+[cshell]   geometry chain on the GPU: compact band 12.74 GiB, released from the device during each FE evaluation
+[cshell]   active set rebuilt: 1931984 elements, 6346890 DOF, engine twogrid, coarse 930252 DOF (fp32), 90.7 GiB device memory free
+[cshell] phase 1 solid: C0 85.6988 N·mm, K0 466.75 N/mm, λ_s0 13.349406091433753, λ_b0 5.567922096529993, c 1.564
+[cshell]   active set rebuilt: 2383542 elements, 8089749 DOF, engine twogrid, coarse 1234719 DOF (fp32), 89.9 GiB device memory free
+[cshell] phase 1 solid: C0 85.6988 N·mm, K0 466.75 N/mm, λ_s0 13.349406091430918, λ_b0 5.567922096496723, c 1.564
+[cshell]   active set rebuilt: 2384978 elements, 8096391 DOF, engine twogrid, coarse 1236147 DOF (fp32), 89.7 GiB device memory free
+[cshell] phase 1 solid: C0 85.6988 N·mm, K0 466.75 N/mm, λ_s0 13.349406091426241, λ_b0 5.567922096519407, c 1.564
+[cshell]   active set rebuilt: 2381191 elements, 8080785 DOF, engine twogrid, coarse 1233465 DOF (fp32), 89.8 GiB device memory free
+[neutral] ph 1 it   0  J +0.48678  C/C0 0.9095  V/V0-1 -1.3e-05  Gs 0.076  |dξ̃| 0.0211 (raw 0.05)  FE 45.7s geo 0.0s
+[uniform] ph 1 it   0  J +0.48587  C/C0 0.9099  V/V0-1 -1.5e-05  Gs 0.075  |dξ̃| 0.0262 (raw 0.09)  FE 50.8s geo 0.0s
+[vshell] ph 1 it   0  J +0.48684  C/C0 0.9096  V/V0-1 -1.2e-05  Gs 0.077  |dξ̃| 0.0261 (raw 0.05)  FE 48.7s geo 0.0s
+[neutral] ph 1 it   1  J +0.49304  C/C0 0.9065  V/V0-1 -1.3e-05  Gs 0.076  |dξ̃| 0.0223 (raw 0.04)  FE 40.4s geo 0.0s
+[uniform] ph 1 it   1  J +0.49332  C/C0 0.9071  V/V0-1 -1.2e-05  Gs 0.076  |dξ̃| 0.0211 (raw 0.07)  FE 43.0s geo 0.0s
+[vshell] ph 1 it   1  J +0.49306  C/C0 0.9062  V/V0-1 -1.2e-05  Gs 0.077  |dξ̃| 0.0214 (raw 0.05)  FE 42.2s geo 0.0s
+[neutral] ph 1 it   2  J +0.49555  C/C0 0.9080  V/V0-1 -1.5e-05  Gs 0.076  |dξ̃| 0.0175 (raw 0.05)  FE 39.2s geo 0.0s
+[uniform] ph 1 it   2  J +0.49608  C/C0 0.9084  V/V0-1 -1.5e-05  Gs 0.076  |dξ̃| 0.0147 (raw 0.06)  FE 26.0s geo 0.0s
+[vshell] ph 1 it   2  J +0.49557  C/C0 0.9076  V/V0-1 -1.4e-05  Gs 0.077  |dξ̃| 0.0160 (raw 0.05)  FE 40.5s geo 0.0s
+[neutral] ph 1 it   3  J +0.49685  C/C0 0.9094  V/V0-1 -1.7e-05  Gs 0.076  |dξ̃| 0.0149 (raw 0.06)  FE 40.3s geo 0.0s
+[uniform] ph 1 it   3  J +0.49741  C/C0 0.9097  V/V0-1 -1.5e-05  Gs 0.076  |dξ̃| 0.0137 (raw 0.05)  FE 45.4s geo 0.0s
+[vshell] ph 1 it   3  J +0.49689  C/C0 0.9090  V/V0-1 -1.6e-05  Gs 0.077  |dξ̃| 0.0227 (raw 0.05)  FE 42.9s geo 0.0s
+[neutral] ph 1 it   4  J +0.49770  C/C0 0.9101  V/V0-1 -1.7e-05  Gs 0.076  |dξ̃| 0.0187 (raw 0.06)  FE 41.0s geo 0.0s
+[uniform] ph 1 it   4  J +0.49825  C/C0 0.9107  V/V0-1 -1.5e-05  Gs 0.076  |dξ̃| 0.0146 (raw 0.10)  FE 44.2s geo 0.0s
+[vshell] ph 1 it   4  J +0.49770  C/C0 0.9096  V/V0-1 -1.5e-05  Gs 0.077  |dξ̃| 0.0153 (raw 0.06)  FE 42.9s geo 0.0s
+[neutral] ph 1 it   5  J +0.49830  C/C0 0.9110  V/V0-1 -1.9e-05  Gs 0.076  |dξ̃| 0.0231 (raw 0.06)  FE 42.5s geo 0.0s
+[uniform] ph 1 it   5  J +0.49881  C/C0 0.9114  V/V0-1 -1.5e-05  Gs 0.076  |dξ̃| 0.0158 (raw 0.10)  FE 45.9s geo 0.0s
+[vshell] ph 1 it   5  J +0.49831  C/C0 0.9106  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0142 (raw 0.10)  FE 43.6s geo 0.0s
+[neutral] ph 1 it   6  J +0.49872  C/C0 0.9116  V/V0-1 -1.8e-05  Gs 0.076  |dξ̃| 0.0144 (raw 0.08)  FE 42.9s geo 0.0s
+[uniform] ph 1 it   6  J +0.49923  C/C0 0.9114  V/V0-1 -1.4e-05  Gs 0.076  |dξ̃| 0.0171 (raw 0.10)  FE 44.2s geo 0.0s
+[vshell] ph 1 it   6  J +0.49877  C/C0 0.9109  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0133 (raw 0.10)  FE 43.5s geo 0.0s
+[neutral] ph 1 it   7  J +0.49909  C/C0 0.9117  V/V0-1 -1.8e-05  Gs 0.076  |dξ̃| 0.0153 (raw 0.08)  FE 45.1s geo 0.0s
+[uniform] ph 1 it   7  J +0.49946  C/C0 0.9120  V/V0-1 -1.4e-05  Gs 0.076  |dξ̃| 0.0288 (raw 0.10)  FE 44.0s geo 0.0s
+[vshell] ph 1 it   7  J +0.49912  C/C0 0.9113  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0133 (raw 0.10)  FE 43.4s geo 0.0s
+[neutral] ph 1 it   8  J +0.49939  C/C0 0.9118  V/V0-1 -1.8e-05  Gs 0.076  |dξ̃| 0.0162 (raw 0.10)  FE 45.9s geo 0.0s
+[uniform] ph 1 it   8  J +0.49953  C/C0 0.9118  V/V0-1 -1.2e-05  Gs 0.076  |dξ̃| 0.0252 (raw 0.10)  FE 41.5s geo 0.0s
+[vshell] ph 1 it   8  J +0.49942  C/C0 0.9115  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0144 (raw 0.10)  FE 44.6s geo 0.0s
+[neutral] ph 1 it   9  J +0.49967  C/C0 0.9119  V/V0-1 -1.8e-05  Gs 0.076  |dξ̃| 0.0166 (raw 0.10)  FE 43.1s geo 0.0s
+[uniform] ph 1 it   9  J +0.49976  C/C0 0.9119  V/V0-1 -1.3e-05  Gs 0.076  |dξ̃| 0.0224 (raw 0.10)  FE 41.6s geo 0.0s
+[vshell] ph 1 it   9  J +0.49972  C/C0 0.9116  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0149 (raw 0.10)  FE 44.5s geo 0.0s
+[neutral] ph 1 it  10  J +0.49995  C/C0 0.9119  V/V0-1 -1.8e-05  Gs 0.076  |dξ̃| 0.0172 (raw 0.10)  FE 45.1s geo 0.0s
+[uniform] ph 1 it  10  J +0.50030  C/C0 0.9119  V/V0-1 -1.7e-05  Gs 0.076  |dξ̃| 0.0264 (raw 0.10)  FE 40.1s geo 0.0s
+[vshell] ph 1 it  10  J +0.50000  C/C0 0.9116  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0173 (raw 0.10)  FE 44.3s geo 0.0s
+[neutral] ph 1 it  11  J +0.50020  C/C0 0.9118  V/V0-1 -1.8e-05  Gs 0.076  |dξ̃| 0.0226 (raw 0.10)  FE 44.5s geo 0.0s
+[uniform] ph 1 it  11  J +0.50062  C/C0 0.9118  V/V0-1 -1.7e-05  Gs 0.076  |dξ̃| 0.0259 (raw 0.10)  FE 43.8s geo 0.0s
+[vshell] ph 1 it  11  J +0.50024  C/C0 0.9116  V/V0-1 -1.6e-05  Gs 0.077  |dξ̃| 0.0133 (raw 0.10)  FE 43.3s geo 0.0s
+[neutral] ph 1 it  12  J +0.50044  C/C0 0.9118  V/V0-1 -1.8e-05  Gs 0.076  |dξ̃| 0.0160 (raw 0.10)  FE 45.2s geo 0.0s
+[uniform] ph 1 it  12  J +0.50079  C/C0 0.9117  V/V0-1 -1.7e-05  Gs 0.076  |dξ̃| 0.0186 (raw 0.10)  FE 44.2s geo 0.0s
+[uniform] ph 1 it  13  J +0.50093  C/C0 0.9117  V/V0-1 -1.7e-05  Gs 0.076  |dξ̃| 0.0210 (raw 0.10)  FE 28.5s geo 0.0s
+[vshell] ph 1 it  12  J +0.50048  C/C0 0.9117  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0236 (raw 0.10)  FE 45.7s geo 0.0s
+[neutral] ph 1 it  13  J +0.50065  C/C0 0.9117  V/V0-1 -1.8e-05  Gs 0.077  |dξ̃| 0.0171 (raw 0.10)  FE 44.7s geo 0.0s
+[uniform] ph 1 it  14  J +0.50107  C/C0 0.9116  V/V0-1 -1.6e-05  Gs 0.076  |dξ̃| 0.0229 (raw 0.10)  FE 28.5s geo 0.0s
+[vshell] ph 1 it  13  J +0.50068  C/C0 0.9114  V/V0-1 -1.6e-05  Gs 0.077  |dξ̃| 0.0189 (raw 0.10)  FE 44.7s geo 0.0s
+[neutral] ph 1 it  14  J +0.50082  C/C0 0.9117  V/V0-1 -1.8e-05  Gs 0.077  |dξ̃| 0.0216 (raw 0.10)  FE 42.8s geo 0.0s
+[cshell]   active set rebuilt: 2380756 elements, 8078769 DOF, engine twogrid, coarse 1233033 DOF (fp32), 89.6 GiB device memory free
+[uniform] ph 1 it  15  J +0.50121  C/C0 0.9115  V/V0-1 -1.6e-05  Gs 0.076  |dξ̃| 0.0167 (raw 0.10)  FE 28.5s geo 0.0s
+[uniform] ph 1 it  16  J +0.50135  C/C0 0.9116  V/V0-1 -1.7e-05  Gs 0.076  |dξ̃| 0.0208 (raw 0.10)  FE 28.4s geo 0.0s
+[vshell] ph 1 it  14  J +0.50083  C/C0 0.9115  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0280 (raw 0.10)  FE 43.3s geo 0.0s
+[cshell]   active set rebuilt: 2379599 elements, 8074419 DOF, engine twogrid, coarse 1232214 DOF (fp32), 89.4 GiB device memory free
+[neutral] ph 1 it  15  J +0.50092  C/C0 0.9117  V/V0-1 -1.8e-05  Gs 0.077  |dξ̃| 0.0258 (raw 0.10)  FE 46.2s geo 0.0s
+[uniform] ph 1 it  17  J +0.50148  C/C0 0.9115  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0178 (raw 0.10)  FE 28.4s geo 0.0s
+[neutral] ph 1 it  16  J +0.50105  C/C0 0.9115  V/V0-1 -1.8e-05  Gs 0.077  |dξ̃| 0.0318 (raw 0.10)  FE 39.9s geo 0.0s
+[vshell] ph 1 it  15  J +0.50084  C/C0 0.9114  V/V0-1 -1.5e-05  Gs 0.077  |dξ̃| 0.0298 (raw 0.10)  FE 49.5s geo 0.0s
+[uniform] ph 1 it  18  J +0.50162  C/C0 0.9115  V/V0-1 -1.6e-05  Gs 0.077  |dξ̃| 0.0168 (raw 0.10)  FE 28.8s geo 0.0s
+[uniform] ph 1 it  19  J +0.50173  C/C0 0.9115  V/V0-1 -1.6e-05  Gs 0.077  |dξ̃| 0.0126 (raw 0.10)  FE 26.9s geo 0.0s
+[neutral] ph 1 it  17  J +0.50134  C/C0 0.9116  V/V0-1 -2.1e-05  Gs 0.077  |dξ̃| 0.0261 (raw 0.10)  FE 40.2s geo 0.0s
+[vshell] ph 1 it  16  J +0.50096  C/C0 0.9114  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0348 (raw 0.10)  FE 41.1s geo 0.0s
+[uniform] ph 1 it  20  J +0.50185  C/C0 0.9114  V/V0-1 -1.6e-05  Gs 0.077  |dξ̃| 0.0162 (raw 0.10)  FE 26.6s geo 0.0s
+[neutral] ph 1 it  18  J +0.50154  C/C0 0.9112  V/V0-1 -2.1e-05  Gs 0.077  |dξ̃| 0.0182 (raw 0.10)  FE 43.3s geo 0.0s
+[vshell] ph 1 it  17  J +0.50135  C/C0 0.9109  V/V0-1 -1.9e-05  Gs 0.077  |dξ̃| 0.0300 (raw 0.10)  FE 40.2s geo 0.0s
+[uniform] ph 1 it  21  J +0.50196  C/C0 0.9116  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0173 (raw 0.10)  FE 46.3s geo 0.0s
+[vshell] ph 1 it  18  J +0.50157  C/C0 0.9112  V/V0-1 -1.9e-05  Gs 0.077  |dξ̃| 0.0171 (raw 0.10)  FE 43.4s geo 0.0s
+[neutral] ph 1 it  19  J +0.50169  C/C0 0.9113  V/V0-1 -2.0e-05  Gs 0.077  |dξ̃| 0.0138 (raw 0.10)  FE 47.8s geo 0.0s
+[uniform] ph 1 it  22  J +0.50209  C/C0 0.9116  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0168 (raw 0.10)  FE 45.1s geo 0.0s
+[cshell]   active set rebuilt: 2381257 elements, 8081055 DOF, engine twogrid, coarse 1233042 DOF (fp32), 89.5 GiB device memory free
+[neutral] ph 1 it  20  J +0.50177  C/C0 0.9111  V/V0-1 -2.0e-05  Gs 0.077  |dξ̃| 0.0096 (raw 0.10)  FE 29.0s geo 0.0s
+[vshell] ph 1 it  19  J +0.50168  C/C0 0.9110  V/V0-1 -1.8e-05  Gs 0.077  |dξ̃| 0.0113 (raw 0.10)  FE 48.0s geo 0.0s
+[neutral] ph 1 it  21  J +0.50186  C/C0 0.9112  V/V0-1 -1.9e-05  Gs 0.077  |dξ̃| 0.0079 (raw 0.10)  FE 29.2s geo 0.0s
+[uniform] ph 1 it  23  J +0.50222  C/C0 0.9115  V/V0-1 -1.8e-05  Gs 0.077  |dξ̃| 0.0173 (raw 0.10)  FE 46.0s geo 0.0s
+[vshell] ph 1 it  20  J +0.50177  C/C0 0.9110  V/V0-1 -1.8e-05  Gs 0.077  |dξ̃| 0.0141 (raw 0.10)  FE 28.4s geo 0.0s
+[neutral] ph 1 it  22  J +0.50195  C/C0 0.9112  V/V0-1 -1.9e-05  Gs 0.077  |dξ̃| 0.0072 (raw 0.10)  FE 29.0s geo 0.0s
+[vshell] ph 1 it  21  J +0.50185  C/C0 0.9109  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0089 (raw 0.10)  FE 30.5s geo 0.0s
+[uniform] ph 1 it  24  J +0.50223  C/C0 0.9116  V/V0-1 -1.8e-05  Gs 0.077  |dξ̃| 0.0237 (raw 0.10)  FE 43.7s geo 0.0s
+[neutral] ph 1 it  23  J +0.50203  C/C0 0.9112  V/V0-1 -1.9e-05  Gs 0.077  |dξ̃| 0.0050 (raw 0.10)  FE 29.3s geo 0.0s
+[vshell] ph 1 it  22  J +0.50193  C/C0 0.9110  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0087 (raw 0.10)  FE 30.1s geo 0.0s
+[neutral] ph 1 it  24  J +0.50212  C/C0 0.9112  V/V0-1 -1.9e-05  Gs 0.077  |dξ̃| 0.0046 (raw 0.10)  FE 29.2s geo 0.0s
+[uniform] ph 1 it  25  J +0.50205  C/C0 0.9118  V/V0-1 -1.4e-05  Gs 0.077  |dξ̃| 0.0380 (raw 0.10)  FE 41.5s geo 0.0s
+[vshell] ph 1 it  23  J +0.50200  C/C0 0.9109  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0066 (raw 0.10)  FE 30.5s geo 0.0s
+[neutral] ph 1 it  25  J +0.50220  C/C0 0.9112  V/V0-1 -1.9e-05  Gs 0.077  |dξ̃| 0.0044 (raw 0.10)  FE 30.0s geo 0.0s
+[uniform] ph 1 it  26  J +0.50176  C/C0 0.9114  V/V0-1 -1.3e-05  Gs 0.077  |dξ̃| 0.0510 (raw 0.10)  FE 38.9s geo 0.0s
+[vshell] ph 1 it  24  J +0.50209  C/C0 0.9110  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0062 (raw 0.10)  FE 30.1s geo 0.0s
+[neutral] ph 1 it  26  J +0.50228  C/C0 0.9112  V/V0-1 -1.9e-05  Gs 0.077  |dξ̃| 0.0051 (raw 0.10)  FE 29.7s geo 0.0s
+[vshell] ph 1 it  25  J +0.50217  C/C0 0.9109  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0052 (raw 0.10)  FE 30.7s geo 0.0s
+[uniform] ph 1 it  27  J +0.50209  C/C0 0.9122  V/V0-1 -1.9e-05  Gs 0.077  |dξ̃| 0.0396 (raw 0.10)  FE 40.4s geo 0.0s
+[neutral] ph 1 it  27  J +0.50237  C/C0 0.9111  V/V0-1 -1.9e-05  Gs 0.077  |dξ̃| 0.0075 (raw 0.10)  FE 29.6s geo 0.0s
+[vshell] ph 1 it  26  J +0.50226  C/C0 0.9110  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0082 (raw 0.10)  FE 29.0s geo 0.0s
+[neutral] ph 1 it  28  J +0.50245  C/C0 0.9112  V/V0-1 -2.0e-05  Gs 0.077  |dξ̃| 0.0091 (raw 0.10)  FE 28.7s geo 0.0s
+[uniform] ph 1 it  28  J +0.50258  C/C0 0.9110  V/V0-1 -2.5e-05  Gs 0.077  |dξ̃| 0.0169 (raw 0.10)  FE 41.1s geo 0.0s
+[vshell] ph 1 it  27  J +0.50235  C/C0 0.9110  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0073 (raw 0.10)  FE 30.9s geo 0.0s
+[neutral] ph 1 it  29  J +0.50253  C/C0 0.9111  V/V0-1 -1.9e-05  Gs 0.077  |dξ̃| 0.0123 (raw 0.10)  FE 28.7s geo 0.0s
+[uniform] ph 1 it  29  J +0.50271  C/C0 0.9115  V/V0-1 -2.3e-05  Gs 0.077  |dξ̃| 0.0064 (raw 0.10)  FE 42.5s geo 0.0s
+[vshell] ph 1 it  28  J +0.50243  C/C0 0.9109  V/V0-1 -1.7e-05  Gs 0.077  |dξ̃| 0.0092 (raw 0.10)  FE 28.3s geo 0.0s
+[neutral] ph 1 it  30  J +0.50262  C/C0 0.9111  V/V0-1 -2.0e-05  Gs 0.077  |dξ̃| 0.0113 (raw 0.10)  FE 28.5s geo 0.0s
+[vshell] ph 1 it  29  J +0.50252  C/C0 0.9110  V/V0-1 -1.8e-05  Gs 0.077  |dξ̃| 0.0200 (raw 0.10)  FE 29.3s geo 0.0s
+[uniform] ph 1 it  30  J +0.50276  C/C0 0.9115  V/V0-1 -2.1e-05  Gs 0.077  |dξ̃| 0.0062 (raw 0.10)  FE 47.8s geo 0.0s
+[neutral] ph 1 it  31  J +0.50272  C/C0 0.9111  V/V0-1 -2.0e-05  Gs 0.077  |dξ̃| 0.0131 (raw 0.10)  FE 45.1s geo 0.0s
+[vshell] ph 1 it  30  J +0.50259  C/C0 0.9108  V/V0-1 -1.8e-05  Gs 0.077  |dξ̃| 0.0174 (raw 0.10)  FE 26.5s geo 0.0s
+[uniform] ph 1 it  31  J +0.50280  C/C0 0.9115  V/V0-1 -2.0e-05  Gs 0.077  |dξ̃| 0.0072 (raw 0.10)  FE 47.7s geo 0.0s
+[neutral] ph 1 it  32  J +0.50278  C/C0 0.9112  V/V0-1 -2.2e-05  Gs 0.077  |dξ̃| 0.0237 (raw 0.10)  FE 43.7s geo 0.0s
+[vshell] ph 1 it  31  J +0.50267  C/C0 0.9109  V/V0-1 -1.9e-05  Gs 0.077  |dξ̃| 0.0212 (raw 0.10)  FE 46.0s geo 0.0s
+[uniform] ph 1 it  32  J +0.50284  C/C0 0.9115  V/V0-1 -1.9e-05  Gs 0.077  |dξ̃| 0.0079 (raw 0.10)  FE 47.2s geo 0.0s
+[neutral] ph 1 it  33  J +0.50267  C/C0 0.9111  V/V0-1 -2.1e-05  Gs 0.077  |dξ̃| 0.0398 (raw 0.10)  FE 42.4s geo 0.0s
+[vshell] ph 1 it  32  J +0.50267  C/C0 0.9110  V/V0-1 -2.0e-05  Gs 0.077  |dξ̃| 0.0332 (raw 0.10)  FE 44.1s geo 0.0s
+[neutral] ph 1 it  34  J +0.50204  C/C0 0.9118  V/V0-1 -1.8e-05  Gs 0.077  |dξ̃| 0.0465 (raw 0.10)  FE 42.0s geo 0.0s
+[uniform] ph 1 it  33  J +0.50288  C/C0 0.9115  V/V0-1 -1.9e-05  Gs 0.077  |dξ̃| 0.0046 (raw 0.10)  FE 45.7s geo 0.0s
+[vshell] ph 1 it  33  J +0.50254  C/C0 0.9105  V/V0-1 -1.7e-05  Gs 0.078  |dξ̃| 0.0456 (raw 0.10)  FE 40.7s geo 0.0s
+[neutral] ph 1 it  35  J +0.50179  C/C0 0.9110  V/V0-1 -2.1e-05  Gs 0.077  |dξ̃| 0.0494 (raw 0.10)  FE 41.8s geo 0.0s
+[vshell] ph 1 it  34  J +0.50238  C/C0 0.9115  V/V0-1 -2.0e-05  Gs 0.077  |dξ̃| 0.0530 (raw 0.10)  FE 41.6s geo 0.0s
+[uniform] ph 1 it  34  J +0.50293  C/C0 0.9115  V/V0-1 -1.8e-05  Gs 0.077  |dξ̃| 0.0046 (raw 0.10)  FE 48.5s geo 0.0s
+[neutral] ph 1 it  36  J +0.50221  C/C0 0.9117  V/V0-1 -2.1e-05  Gs 0.077  |dξ̃| 0.0468 (raw 0.10)  FE 39.4s geo 0.0s
+[vshell] ph 1 it  35  J +0.50255  C/C0 0.9107  V/V0-1 -2.0e-05  Gs 0.077  |dξ̃| 0.0468 (raw 0.10)  FE 42.1s geo 0.0s
+[uniform] ph 1 it  35  J +0.50297  C/C0 0.9115  V/V0-1 -1.8e-05  Gs 0.077  |dξ̃| 0.0042 (raw 0.10)  FE 48.6s geo 0.0s
+[neutral] ph 1 it  37  J +0.50259  C/C0 0.9109  V/V0-1 -2.7e-05  Gs 0.077  |dξ̃| 0.0376 (raw 0.10)  FE 42.1s geo 0.0s
+[vshell] ph 1 it  36  J +0.50280  C/C0 0.9110  V/V0-1 -2.7e-05  Gs 0.077  |dξ̃| 0.0326 (raw 0.10)  FE 41.2s geo 0.0s
+[uniform] ph 1 it  36  J +0.50302  C/C0 0.9115  V/V0-1 -1.8e-05  Gs 0.077  |dξ̃| 0.0038 (raw 0.10)  FE 48.2s geo 0.0s
+[neutral] ph 1 it  38  J +0.50298  C/C0 0.9114  V/V0-1 -3.1e-05  Gs 0.077  |dξ̃| 0.0200 (raw 0.10)  FE 40.4s geo 0.0s
+[vshell] ph 1 it  37  J +0.50298  C/C0 0.9109  V/V0-1 -2.4e-05  Gs 0.077  |dξ̃| 0.0129 (raw 0.10)  FE 43.9s geo 0.0s
+[uniform] ph 1 it  37  J +0.50308  C/C0 0.9115  V/V0-1 -1.8e-05  Gs 0.077  |dξ̃| 0.0034 (raw 0.10)  FE 48.1s geo 0.0s
+[cshell] phase 1 converged at iteration 37
+[cshell] phase 1 design: {"active_vertices": 88511, "closed_area_frac": 0.0008036602832674446, "snap_closed_area_frac": 0.0, "d_max": 5.288396275014466, "d_mean": 1.7803355370257168, "wall_open_min": 1.5024765334132488, "wall_open_max": 5.528714327983265}
+[neutral] ph 1 it  39  J +0.50310  C/C0 0.9110  V/V0-1 -2.8e-05  Gs 0.077  |dξ̃| 0.0043 (raw 0.10)  FE 43.8s geo 0.0s
+[vshell] ph 1 it  38  J +0.50306  C/C0 0.9109  V/V0-1 -2.2e-05  Gs 0.077  |dξ̃| 0.0037 (raw 0.10)  FE 43.5s geo 0.0s
+[neutral] ph 1 it  40  J +0.50313  C/C0 0.9111  V/V0-1 -2.6e-05  Gs 0.077  |dξ̃| 0.0031 (raw 0.10)  FE 29.2s geo 0.0s
+[vshell] ph 1 it  39  J +0.50309  C/C0 0.9109  V/V0-1 -2.1e-05  Gs 0.077  |dξ̃| 0.0039 (raw 0.10)  FE 44.5s geo 0.0s
+[neutral] ph 1 it  41  J +0.50315  C/C0 0.9111  V/V0-1 -2.5e-05  Gs 0.077  |dξ̃| 0.0042 (raw 0.10)  FE 27.5s geo 0.0s
+[neutral] ph 1 it  42  J +0.50317  C/C0 0.9111  V/V0-1 -2.4e-05  Gs 0.077  |dξ̃| 0.0047 (raw 0.09)  FE 29.1s geo 0.0s
+[vshell] ph 1 it  40  J +0.50311  C/C0 0.9109  V/V0-1 -2.1e-05  Gs 0.077  |dξ̃| 0.0042 (raw 0.10)  FE 45.7s geo 0.0s
+[neutral] ph 1 it  43  J +0.50320  C/C0 0.9111  V/V0-1 -2.4e-05  Gs 0.077  |dξ̃| 0.0044 (raw 0.10)  FE 28.7s geo 0.0s
+[vshell] ph 1 it  41  J +0.50314  C/C0 0.9109  V/V0-1 -2.0e-05  Gs 0.077  |dξ̃| 0.0044 (raw 0.10)  FE 26.1s geo 0.0s
+[neutral] ph 1 it  44  J +0.50322  C/C0 0.9111  V/V0-1 -2.3e-05  Gs 0.077  |dξ̃| 0.0035 (raw 0.10)  FE 29.4s geo 0.0s
+[cshell] phase 1 converged at iteration 44
+[cshell] phase 1 design: {"active_vertices": 88511, "closed_area_frac": 0.0008705381113967003, "snap_closed_area_frac": 0.0, "d_max": 5.305487817699102, "d_mean": 1.7730334863427013, "wall_open_min": 1.5024765490946148, "wall_open_max": 5.526522764332486}
+[vshell] ph 1 it  42  J +0.50317  C/C0 0.9109  V/V0-1 -2.0e-05  Gs 0.077  |dξ̃| 0.0044 (raw 0.10)  FE 29.6s geo 0.0s
+[cshell] phase 1 converged at iteration 42
+[cshell] phase 1 design: {"active_vertices": 88511, "closed_area_frac": 0.0008779714352621134, "snap_closed_area_frac": 0.0, "d_max": 5.303028735415624, "d_mean": 1.7717787304019736, "wall_open_min": 1.502476535875549, "wall_open_max": 5.5291996955027045}

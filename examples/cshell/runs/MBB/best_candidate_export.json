@@ -1,0 +1,128 @@
+{
+ "V0_mm3": 85230.75382318355,
+ "n_tiles": 11550,
+ "n_cell_queries": 5124009984,
+ "n_shell_cells": 207349127,
+ "cleanup": {
+  "void_raw_mm3": 56258.51737500001,
+  "opening_removed_mm3": 2035.6692500000004,
+  "void_components_after_opening": 2,
+  "enclosed_voids_filled": 0,
+  "enclosed_filled_mm3": 0.0,
+  "material_components": 1658,
+  "islands_removed": 1657,
+  "islands_removed_mm3": 0.27112500000000006,
+  "void_clean_mm3": 54222.84812500001,
+  "reopen_changed_cells": 0,
+  "opening_rule_ok": true
+ },
+ "voids": {
+  "total": 2,
+  "enclosed": 2,
+  "holes": 4,
+  "without_hole": 0,
+  "per_void": [
+   {
+    "id": 0,
+    "volume_mm3": 27117.471125000007,
+    "holes": 2
+   },
+   {
+    "id": 1,
+    "volume_mm3": 27105.377000000008,
+    "holes": 2
+   }
+  ]
+ },
+ "mass_correction": {
+  "V_before_mm3": 87548.71696749756,
+  "rel_before": 0.027196323396631694,
+  "delta": -0.0760179290380396,
+  "V_after_mm3": 85230.7542031595,
+  "rel_after": 4.458202251811372e-09,
+  "warn": false,
+  "fail": false,
+  "n_brent_cells": 207349127,
+  "ok": true
+ },
+ "mesh": {
+  "faces": 82898852,
+  "vertices": 41448308,
+  "degenerate": 0,
+  "duplicate_directed_edges": 0,
+  "missing_reverse_edges": 0,
+  "watertight_manifold": true,
+  "volume": 85238.01848829494,
+  "euler": null,
+  "bodies": 1,
+  "degenerate_removed": 0,
+  "islands": {
+   "bodies_before": 2242,
+   "islands_dropped": 526,
+   "islands_volume_mm3": 0.04052310243939492,
+   "voids_filled": 1715,
+   "voids_filled_mm3": 0.4969420846917222,
+   "islands_on_mount": 0,
+   "islands_on_mount_mm3": 0.0
+  },
+  "ambiguous_faces": {
+   "nodes_flipped": 197996,
+   "flipped_mm3": 24.749500000000005,
+   "max_iterations": 14,
+   "tiles_not_converged": 0,
+   "tiles_halo_exceeded": 0,
+   "halo": 32
+  },
+  "volume_rel": 8.523525588488567e-05,
+  "volume_ok": true,
+  "stl": "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/runs_cshell/FULL/MBB/best_candidate.stl",
+  "stl_bytes": 4144942684
+ },
+ "wall_grazing_dropped": 2736,
+ "wall_min_at": [
+  19.79388168157978,
+  -36.79149693646254,
+  38.44360402471511
+ ],
+ "wall_off_rims": {
+  "n_rim": 15,
+  "min_as_built": -0.11715621819496158,
+  "n_below_t_min_minus_b_v": 901,
+  "n_below_t_min_minus_b_v_disc": 237
+ },
+ "wall": {
+  "samples": 17264,
+  "miss": 0,
+  "mesh_stride": 8,
+  "min_nominal": 0.023776836863160133,
+  "p1_nominal": 1.139070241546631,
+  "median_nominal": 2.5367770029067995,
+  "min_as_built": -0.11715621819496158,
+  "p1_as_built": 1.0142657888889313,
+  "frac_below_t_min": 0.0532321594068582
+ },
+ "h_x": 0.05,
+ "tile": 128,
+ "workers": 72,
+ "timing_s": {
+  "A_geometry": 286.28,
+  "B1_opening": 129.76,
+  "B2_fill_islands": 21.67,
+  "B3_opening_check": 120.94,
+  "C_holes": 15.47,
+  "D_mass": 68.41,
+  "E1_marching_cubes": 40.34,
+  "E2_weld_checks": 104.5,
+  "E3_stl": 6.45,
+  "E4_wall_thickness": 41.09,
+  "total": 835.21
+ },
+ "peak_rss_parent_GB": 65.693824,
+ "peak_rss_child_GB": 28.280768,
+ "grid_shape": [
+  6400,
+  2688,
+  1408
+ ],
+ "ok": true
+}
