@@ -1,5 +1,9 @@
 """Everything after the optimiser for one part (THEORY §5.4, §7.4 S2, §8, §10.5): `python -m cshell collect <run_dir>`.
 
+Legacy (Stage 2, several starts). Since PLAN_single_run §3 a run finalises in its own job (`cshell.finalise`, which
+reuses start_table / pick_best / export_verdict / trim_host_memory from here); `collect` stays for older run
+directories and for the full 3-grid, baselines and body-fitted pipeline.
+
 Pipeline (`collect`)
   1. Starts: one row per start from history.csv, checkpoints and xi_<start>_phase<k>.npy; the best *feasible* start
      (final phase complete, |V/V₀ − 1| ≤ mass_tol) by its final optimiser J (§7.4).
@@ -177,14 +181,22 @@ def dshell_start_xi(ctx, cfg: dict | None = None, log=print, vs: dict | None = N
 # =====================================================================================================================
 # Run-directory reading
 # =====================================================================================================================
-def read_history(run_dir) -> list[dict]:
-    from .optimise import merge_history
-    merge_history(run_dir)                               # per-start files -> history.csv (atomic)
+def read_history(run_dir, merge: bool = True) -> list[dict]:
+    """Rows of history.csv. merge: first merge the per-start files into history.csv (writes into run_dir); without it
+    the file is only read (start names canonicalised here), e.g. when finalise writes to another directory."""
+    from .config import canonical_start
+    if merge:
+        from .optimise import merge_history
+        merge_history(run_dir)                           # per-start files -> history.csv (atomic)
     p = os.path.join(run_dir, "history.csv")
     if not os.path.exists(p):
         return []
     with open(p) as f:
-        return list(csv.DictReader(f))
+        rows = list(csv.DictReader(f))
+    if not merge:
+        for r in rows:
+            r["start"] = canonical_start(r["start"])
+    return rows
 
 
 def _f(x):
@@ -202,10 +214,11 @@ def latest_checkpoint(run_dir, start):
     return np.load(files[-1]) if files else None
 
 
-def start_table(run_dir, cfg: dict) -> list[dict]:
-    """One row per configured start (and any other start found in history.csv)."""
+def start_table(run_dir, cfg: dict, merge: bool = True) -> list[dict]:
+    """One row per configured start (and any other start found in history.csv). Optimiser ratios: K_K0 (C2 column, or
+    1/C_C0 of older runs), lamB_ratio and sig_ratio (C2 columns; NaN for older runs), P_P0 (older runs' lam_ratio)."""
     from .config import canonical_start, start_file
-    hist = read_history(run_dir)                         # start names already canonical (merge_history)
+    hist = read_history(run_dir, merge)                  # start names canonical
     n_ph = len(cfg["grid"]["phases"])
     starts = list(dict.fromkeys([canonical_start(s) for s in cfg["optimiser"]["starts"]] + [r["start"] for r in hist]))
     rows = []
@@ -221,9 +234,10 @@ def start_table(run_dir, cfg: dict) -> list[dict]:
         lr = fin[-1] if fin else last
         mass_err = _f(lr.get("mass_err"))
         feasible = status == "done" and abs(mass_err) <= cfg["optimiser"]["mass_tol"] * 1.0001
+        K_K0 = _f(lr.get("K_K0")) if "K_K0" in lr else (1.0 / _f(lr.get("C_C0")) if lr else float("nan"))
         rows.append(dict(start=s, status=status, feasible=bool(feasible), phases_done=len(done), iterations=len(h),
-                         J_opt=_f(lr.get("J")), K_K0_opt=1.0 / _f(lr.get("C_C0")) if lr else float("nan"),
-                         P_P0_opt=_f(lr.get("lam_ratio")), mass_err=mass_err,
+                         J_opt=_f(lr.get("J")), K_K0_opt=K_K0, lamB_ratio_opt=_f(lr.get("lamB_ratio")),
+                         sig_ratio_opt=_f(lr.get("sig_ratio")), P_P0_opt=_f(lr.get("lam_ratio")), mass_err=mass_err,
                          hours=float(z["hours_used"]) if z is not None else float("nan"),
                          D_comp=float(z["D_comp"]) if z is not None else cfg["design"]["outward_extent_initial_mm"],
                          xi_file=os.path.basename(xi_files[n_ph - 1]) if status == "done" else None))

@@ -5,19 +5,24 @@ Submit from the repository or worktree root; `env.sh` activates the conda env, p
 
 | Script | Use |
 |---|---|
-| `cpu_test.sh [pytest args]` | CPU pytest (72 cores, 16 GB; add `--mem=48G` for collect tests) |
+| `cpu_test.sh [pytest args]` | CPU pytest (72 cores, 16 GB) |
 | `gpu_test.sh pytest [args]` / `gpu_test.sh script.py` / `gpu_test.sh -m cshell ...` | GPU tests and short runs |
-| `run.sh <cfg> --start S [run args]` | one start of one part; `--max-hours` = time limit − 0.4 h; on pause (exit 3) or SIGTERM it submits its own continuation (`--resume`, `afterany`), so one queue slot per start; the last start to finish submits `collect.sh` once |
-| `collect.sh <run_dir>` | `python -m cshell collect` then `report` (GPU, 4 h default) |
-| `launch_part.sh <cfg> [starts] [-- run args]` | one 24 h `run.sh` per start (default: the config's starts) |
+| `run.sh <cfg> [run args]` | one part: optimise, then finalise in the same job (`cshell run`, PLAN_single_run §3); `--max-hours` = time limit − 0.4 h; on pause (exit 3) or SIGTERM it submits its own continuation (`--resume`, `afterany`), one queue slot per part |
+| `export.sh <run_dir> [--out DIR] [--h MM] [--no-rescore] [--sensitivity] [--bodyfit]` | re-run finalise on a finished run (`cshell export`): shifted-grid re-score, GPU export (0.2 mm), summary.json/txt, report |
+| `launch_part.sh <cfg> [run args]` | one 24 h `run.sh` for the part (no per-start fan-out, no collect job) |
 
-Full part, e.g. the cantilever with three starts (3 slots, then 1 for collect):
+Full part, e.g. the cantilever (1 slot):
 
     cshell/cluster/launch_part.sh examples/cshell/cantilever.json
 
-Measured resources (2026-10-31, h_e 0.4 / h_g 0.1): a start runs 25–50 s per phase-B iteration, 34–44 min in all,
-≤ 26 GiB GPU and ≤ 35 GB host — submit with `SBATCH_MEM_PER_NODE=64G CSHELL_TIME=04:00:00`; collect needs 64–80 GiB
-host and ≤ 57 GiB GPU, 30–40 min — `CSHELL_COLLECT_MEM=180G` (run.sh passes it to the collect it submits).
+Re-export a finished run into another directory (the run directory is left untouched):
 
-Environment knobs: `CSHELL_COLLECT_MEM` (collect's --mem; default the socket's), `CSHELL_TIME` (launch, default 24:00:00), `CSHELL_MARGIN_H` (0.4), `CSHELL_CHAIN_MAX` (8
-allocations per start), `CSHELL_AUTO_COLLECT` (1).
+    sbatch cshell/cluster/export.sh runs_cshell/FULL/MBB --out runs_cshell/MBB_reexport
+
+Finalise outputs (contract C3): `final_design.stl`, `final_design_export.json`, `escape_holes.csv`,
+`wall_thickness.csv`, `summary.json`, `summary.txt`, `finalise_log.txt`, then the report (`report.write_report`; a
+report failure is logged in summary.json, it does not fail the job). The legacy multi-start `cshell collect` is kept
+for Stage 2 run directories but has no cluster script any more.
+
+Environment knobs: `CSHELL_TIME` (launch, default 24:00:00), `CSHELL_MARGIN_H` (0.4), `CSHELL_CHAIN_MAX` (8
+allocations per part).
