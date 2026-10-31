@@ -1,0 +1,40 @@
+NVIDIA GH200 120GB, 97871 MiB
+loaded design: 2886898 V 5773796 T in 3 s
+[levelset] s = 0.5000 mm, lattice (np.int64(167), np.int64(31), np.int64(44)), 66 active blocks of 16^3 cells (5773796 input faces), 0.7 s
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /home/b6bl/owenpeckham.b6bl/.cache/warp/1.18.0
+Module cshell.band ad91966 load on device 'cuda:0' took 3.69 ms  (cached)
+[levelset] {'spacing': 0.5, 'lattice': [167, 31, 44], 'active_blocks': 66, 'sdf_queries': 260544, 'faces': 57624, 'vertices': 28812, 'bodies': 1, 'body_volumes': [6268.76750491584], 'dropped_bodies': 0, 'dropped_mm3': 0.0, 'volume': 6268.76750491584, 'ambiguous_flipped': 0, 'ambiguous_iters': 0, 'duplicate_directed_edges': 0, 'missing_reverse_edges': 0, 'seconds_sdf': 2.4840128421783447, 'seconds': 2.621541738510132, 'closed_manifold': True}
+RESULT {"part": "VF_B2", "which": "design", "variant": "A0.5", "levelset": {"spacing": 0.5, "lattice": [167, 31, 44], "active_blocks": 66, "sdf_queries": 260544, "faces": 57624, "vertices": 28812, "bodies": 1, "body_volumes": [6268.76750491584], "dropped_bodies": 0, "dropped_mm3": 0.0, "volume": 6268.76750491584, "ambiguous_flipped": 0, "ambiguous_iters": 0, "duplicate_directed_edges": 0, "missing_reverse_edges": 0, "seconds_sdf": 2.4840128421783447, "seconds": 2.621541738510132, "closed_manifold": true}, "dev_mc": {"volume_rel": -0.0006138356646705478, "to_ref": {"max": 0.257874459028244, "q999": 0.13535276204347754, "q99": 0.0658136803656816, "mean": 0.009585348786040114, "argmax": [8.895, 2.35, 2.648]}, "from_ref": {"max": 0.4062385559082031, "q999": 0.1932816140055662, "q99": 0.08326904699206275, "mean": 0.012648453672256766, "argmax": [8.693, 1.869, 2.539], "points": 2886898}, "hausdorff": 0.4062385559082031}, "t_mc": 4.126473903656006, "t_gmsh": 260.83856868743896, "gate": {"dihedral_min": 0.15756508482073173, "frac_dihedral_lt_5": 0.006990010739073473, "n_dihedral_lt_5": 2545, "edge_max": 1.5297968160578894, "edge_max_over_h": 3.059593632115779, "layers_p01": 1.717, "passed": false, "failures": ["min dihedral 0.158 < 0.25 deg", "fraction of tets below 5 deg 6.99e-03 > 0.001", "tets through the wall (1 % quantile) 1.72 < 2.0", "longest edge 3.06 h > 2.5 h"]}, "n_tets": 364091, "n_nodes10": 544889}
+[levelset] s = 0.3540 mm, lattice (np.int64(233), np.int64(41), np.int64(59)), 166 active blocks of 16^3 cells (5773796 input faces), 0.8 s
+[levelset] {'spacing': 0.354, 'lattice': [233, 41, 59], 'active_blocks': 166, 'sdf_queries': 632128, 'faces': 114908, 'vertices': 57454, 'bodies': 1, 'body_volumes': [6269.80647691901], 'dropped_bodies': 0, 'dropped_mm3': 0.0, 'volume': 6269.80647691901, 'ambiguous_flipped': 2, 'ambiguous_iters': 1, 'duplicate_directed_edges': 0, 'missing_reverse_edges': 0, 'seconds_sdf': 0.8694031238555908, 'seconds': 1.1582825183868408, 'closed_manifold': True}
+BFGS update error2
+Command terminated by signal 11
+	Command being timed: "python continuous/research/bodyfit_scale/diag.py /home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/runs_cshell/VF_B2 design A0.5,A0.354,B0.5"
+	User time (seconds): 885.12
+	System time (seconds): 29.29
+	Percent of CPU this job got: 101%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 15:04.39
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1990208
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 1993
+	Minor (reclaiming a frame) page faults: 423933
+	Voluntary context switches: 21724
+	Involuntary context switches: 29301
+	Swaps: 0
+	File system inputs: 1426690
+	File system outputs: 2334080
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 65536
+	Exit status: 0

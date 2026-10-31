@@ -1,0 +1,22 @@
+NVIDIA GH200 120GB, 97871 MiB
+loaded design: 30355580 V 60711700 T in 32 s
+[levelset] s = 0.1667 mm, lattice (np.int64(967), np.int64(847), np.int64(850)), 9020 active blocks of 16^3 cells (60711700 input faces), 11.1 s
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /home/b6bl/owenpeckham.b6bl/.cache/warp/1.18.0
+Module cshell.band ad91966 load on device 'cuda:0' took 3.69 ms  (cached)
+[levelset] {'spacing': 0.16666666666666666, 'lattice': [967, 847, 850], 'active_blocks': 9020, 'sdf_queries': 44034930, 'faces': 5405728, 'vertices': 2702742, 'bodies': 1, 'body_volumes': [60942.01100029481], 'dropped_bodies': 74, 'dropped_mm3': 0.035644785897096985, 'volume': 60942.01100029481, 'ambiguous_flipped': 5287, 'ambiguous_iters': 5, 'duplicate_directed_edges': 0, 'missing_reverse_edges': 0, 'seconds_sdf': 18.642930030822754, 'seconds': 72.45835995674133, 'closed_manifold': True}
+Warp UserWarning: Kernel cache artifacts from a previous Warp version were found in '/lus/lfs1aip2/scratch/b6bl/owenpeckham.b6bl/warp_cache'. These will be ignored. You can safely delete them.
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /lus/lfs1aip2/scratch/b6bl/owenpeckham.b6bl/warp_cache/1.18.0
+Module cshell.validate f53ba04 load on device 'cuda:0' took 3.31 ms  (cached)
+[2026-10-31T03:28:57.224] error: *** JOB 7882287 ON nid010315 CANCELLED AT 2026-10-31T03:28:57 DUE to SIGNAL Terminated ***

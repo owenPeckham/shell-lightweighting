@@ -1103,15 +1103,41 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
                 fallback=None, timeout=_get(cfg, "validation.timeout_s", None))
             bf, dec, errs, used = {}, {}, {}, {}
             VE, TE, _ = load_mesh(stl["best"])
-            # Same mesher for solid and design (ratios cancel mesher bias): isotropic surface remesh to h, gmsh volume
-            # inside that triangulation, quality gate; solved on the GPU (cuDSS, C3D10-identical). Two levels
-            # (h, h/sqrt(2)) give the mesh-convergence estimate; the finer level is compared. No tetgen fallback:
+            # Same mesher for solid and design (ratios cancel mesher bias), quality gate, GPU C3D10 solve (cuDSS). Two
+            # levels (h, h/sqrt(2)) give the mesh-convergence estimate; the finer level is compared. No tetgen fallback:
             # its sliver mesh moved lambda_b by -46 % on B2 (research/b2_bodyfit).
+            # Mesher (research/bodyfit_scale): "stuff" (default) = isosurface stuffing of the model's signed distance on
+            # a BCC lattice of spacing c·h (c = sqrt 2: the tet density of gmsh at MeshSizeMax h); closed, conforming,
+            # bounded dihedral angles, no surface remesh. The pymeshlab remesh + gmsh chain ("keep") failed on every
+            # production design (self-intersections at thin walls, lost watertightness, overlapping facets).
+            # "levelset" = that chain fed a marching-cubes re-extraction at h/3 (works for the solids, not the designs).
+            # The deviation of the meshed boundary from the exported STL / context surface is recorded per level.
             kw.update(engine=_get(cfg, "validation.engine", "gpu"))
+            surf_mode = _get(cfg, "validation.mesher", "stuff")
+            s_ls = float(_get(cfg, "validation.levelset_spacing_mm", h_val / 3))
+            thin_ls = float(_get(cfg, "validation.thin_over_h", 2.0))
+            stuff_c = float(_get(cfg, "validation.stuff_lattice_over_h", 2 ** 0.5))
             for nm, (Vs, Ts) in (("solid", (ctx.V, ctx.T)), ("design", (VE, TE))):
                 levels = [h_val, h_val / 2 ** 0.5]
                 dec[nm] = dict(remesh="isotropic", levels=levels)
                 try:
+                    vkw = dict(backend="keep")
+                    if surf_mode == "stuff":
+                        dec[nm].update(remesh=f"isosurface stuffing, BCC lattice {stuff_c:.3f} h")
+                        vkw = dict(backend="stuff", remesh_kw=dict(stuff_c=stuff_c))
+                    elif surf_mode == "levelset":
+                        t_s = time.time()
+                        Vs, Ts, ls_info = cval.levelset_surface(Vs, Ts, s_ls, log=log)
+                        dev = cval.surface_deviation(Vs, Ts, *((ctx.V, ctx.T) if nm == "solid" else (VE, TE)))
+                        dec[nm].update(remesh="levelset + thickness-aware isotropic", levelset=ls_info, deviation=dev,
+                                       seconds_surface=time.time() - t_s)
+                        log(f"[collect] body-fitted {nm} surface: {ls_info['faces']} faces at s = {s_ls:.3f} mm, "
+                            f"closed manifold {ls_info['closed_manifold']}, {ls_info['bodies']} bodies; deviation from "
+                            f"the {'context' if nm == 'solid' else 'exported'} surface: V {dev['volume_rel']:+.2e}, "
+                            f"Hausdorff {dev['hausdorff']:.3f} mm, 99.9 % {dev['from_ref']['q999']:.3f} / "
+                            f"{dev['to_ref']['q999']:.3f} mm, mean {dev['from_ref']['mean']:.4f} mm")
+                        vkw = dict(backend="keep", remesh_kw=dict(thin=thin_ls, fine=s_ls), peel=True)
+                        memo(f"levelset surface {nm}")
                     lv = []
                     for i_l, hh in enumerate(levels):
                         # the coarse level is reported (gate numbers included) but only the finer one must pass the gate;
@@ -1121,8 +1147,14 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
                         fine = i_l == len(levels) - 1
                         try:
                             lv.append(cval.validate_design(Vs, Ts, ctx.V, ctx.T, ctx.TF, ctx.support, ctx.loads, vd,
-                                                           f"{nm}_h{hh:.3f}", backend="keep", enforce_gate=fine,
-                                                           **dict(kw, h=hh)))
+                                                           f"{nm}_h{hh:.3f}", enforce_gate=fine,
+                                                           **dict(kw, h=hh), **vkw))
+                            dv = lv[-1].info.get("mesh_quality", {}).get("deviation")
+                            if dv:
+                                log(f"[collect] body-fitted {nm} h = {hh:.3f}: {lv[-1].n_elems} tets; boundary vs the "
+                                    f"{'context' if nm == 'solid' else 'exported'} surface: V {dv['volume_rel']:+.2e}, "
+                                    f"Hausdorff {dv['hausdorff']:.3f} mm, 99.9 % {dv['from_ref']['q999']:.3f} (from "
+                                    f"STL) / {dv['to_ref']['q999']:.3f} (to STL) mm, mean {dv['from_ref']['mean']:.4f} mm")
                         except Exception as e:
                             if fine:
                                 raise
@@ -1139,12 +1171,12 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
                     dec[nm]["gate"] = [x.info.get("mesh_quality") for x in lv]
                     dec[nm]["lambda_unexcl"] = [x.info.get("lam_unexcl") for x in lv]
                     dec[nm]["seconds"] = [dict(mesh=x.seconds_mesh, solve=x.seconds_ccx) for x in lv]
-                    used[nm] = "keep"
+                    used[nm] = vkw["backend"]
                     if dec[nm]["converged_C"] is False:
                         errs[f"{nm}/convergence"] = f"compliance changes {dec[nm]['level_change']['C']:+.2%} between levels"
                         log(f"[collect] WARNING {nm}: {errs[f'{nm}/convergence']} (> 2 %)")
                 except Exception as e:                        # recorded; a failed check blocks acceptance below
-                    errs[f"{nm}/keep"] = repr(e)[:600]
+                    errs[f"{nm}/mesh_or_solve"] = repr(e)[:600]
                     log(f"[collect] body-fitted {nm} FAILED: {e!r}")
             del VE, TE
             if len(bf) < 2:

@@ -1,0 +1,23 @@
+NVIDIA GH200 120GB, 97871 MiB
+[cshell] context: 118478 vertices, mounts 76 faces, r_MA 3.22 mm median, 50 s
+[levelset] s = 0.1667 mm, lattice (np.int64(1807), np.int64(667), np.int64(307)), 8247 active blocks of 16^3 cells (173398 input faces), 16.1 s
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /home/b6bl/owenpeckham.b6bl/.cache/warp/1.18.0
+Module cshell.band ad91966 load on device 'cuda:0' took 3.46 ms  (cached)
+[levelset] {'spacing': 0.16666666666666666, 'lattice': [1807, 667, 307], 'active_blocks': 8247, 'sdf_queries': 39905613, 'faces': 3470604, 'vertices': 1735290, 'bodies': 1, 'body_volumes': [85210.21535477397], 'dropped_bodies': 0, 'dropped_mm3': 0.0, 'volume': 85210.21535477397, 'ambiguous_flipped': 8, 'ambiguous_iters': 1, 'duplicate_directed_edges': 0, 'missing_reverse_edges': 0, 'seconds_sdf': 20.909435987472534, 'seconds': 41.84038853645325, 'closed_manifold': True}
+DEV {"volume_rel": -0.00023915129961682435, "to_ref": {"max": 0.085052490234375, "q999": 0.04348238782957137, "q99": 0.004757702774368228, "mean": 0.0006094467440055774, "argmax": [-125.095, 54.915, 0.112]}, "from_ref": {"max": 0.16680960357189178, "q999": 0.10288179451227188, "q99": 0.04912925824522972, "mean": 0.00402567811618352, "argmax": [-125.0, -35.0, 5.0], "points": 86687}, "hausdorff": 0.16680960357189178}
+Warp UserWarning: Kernel cache artifacts from a previous Warp version were found in '/lus/lfs1aip2/scratch/b6bl/owenpeckham.b6bl/warp_cache'. These will be ignored. You can safely delete them.
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /lus/lfs1aip2/scratch/b6bl/owenpeckham.b6bl/warp_cache/1.18.0
+Module cshell.validate f53ba04 load on device 'cuda:0' took 3.00 ms  (cached)
+[2026-10-31T04:44:04.961] error: *** JOB 7882414 ON nid010085 CANCELLED AT 2026-10-31T04:44:04 DUE to SIGNAL Terminated ***

@@ -197,10 +197,29 @@ class Cholesky:
         t0 = time.time()
         self.cp = cp
         self.b = cp.asfortranarray(cp.zeros((K.shape[0], nrhs)))
-        self.s = DirectSolver(K, self.b, options=DirectSolverOptions(sparse_system_type=DirectSolverMatrixType.SPD),
-                              execution=ExecutionCUDA())
+        opts = DirectSolverOptions(sparse_system_type=DirectSolverMatrixType.SPD)
+        self.s = DirectSolver(K, self.b, options=opts, execution=ExecutionCUDA())
         self.s.plan()
-        self.est_GiB = float(self.s.plan_info.memory_estimates["peak_device_memory"]) / 2 ** 30
+        est = self.s.plan_info.memory_estimates
+        self.est_GiB = float(est["peak_device_memory"]) / 2 ** 30
+        # Production parts (research/bodyfit_scale): if the factor does not fit next to the eigen-solver block vectors
+        # (~100 vectors of ndof), keep the factor in host memory (cuDSS hybrid mode, same arithmetic) rather than a
+        # second GPU. Logged through self.hybrid / self.est_host_GiB.
+        cp.get_default_memory_pool().free_all_blocks()        # cached pool blocks are free for cuDSS too
+        free = cp.cuda.Device().mem_info[0]
+        reserve = 100 * 8 * K.shape[0] + (4 << 30)
+        self.hybrid, self.est_host_GiB = False, 0.0
+        if float(est["peak_device_memory"]) > free - reserve:
+            self.s.free()
+            lim = int(max(free - reserve, float(est["hybrid_min_device_memory"]) * 1.05))
+            self.s = DirectSolver(K, self.b, options=opts, execution=ExecutionCUDA(hybrid_memory_mode_options=dict(
+                hybrid_memory_mode=True, hybrid_device_memory_limit=lim)))
+            self.s.plan()
+            self.hybrid = True
+            self.est_host_GiB = float(self.s.plan_info.memory_estimates["peak_host_memory"]) / 2 ** 30
+            print(f"[bodyfit_gpu] factor {self.est_GiB:.1f} GiB > free {free / 2 ** 30:.1f} GiB - reserve "
+                  f"{reserve / 2 ** 30:.1f} GiB: cuDSS hybrid memory mode, device limit {lim / 2 ** 30:.1f} GiB, "
+                  f"host {self.est_host_GiB:.1f} GiB", flush=True)
         self.t_plan = time.time() - t0
         t0 = time.time()
         self.s.factorize()
@@ -328,7 +347,7 @@ def _solve(nodes, tets10, fixed, load_nodes, load_vec, E, nu, n_modes=4, quantil
                         frac_energy_top1pct=float(np.sort(w)[-len(w) // 100:].sum() / w.sum())))
     t["total"] = time.time() - t0
     out = dict(C=C, lam=lam.tolist(), lam_unexcl=np.asarray(lam0).tolist(), n_ks_excluded=int(near.sum()), sigma_q=sq, volume=float(v.sum()), neg_vol=int((v <= 0).sum()), ndof=M.nf,
-               nnz=M.nnz, factor_GiB=ch.est_GiB, static_rel_residual=res_static, eig_iters=len(hist),
+               nnz=M.nnz, factor_GiB=ch.est_GiB, hybrid=ch.hybrid, factor_host_GiB=ch.est_host_GiB, static_rel_residual=res_static, eig_iters=len(hist),
                eig_res=hist[-1], timings_s=t, modes=loc)
     out["_phi_nodes"] = a
     try:

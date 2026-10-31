@@ -1,0 +1,57 @@
+NVIDIA GH200 120GB, 97871 MiB
+loaded design: 2886898 V 5773796 T in 3 s
+[levelset] s = 0.1667 mm, lattice (np.int64(487), np.int64(78), np.int64(118)), 925 active blocks of 16^3 cells (5773796 input faces), 0.9 s
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /home/b6bl/owenpeckham.b6bl/.cache/warp/1.18.0
+Module cshell.band ad91966 load on device 'cuda:0' took 3.51 ms  (cached)
+[levelset] {'spacing': 0.16666666666666666, 'lattice': [487, 78, 118], 'active_blocks': 925, 'sdf_queries': 4246073, 'faces': 519272, 'vertices': 259636, 'bodies': 1, 'body_volumes': [6271.950706201318], 'dropped_bodies': 0, 'dropped_mm3': 0.0, 'volume': 6271.950706201318, 'ambiguous_flipped': 13, 'ambiguous_iters': 1, 'duplicate_directed_edges': 0, 'missing_reverse_edges': 0, 'seconds_sdf': 3.0173473358154297, 'seconds': 4.5091047286987305, 'closed_manifold': True}
+Warp UserWarning: Kernel cache artifacts from a previous Warp version were found in '/lus/lfs1aip2/scratch/b6bl/owenpeckham.b6bl/warp_cache'. These will be ignored. You can safely delete them.
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /lus/lfs1aip2/scratch/b6bl/owenpeckham.b6bl/warp_cache/1.18.0
+Module cshell.validate f53ba04 load on device 'cuda:0' took 2.69 ms  (cached)
+RESULT {"part": "VF_B2", "which": "design", "variant": "T0.5", "levelset": {"spacing": 0.16666666666666666, "lattice": [487, 78, 118], "active_blocks": 925, "sdf_queries": 4246073, "faces": 519272, "vertices": 259636, "bodies": 1, "body_volumes": [6271.950706201318], "dropped_bodies": 0, "dropped_mm3": 0.0, "volume": 6271.950706201318, "ambiguous_flipped": 13, "ambiguous_iters": 1, "duplicate_directed_edges": 0, "missing_reverse_edges": 0, "seconds_sdf": 3.0173473358154297, "seconds": 4.5091047286987305, "closed_manifold": true}, "dev_mc": {"volume_rel": -0.00010635994174723606, "to_ref": {"max": 0.0935380756855011, "q999": 0.03174120020121333, "q99": 0.017884228304028554, "mean": 0.0020790920998231995, "argmax": [8.652, 1.347, 3.185]}, "from_ref": {"max": 0.1549939513206482, "q999": 0.048487661492081335, "q99": 0.022619155067950432, "mean": 0.002960101594381916, "argmax": [6.543, 4.747, 4.83], "points": 2886898}, "hausdorff": 0.1549939513206482}, "t_mc": 6.174985647201538, "remesh": {"faces": 56748, "faces_in": 519272, "thin_faces_in": 1929, "thin_attempts": [{"thin_faces": 1929, "self_intersections": 0}], "area": 5540.977573715787, "stages": [56748], "watertight": true, "self_intersections": 0, "repairs": [], "edge_max": 0.9257782404278402, "vol_rel": 0.00011294273506234909, "hausdorff": 0.0007324302366533866}, "dev_remesh": {"volume_rel": 6.570780720638325e-06, "to_ref": {"max": 0.08283272385597229, "q999": 0.05697629433497819, "q99": 0.03229921739548443, "mean": 0.006356430914852497, "argmax": [8.659, 1.322, 3.199]}, "from_ref": {"max": 0.1514590084552765, "q999": 0.054853171221912356, "q99": 0.032227493226528146, "mean": 0.0070518409864529065, "argmax": [6.543, 4.747, 4.83], "points": 2886898}, "hausdorff": 0.1514590084552765}, "t_remesh": 16.207156658172607, "t_gmsh": 41.01329326629639, "gate_before_peel": {"dihedral_min": 1.371395103719209, "frac_dihedral_lt_5": 4.4354749284779665e-05, "n_dihedral_lt_5": 10, "edge_max": 1.221260371893842, "edge_max_over_h": 2.442520743787684, "layers_p01": 1.829, "passed": false, "failures": ["tets through the wall (1 % quantile) 1.83 < 2.0"]}, "peel": {"peeled": 0, "peeled_mm3": 0.0}, "gate": {"dihedral_min": 1.371395103719209, "frac_dihedral_lt_5": 4.4354749284779665e-05, "n_dihedral_lt_5": 10, "edge_max": 1.221260371893842, "edge_max_over_h": 2.442520743787684, "layers_p01": 1.829, "passed": false, "failures": ["tets through the wall (1 % quantile) 1.83 < 2.0"]}, "n_tets": 225455, "n_nodes10": 358053}
+Warp UserWarning: Kernel cache artifacts from a previous Warp version were found in '/lus/lfs1aip2/scratch/b6bl/owenpeckham.b6bl/warp_cache'. These will be ignored. You can safely delete them.
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /lus/lfs1aip2/scratch/b6bl/owenpeckham.b6bl/warp_cache/1.18.0
+Module cshell.validate f53ba04 load on device 'cuda:0' took 3.19 ms  (cached)
+RESULT {"part": "VF_B2", "which": "design", "variant": "T0.354", "levelset": {"spacing": 0.16666666666666666, "lattice": [487, 78, 118], "active_blocks": 925, "sdf_queries": 4246073, "faces": 519272, "vertices": 259636, "bodies": 1, "body_volumes": [6271.950706201318], "dropped_bodies": 0, "dropped_mm3": 0.0, "volume": 6271.950706201318, "ambiguous_flipped": 13, "ambiguous_iters": 1, "duplicate_directed_edges": 0, "missing_reverse_edges": 0, "seconds_sdf": 3.0173473358154297, "seconds": 4.5091047286987305, "closed_manifold": true}, "dev_mc": {"volume_rel": -0.00010635994174723606, "to_ref": {"max": 0.0935380756855011, "q999": 0.03174120020121333, "q99": 0.017884228304028554, "mean": 0.0020790920998231995, "argmax": [8.652, 1.347, 3.185]}, "from_ref": {"max": 0.1549939513206482, "q999": 0.048487661492081335, "q99": 0.022619155067950432, "mean": 0.002960101594381916, "argmax": [6.543, 4.747, 4.83], "points": 2886898}, "hausdorff": 0.1549939513206482}, "t_mc": 5.9604644775390625e-06, "remesh": {"faces": 100108, "faces_in": 519272, "thin_faces_in": 1384, "thin_attempts": [{"thin_faces": 1384, "self_intersections": 0}], "area": 5540.977573715787, "stages": [100108], "watertight": true, "self_intersections": 0, "repairs": [], "edge_max": 0.7176095660822049, "vol_rel": 0.00010166618968110441, "hausdorff": 6.278795672640785e-06}, "dev_remesh": {"volume_rel": -4.704565286450801e-06, "to_ref": {"max": 0.08283272385597229, "q999": 0.051603453993797455, "q99": 0.029085195139050436, "mean": 0.005187148775741731, "argmax": [8.659, 1.322, 3.199]}, "from_ref": {"max": 0.1514590084552765, "q999": 0.054150143295527364, "q99": 0.03072807751595974, "mean": 0.005904161397561332, "argmax": [6.543, 4.747, 4.83], "points": 2886898}, "hausdorff": 0.1514590084552765}, "t_remesh": 16.294153928756714, "t_gmsh": 111.38851499557495, "gate_before_peel": {"dihedral_min": 1.5446570364873082, "frac_dihedral_lt_5": 5.2093824450757444e-06, "n_dihedral_lt_5": 3, "edge_max": 0.8508805957534038, "edge_max_over_h": 2.4036175021282595, "layers_p01": 2.508, "passed": true, "failures": []}, "peel": {"peeled": 0, "peeled_mm3": 0.0}, "gate": {"dihedral_min": 1.5446570364873082, "frac_dihedral_lt_5": 5.2093824450757444e-06, "n_dihedral_lt_5": 3, "edge_max": 0.8508805957534038, "edge_max_over_h": 2.4036175021282595, "layers_p01": 2.508, "passed": true, "failures": []}, "n_tets": 575884, "n_nodes10": 869412}
+	Command being timed: "python continuous/research/bodyfit_scale/diag.py /home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/runs_cshell/VF_B2 design T0.5,T0.354"
+	User time (seconds): 207.91
+	System time (seconds): 4.33
+	Percent of CPU this job got: 105%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:21.40
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 1593088
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 5232
+	Minor (reclaiming a frame) page faults: 281018
+	Voluntary context switches: 29903
+	Involuntary context switches: 105287
+	Swaps: 0
+	File system inputs: 2860898
+	File system outputs: 16384
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 65536
+	Exit status: 0
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 3:21.40
+	Maximum resident set size (kbytes): 1593088

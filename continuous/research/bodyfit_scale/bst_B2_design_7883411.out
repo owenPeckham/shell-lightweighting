@@ -1,0 +1,41 @@
+NVIDIA GH200 120GB, 97871 MiB
+[cshell] context: 9260 vertices, mounts 2 faces, r_MA 4.65 mm median, 3 s
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /home/b6bl/owenpeckham.b6bl/.cache/warp/1.18.0
+Module cshell.band ad91966 load on device 'cuda:0' took 1.49 ms  (cached)
+No multithreading interface library was specified using the DirectSolverOptions. The performance of CPU operations like planning will be significantly lower than if you provide a multithreading library.
+RESULT {"part": "VF_B2", "which": "design", "h": 0.5, "c": 1.4142135623730951, "C": 23.575836305465515, "lam": [43.22342497386307, 84.27421636203196, 99.21394249951656, 100.24661493281175], "lam_unexcl": [29.85468314533595, 31.887970561289812, 32.21436421264431, 33.34915934494253], "sigma_q": 5.932529331243896, "volume": 6266.360269352467, "n_nodes": 409327, "n_elems": 260575, "seconds_mesh": 4.010470867156982, "seconds_solve": 35.5873076915741, "ndof": 1221900, "factor_GiB": 13.467417526990175, "hybrid": false, "timings": {"pattern": 0.2937808036804199, "assemble_K": 0.14763975143432617, "plan": 6.081106424331665, "factor": 0.9337518215179443, "solve": 0.024763822555541992, "assemble_G": 0.2647523880004883, "eigen": 26.970959186553955, "total": 35.30176758766174}, "gate": {"dihedral_min": 10.719065902580809, "frac_dihedral_lt_5": 0.0, "n_dihedral_lt_5": 0, "edge_max": 0.8817291231770188, "edge_max_over_h": 1.7634582463540376, "layers_p01": 2.19, "passed": true, "failures": [], "stuff": {"L": 0.7071067811865476, "lattice": [119, 22, 31], "sdf_queries": 155498, "snapped": 9863, "cut_points": 19377, "n_tets": 260575, "n_nodes": 59756, "volume": 6266.360269352468, "min_tet_volume": 0.0004626487078237822, "seconds_sdf": 1.241558313369751, "seconds": 1.5509254932403564}, "deviation": {"volume_rel": -0.0009976045497688268, "to_ref": {"max": 0.22091586887836456, "q999": 0.13430921743810192, "q99": 0.06624203510582446, "mean": 0.009636739153835429, "argmax": [8.897, 2.071, 3.04]}, "from_ref": {"max": 0.41500720381736755, "q999": 0.20596851551532858, "q99": 0.07955520905554257, "mean": 0.011453255740720902, "argmax": [7.494, 4.797, 4.725], "points": 2886898}, "hausdorff": 0.41500720381736755}}, "seconds": 39.5984525680542}
+No multithreading interface library was specified using the DirectSolverOptions. The performance of CPU operations like planning will be significantly lower than if you provide a multithreading library.
+No multithreading interface library was specified using the DirectSolverOptions. The performance of CPU operations like planning will be significantly lower than if you provide a multithreading library.
+[bodyfit_gpu] factor 51.2 GiB > free 28.5 GiB - reserve 6.4 GiB: cuDSS hybrid memory mode, device limit 22.1 GiB, host 50.9 GiB
+RESULT {"part": "VF_B2", "which": "design", "h": 0.35355339059327373, "c": 1.4142135623730951, "C": 23.589209877722354, "lam": [43.18328646264151, 84.18122197080868, 87.9923754281181, 88.70010107470493], "lam_unexcl": [26.622978855102485, 26.72158257594426, 28.331885385832788, 28.474970107219264], "sigma_q": 5.9947368982372025, "volume": 6271.338308191815, "n_nodes": 1060091, "n_elems": 700781, "seconds_mesh": 6.970991373062134, "seconds_solve": 237.4972915649414, "ndof": 3166836, "factor_GiB": 51.22222550585866, "hybrid": true, "timings": {"pattern": 0.24135637283325195, "assemble_K": 0.11919951438903809, "plan": 39.53100609779358, "factor": 8.541298151016235, "solve": 0.3083012104034424, "assemble_G": 0.7213294506072998, "eigen": 186.8167154788971, "total": 237.3663673400879}, "gate": {"dihedral_min": 8.380417595571828, "frac_dihedral_lt_5": 0.0, "n_dihedral_lt_5": 0, "edge_max": 0.6501345377663108, "edge_max_over_h": 1.8388581613525599, "layers_p01": 3.133, "passed": true, "failures": [], "stuff": {"L": 0.5, "lattice": [165, 29, 42], "sdf_queries": 389242, "snapped": 19533, "cut_points": 39879, "n_tets": 700781, "n_nodes": 149949, "volume": 6271.338308191815, "min_tet_volume": 0.00014464603330808544, "seconds_sdf": 0.1571359634399414, "seconds": 1.0666179656982422}, "deviation": {"volume_rel": -0.00020399031257634093, "to_ref": {"max": 0.1613118201494217, "q999": 0.0860430735722242, "q99": 0.0461543882265687, "mean": 0.006121128995579442, "argmax": [1.261, -0.288, 5.152]}, "from_ref": {"max": 0.28851476311683655, "q999": 0.13289090272784287, "q99": 0.05319312617182683, "mean": 0.007336424577617241, "argmax": [7.293, 4.797, 4.671], "points": 2886898}, "hausdorff": 0.28851476311683655}}, "seconds": 244.4699273109436}
+	Command being timed: "python continuous/research/bodyfit_scale/stuff_check.py /home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/runs_cshell/VF_B2 design solve"
+	User time (seconds): 288.63
+	System time (seconds): 8.48
+	Percent of CPU this job got: 100%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 4:56.69
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 53869056
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 3434
+	Minor (reclaiming a frame) page faults: 1768125
+	Voluntary context switches: 52367
+	Involuntary context switches: 35802
+	Swaps: 0
+	File system inputs: 2089206
+	File system outputs: 640
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 65536
+	Exit status: 0
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 4:56.69
+	Maximum resident set size (kbytes): 53869056

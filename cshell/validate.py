@@ -121,7 +121,8 @@ def _size_grid(V, pts, t, h_max, h_min, layers, growth, spacing):
 
 def tetrahedralise(V: np.ndarray, T: np.ndarray, h: float, layers: float = 2.0, h_min: float | None = None,
                    growth: float = 0.3, backend: str = "gmsh", workdir: str | Path | None = None,
-                   wall_samples: int = 80000, size_field: tuple | None = None) -> tuple[np.ndarray, np.ndarray]:
+                   wall_samples: int = 80000, size_field: tuple | None = None, remesh_kw: dict | None = None,
+                   peel: bool = False, info: dict | None = None) -> tuple[np.ndarray, np.ndarray]:
     """Linear tetrahedral mesh of the closed surface (V, T), graded by local wall thickness (§8.6.2).
 
     Target edge length s(x) = clip(t_loc/layers, h_min, h) near thin walls (t_loc by inward ray casting at surface
@@ -134,9 +135,21 @@ def tetrahedralise(V: np.ndarray, T: np.ndarray, h: float, layers: float = 2.0, 
     V = np.ascontiguousarray(V, float)
     T = np.ascontiguousarray(T, np.int64)
     h_min = h / 8 if h_min is None else h_min
+    if backend == "stuff":                  # isosurface stuffing at L = stuff_c·h (remesh_kw: {"stuff_c": ...})
+        nodes, tets, sinfo = stuff_tets(V, T, float((remesh_kw or {}).get("stuff_c", 2 ** 0.5)) * h)
+        if info is not None:
+            info["stuff"] = sinfo
+        return nodes, tets
     if backend == "keep":
-        V1, T1 = remesh_surface(V, T, h)[:2]
-        return _gmsh_inside_robust(V1, T1, h, workdir)
+        V1, T1, rinfo = remesh_surface(V, T, h, **(remesh_kw or {}))
+        nodes, tets = _gmsh_inside_robust(V1, T1, h, workdir)
+        if info is not None:
+            info["remesh"] = {k: v for k, v in rinfo.items() if k not in ("stages",)}
+        if peel:
+            nodes, tets, pinfo = peel_boundary_slivers(nodes, tets, h)
+            if info is not None:
+                info["peel"] = pinfo
+        return nodes, tets
     if backend == "tetgen":
         # tetgen's maxvolume bound does not bound edge length: on a 0.25 mm decimated MC surface it produced flat
         # slivers with 7 mm edges (B2). Kept for tests only; validate_design rejects such meshes via mesh_gate().
@@ -214,22 +227,493 @@ def _self_int(V, T) -> int:
     return int(m.current_mesh().selected_face_number())
 
 
+def _sdf_backend(V: np.ndarray, T: np.ndarray, c0: np.ndarray, device: str = "auto"):
+    """Signed distance (negative inside, winding-number sign) of the closed mesh: Warp BVH on the GPU, igl otherwise
+    (cshell.band backends; coordinates centred by c0 for float32)."""
+    from .band import make_backend
+    return make_backend(np.asarray(V, float) - c0, T, {"auto": "auto", "gpu": "warp", "cpu": "igl"}[device])
+
+
+def levelset_surface(V: np.ndarray, T: np.ndarray, s: float, block: int = 16, pad: int = 3,
+                     min_body_mm3: float = 1.0, device: str = "auto", log=None):
+    """Watertight re-extraction of the closed surface (V, T) at lattice spacing `s` (body-fitted input, §8.6.2).
+
+    φ = signed distance to (V, T) (winding-number sign) on the lattice nodes of every 16³-cell block within 2 cells of
+    the surface (the only blocks that can hold a crossing), +3s elsewhere; |φ| ≥ 1e-3 s (crossings strictly inside the
+    lattice edges); ambiguous lattice faces removed (`export.resolve_ambiguous_faces`, the export's rule); marching
+    cubes per block (skimage Lewiner), vertices welded by lattice-edge key and placed in float64 at the linear
+    crossing of φ (identical on both sides of a block face). The result is closed and 2-manifold by construction and
+    does not self-intersect; it smooths features below ~s (sub-s slits and knife-edge tips). Bodies (connected
+    components) with |V| < min_body_mm3 are dropped and reported; orientation is outward.
+    Cost: one SDF query per node of the active blocks (~3 A/(s²·16) blocks · 17³ nodes). Returns (V1, T1, info)."""
+    from skimage.measure import marching_cubes
+    from .export import resolve_ambiguous_faces
+    log = log or (lambda m: None)
+    t0 = time.time()
+    V = np.asarray(V, float)
+    T = np.asarray(T, np.int64)
+    vmin, vmax = V.min(0), V.max(0)
+    c0 = 0.5 * (vmin + vmax)
+    lo = vmin - pad * s + s * np.array([0.1234567, 0.2345671, 0.3456712])   # generic offset: no node on a mesh plane
+    n = np.ceil((vmax + pad * s - lo) / s).astype(np.int64) + 1          # nodes per axis
+    nb = -(-(n - 1) // block)                                            # blocks per axis
+    # surface samples: every vertex, plus the vertices of long triangles bisected down to edges <= s/2
+    cells = [np.unique(np.floor((V - lo) / s).astype(np.int64) @ np.array([n[1] * n[2], n[2], 1]))]
+    for a in range(0, len(T), 1 << 22):
+        P3 = V[T[a:a + (1 << 22)]]
+        P3 = P3[np.linalg.norm(P3[:, [1, 2, 0]] - P3, axis=2).max(1) > 0.5 * s]
+        while len(P3):
+            e = np.linalg.norm(P3[:, [1, 2, 0]] - P3, axis=2)
+            big = e.max(1) > 0.5 * s
+            P3, e = P3[big], e[big]
+            if not len(P3):
+                break
+            i = e.argmax(1)
+            r = np.arange(len(P3))
+            p, q, o = P3[r, i], P3[r, (i + 1) % 3], P3[r, (i + 2) % 3]
+            m = 0.5 * (p + q)
+            cells.append(np.unique(np.floor((m - lo) / s).astype(np.int64) @ np.array([n[1] * n[2], n[2], 1])))
+            P3 = np.concatenate([np.stack([p, m, o], 1), np.stack([m, q, o], 1)])
+    c = np.unique(np.concatenate(cells))
+    c = np.stack(np.unravel_index(c, tuple(n)), 1)
+    blk = set()
+    for off in np.array(np.meshgrid([-2, 2], [-2, 2], [-2, 2], indexing="ij")).reshape(3, -1).T:
+        b = np.clip((c + off) // block, 0, nb - 1)
+        blk.update(np.unique(b @ np.array([nb[1] * nb[2], nb[2], 1])).tolist())
+    blk = np.array(sorted(blk), np.int64)
+    bijk = np.stack(np.unravel_index(blk, tuple(nb)), 1)
+    del c, cells
+    log(f"[levelset] s = {s:.4f} mm, lattice {tuple(n)}, {len(blk)} active blocks of {block}^3 cells "
+        f"({len(T)} input faces), {time.time() - t0:.1f} s")
+    # signed distance on the nodes of the active blocks
+    be = _sdf_backend(V, T, c0, device)
+    BIG = np.float32(3 * s)
+    phi = np.full(tuple(n), BIG, np.float32)
+    loc = np.stack(np.meshgrid(*[np.arange(block + 1)] * 3, indexing="ij"), -1).reshape(-1, 3)
+    per = max(1, (1 << 23) // len(loc))
+    nq = 0
+    for a in range(0, len(blk), per):
+        g = (bijk[a:a + per, None, :] * block + loc[None]).reshape(-1, 3)
+        g = g[(g < n).all(1)]
+        d = be.query(lo + g * s - c0, signed=True)[0]
+        phi[g[:, 0], g[:, 1], g[:, 2]] = d
+        nq += len(g)
+    del be
+    t_sdf = time.time() - t0
+    eps = np.float32(1e-3 * s)
+    small = np.abs(phi) < eps
+    phi[small] = np.where(phi[small] < 0, -eps, eps)
+    n_flip, n_it = resolve_ambiguous_faces(phi, float(2 * eps))
+    # marching cubes per active block, weld by lattice-edge key
+    PV, PF, PK, nv = [], [], [], 0
+    for b in bijk:
+        o = b * block
+        sub = phi[o[0]:o[0] + block + 1, o[1]:o[1] + block + 1, o[2]:o[2] + block + 1]
+        if not (sub.min() < 0 < sub.max()) or min(sub.shape) < 2:
+            continue
+        v, f, _, _ = marching_cubes(sub, 0.0, allow_degenerate=False)
+        v = v.astype(np.float64)
+        fr = np.abs(v - np.rint(v))
+        axis = fr.argmax(1)
+        lat = np.rint(v).astype(np.int64)
+        r = np.arange(len(v))
+        lat[r, axis] = np.floor(v[r, axis]).astype(np.int64)
+        lat += o
+        on_edge = (fr > 1e-6).sum(1) == 1
+        key = ((lat[:, 0] * n[1] + lat[:, 1]) * n[2] + lat[:, 2]) * 3 + axis
+        key[~on_edge] = -1 - (nv + r[~on_edge])                     # MC33 cube-centre vertex: never welded
+        pos = lo + (v + o) * s
+        PV.append(pos), PF.append(f.astype(np.int64) + nv), PK.append(key)
+        nv += len(v)
+    if not PV:
+        raise RuntimeError("levelset_surface: no zero crossing (empty or inside-out mesh?)")
+    pos, F, key = np.concatenate(PV), np.concatenate(PF), np.concatenate(PK)
+    del PV, PF, PK
+    uk, first, inv = np.unique(key, return_index=True, return_inverse=True)
+    V1, T1 = pos[first], inv[F]
+    # exact float64 crossing on lattice edges (both blocks then give the same point)
+    e = uk >= 0
+    k = uk[e]
+    ax = k % 3
+    nid = k // 3
+    i0 = np.stack(np.unravel_index(nid, tuple(n)), 1)
+    i1 = i0.copy()
+    i1[np.arange(len(i1)), ax] += 1
+    f0 = phi[i0[:, 0], i0[:, 1], i0[:, 2]].astype(np.float64)
+    f1 = phi[i1[:, 0], i1[:, 1], i1[:, 2]].astype(np.float64)
+    t = f0 / (f0 - f1)
+    x = (lo + i0 * s).astype(np.float64)
+    x[np.arange(len(x)), ax] += t * s
+    V1[e] = x
+    del phi
+    T1 = T1[(T1[:, 0] != T1[:, 1]) & (T1[:, 1] != T1[:, 2]) & (T1[:, 0] != T1[:, 2])]
+    # bodies: drop components below min_body_mm3, orientation outward
+    import scipy.sparse as sps
+    from scipy.sparse.csgraph import connected_components
+    nV = len(V1)
+    A = sps.coo_matrix((np.ones(2 * len(T1)), (T1[:, [0, 1]].ravel(), T1[:, [1, 2]].ravel())), shape=(nV, nV))
+    ncomp, lab = connected_components(A, directed=False)
+    a, b, cc = V1[T1[:, 0]], V1[T1[:, 1]], V1[T1[:, 2]]
+    vol_f = np.einsum("ij,ij->i", a, np.cross(b, cc)) / 6.0
+    flab = lab[T1[:, 0]]
+    vol_c = np.bincount(flab, vol_f, ncomp)
+    sgn = 1.0 if vol_c.sum() > 0 else -1.0
+    keep_c = np.abs(vol_c) >= min_body_mm3
+    dropped = vol_c[~keep_c & (np.bincount(flab, minlength=ncomp) > 0)] * sgn
+    T1 = T1[keep_c[flab]]
+    if sgn < 0:
+        T1 = T1[:, [0, 2, 1]]
+    used = np.unique(T1)
+    remap = -np.ones(nV, np.int64)
+    remap[used] = np.arange(len(used))
+    V1, T1 = V1[used], remap[T1]
+    vol_c = vol_c[keep_c] * sgn
+    # closed 2-manifold check: every directed edge exactly once and its reverse present
+    E = np.concatenate([T1[:, [0, 1]], T1[:, [1, 2]], T1[:, [2, 0]]])
+    ek = E[:, 0] * len(V1) + E[:, 1]
+    rk = E[:, 1] * len(V1) + E[:, 0]
+    us = np.unique(ek)
+    info = dict(spacing=float(s), lattice=[int(x) for x in n], active_blocks=int(len(blk)), sdf_queries=int(nq),
+                faces=int(len(T1)), vertices=int(len(V1)), bodies=int(keep_c.sum()),
+                body_volumes=sorted([float(x) for x in vol_c], key=abs, reverse=True)[:8],
+                dropped_bodies=int(len(dropped)), dropped_mm3=float(np.abs(dropped).sum()),
+                volume=float(vol_c.sum()), ambiguous_flipped=int(n_flip), ambiguous_iters=int(n_it),
+                duplicate_directed_edges=int(len(ek) - len(us)),
+                missing_reverse_edges=int((~np.isin(rk, us)).sum()), seconds_sdf=t_sdf, seconds=time.time() - t0)
+    info["closed_manifold"] = info["duplicate_directed_edges"] == 0 and info["missing_reverse_edges"] == 0
+    log(f"[levelset] {info}")
+    return V1, T1, info
+
+
+# Isosurface stuffing (Labelle & Shewchuk 2007, uniform BCC lattice): warp thresholds of the long (L) and short
+# (L·√3/2) lattice edges; with these the output dihedral angles are bounded in [10.7°, 164.8°] in exact arithmetic
+_ALPHA_LONG, _ALPHA_SHORT = 0.24697, 0.21918
+# prism vertex permutations bringing vertex m (0-2 bottom, 3-5 top; vertical edges i - i+3) to position 0
+_PRISM_PERM = np.array([[m % 3, (m + 1) % 3, (m + 2) % 3, m % 3 + 3, (m + 1) % 3 + 3, (m + 2) % 3 + 3] if m < 3 else
+                        [m, (m - 2) % 3 + 3, (m - 1) % 3 + 3, m - 3, (m - 2) % 3, (m - 1) % 3] for m in range(6)])
+
+
+def stuff_tets(V: np.ndarray, T: np.ndarray, L: float, device: str = "auto", pad: int = 2, chunk: int = 1 << 23,
+               log=None):
+    """Tetrahedral mesh of the solid bounded by the closed surface (V, T) by isosurface stuffing on a BCC lattice of
+    spacing L (Labelle & Shewchuk 2007; body-fitted input of §8.6.2 for the production parts, research/bodyfit_scale).
+
+    φ = signed distance to (V, T) (winding-number sign; Warp on the GPU) at the lattice nodes (cube corners and
+    centres). Nodes with a cut point closer than α·|e| on an incident edge are snapped onto it (φ ← 0); every lattice
+    tet with a node inside is kept whole (no node outside) or clipped by the linear zero set of φ on its edges, the
+    clipped prisms/pyramids being split with diagonals from the lowest-index vertex of each quadrilateral face (the same
+    choice on both sides of a lattice face: conforming; a prism always triangulates, Dompierre et al. 1999).
+    The boundary interpolates the surface at lattice resolution (vertices on it, chord error O(L² κ)); features
+    thinner than ~L are not resolved. No surface remesh, no Delaunay: closed by construction, dihedral angles bounded.
+    Returns (nodes (N, 3), tets (M, 4) positively oriented, info)."""
+    log = log or (lambda m: None)
+    t0 = time.time()
+    V = np.asarray(V, float)
+    T = np.asarray(T, np.int64)
+    vmin, vmax = V.min(0), V.max(0)
+    c0 = 0.5 * (vmin + vmax)
+    lo = vmin - pad * L + L * np.array([0.1234567, 0.2345671, 0.3456712])
+    n = tuple(int(x) for x in np.ceil((vmax + pad * L - lo) / L).astype(int) + 1)   # black (corner) nodes per axis
+    m = tuple(x - 1 for x in n)                                                        # red (centre) nodes per axis
+    Nb, Nr = int(np.prod(n)), int(np.prod(m))
+    be = _sdf_backend(V, T, c0, device)
+
+    def query(shape, off):
+        out = np.empty(int(np.prod(shape)), np.float32)
+        for a in range(0, len(out), chunk):
+            idx = np.stack(np.unravel_index(np.arange(a, min(a + chunk, len(out))), shape), 1)
+            out[a:a + len(idx)] = be.query(lo + (idx + off) * L - c0, signed=True)[0]
+        return out.reshape(shape)
+
+    pb, pr = query(n, 0.0), query(m, 0.5)
+    del be
+    t_sdf = time.time() - t0
+    eps = np.float32(1e-6 * L)
+    for p in (pb, pr):
+        z = np.abs(p) < eps
+        p[z] = np.where(p[z] < 0, -eps, eps)
+    # --- warp: nearest violating cut point per node -----------------------------------------------------------------
+    db = np.full(n, np.inf, np.float32)
+    dr = np.full(m, np.inf, np.float32)
+    vb = np.zeros(n + (3,), np.float32)
+    vr = np.zeros(m + (3,), np.float32)
+
+    def edge(pa, pc, sa, sc, e, alpha, da, dc, va, vc):
+        """Edges from nodes pa[sa] to pc[sc] (vector e): update the nearest violating cut of both ends in place."""
+        fa, fc = pa[sa], pc[sc]
+        cut = (fa < 0) != (fc < 0)
+        t = np.where(cut, fa / np.where(cut, fa - fc, 1), 2.0)
+        ln = float(np.linalg.norm(e))
+        for tt, d, vv, sl, sgn in ((t, da, va, sa, 1.0), (1 - t, dc, vc, sc, -1.0)):
+            ok = cut & (tt < alpha) & (tt * ln < d[sl])
+            d[sl] = np.where(ok, tt * ln, d[sl])
+            vv[sl] = np.where(ok[..., None], (sgn * tt)[..., None] * e, vv[sl])
+
+    S = slice(None)
+    for ax in range(3):
+        a0 = tuple(slice(0, -1) if i == ax else S for i in range(3))
+        a1 = tuple(slice(1, None) if i == ax else S for i in range(3))
+        e = np.eye(3)[ax] * L
+        edge(pb, pb, a0, a1, e, _ALPHA_LONG, db, db, vb, vb)
+        edge(pr, pr, a0, a1, e, _ALPHA_LONG, dr, dr, vr, vr)
+    for c in np.ndindex(2, 2, 2):
+        sb = tuple(slice(c[i], c[i] + m[i]) for i in range(3))
+        e = (np.array(c) - 0.5) * L                                 # red centre -> black corner
+        edge(pr, pb, (S, S, S), sb, e, _ALPHA_SHORT, dr, db, vr, vb)
+    snap_b, snap_r = np.isfinite(db), np.isfinite(dr)
+    pb[snap_b] = 0.0
+    pr[snap_r] = 0.0
+    del db, dr
+    sb_, sr_ = np.sign(pb).astype(np.int8), np.sign(pr).astype(np.int8)
+    # --- lattice tets around every black edge with an inside node ---------------------------------------------------
+    ring = ((0, 0), (-1, 0), (-1, -1), (0, -1))
+    tets = []
+    for ax in range(3):
+        b_, c_ = [i for i in range(3) if i != ax]
+        # black edge (i) -> (i + e_ax); valid where the 4 surrounding cells exist: index_b, index_c in 1..n-2
+        sl0 = [slice(None)] * 3
+        sl0[ax] = slice(0, n[ax] - 1)
+        sl0[b_] = slice(1, n[b_] - 1)
+        sl0[c_] = slice(1, n[c_] - 1)
+        sl1 = list(sl0)
+        sl1[ax] = slice(1, n[ax])
+        neg = (sb_[tuple(sl0)] < 0) | (sb_[tuple(sl1)] < 0)
+        cells = []
+        for d in ring:
+            slr = [None] * 3
+            slr[ax] = slice(0, m[ax])
+            slr[b_] = slice(1 + d[0], n[b_] - 1 + d[0])
+            slr[c_] = slice(1 + d[1], n[c_] - 1 + d[1])
+            cells.append(tuple(slr))
+            neg |= sr_[tuple(slr)] < 0
+        ii = np.stack(np.nonzero(neg), 1)
+        base = ii.copy()
+        base[:, b_] += 1
+        base[:, c_] += 1
+        e1 = base.copy()
+        e1[:, ax] += 1
+        idb0 = np.ravel_multi_index(base.T, n)
+        idb1 = np.ravel_multi_index(e1.T, n)
+        rid = []
+        for d in ring:
+            r = base.copy()
+            r[:, b_] += d[0]
+            r[:, c_] += d[1]
+            rid.append(Nb + np.ravel_multi_index(r.T, m))
+        for k in range(4):
+            tets.append(np.stack([idb0, idb1, rid[k], rid[(k + 1) % 4]], 1))
+    tets = np.concatenate(tets)
+    # --- node arrays (warped positions, post-warp φ) ------------------------------------------------------------------
+    used = np.unique(tets)
+    isb = used < Nb
+    pos = np.empty((len(used), 3))
+    phi = np.empty(len(used))
+    ib = np.stack(np.unravel_index(used[isb], n), 1)
+    ir = np.stack(np.unravel_index(used[~isb] - Nb, m), 1)
+    pos[isb] = lo + ib * L + vb[ib[:, 0], ib[:, 1], ib[:, 2]]
+    pos[~isb] = lo + (ir + 0.5) * L + vr[ir[:, 0], ir[:, 1], ir[:, 2]]
+    phi[isb] = pb[ib[:, 0], ib[:, 1], ib[:, 2]]
+    phi[~isb] = pr[ir[:, 0], ir[:, 1], ir[:, 2]]
+    del pb, pr, vb, vr, sb_, sr_
+    lut = np.searchsorted(used, tets)                 # local node ids (sorted = global order kept)
+    sg = np.sign(phi).astype(np.int8)[lut]
+    nm, nz, npos = (sg < 0).sum(1), (sg == 0).sum(1), (sg > 0).sum(1)
+    keep = nm > 0
+    lut, sg, nm, nz, npos = lut[keep], sg[keep], nm[keep], nz[keep], npos[keep]
+    order = np.argsort(sg, axis=1, kind="stable")      # − first, then 0, then +
+    q = np.take_along_axis(lut, order, 1)
+    nv = len(used)
+    # cut points on (−, +) edges, one per lattice edge
+    pairs = []
+    for i in range(4):
+        for j in range(4):
+            if i < j:
+                pairs.append((i, j))
+    ends = []
+    for i, j in pairs:
+        mm = (np.take_along_axis(sg, order, 1)[:, i] < 0) & (np.take_along_axis(sg, order, 1)[:, j] > 0)
+        ends.append(np.stack([q[mm, i], q[mm, j]], 1))
+    ends = np.concatenate(ends)
+    ckey = np.unique(ends[:, 0] * nv + ends[:, 1])
+    ca, cb = ckey // nv, ckey % nv
+    tc = phi[ca] / (phi[ca] - phi[cb])
+    cpos = pos[ca] + tc[:, None] * (pos[cb] - pos[ca])
+
+    def cut(a, b):
+        return nv + np.searchsorted(ckey, a * nv + b)
+
+    out = [q[npos == 0]]
+    sel = (nm == 1) & (nz == 0)
+    a = q[sel]
+    out.append(np.stack([a[:, 0], cut(a[:, 0], a[:, 1]), cut(a[:, 0], a[:, 2]), cut(a[:, 0], a[:, 3])], 1))
+    sel = (nm == 1) & (nz == 1) & (npos == 2)
+    a = q[sel]
+    out.append(np.stack([a[:, 0], a[:, 1], cut(a[:, 0], a[:, 2]), cut(a[:, 0], a[:, 3])], 1))
+    sel = (nm == 1) & (nz == 2) & (npos == 1)
+    a = q[sel]
+    out.append(np.stack([a[:, 0], a[:, 1], a[:, 2], cut(a[:, 0], a[:, 3])], 1))
+    prisms = []
+    sel = (nm == 2) & (npos == 2)
+    a = q[sel]
+    prisms.append(np.stack([a[:, 0], cut(a[:, 0], a[:, 2]), cut(a[:, 0], a[:, 3]),
+                            a[:, 1], cut(a[:, 1], a[:, 2]), cut(a[:, 1], a[:, 3])], 1))
+    sel = (nm == 3) & (npos == 1)
+    a = q[sel]
+    prisms.append(np.stack([a[:, 0], a[:, 1], a[:, 2],
+                            cut(a[:, 0], a[:, 3]), cut(a[:, 1], a[:, 3]), cut(a[:, 2], a[:, 3])], 1))
+    P = np.concatenate(prisms)
+    if len(P):
+        P = np.take_along_axis(P, _PRISM_PERM[P.argmin(1)], 1)
+        d15 = np.minimum(P[:, 1], P[:, 5]) < np.minimum(P[:, 2], P[:, 4])
+        t1 = np.where(d15[:, None], P[:, [0, 1, 2, 5]], P[:, [0, 1, 2, 4]])
+        t2 = np.where(d15[:, None], P[:, [0, 1, 5, 4]], P[:, [0, 4, 2, 5]])
+        out += [t1, t2, P[:, [0, 4, 5, 3]]]
+    sel = (nm == 2) & (nz == 1) & (npos == 1)
+    a = q[sel]
+    B = np.stack([a[:, 0], a[:, 1], cut(a[:, 1], a[:, 3]), cut(a[:, 0], a[:, 3])], 1)    # quad (a, b, c_b, c_a)
+    z = a[:, 2]
+    even = np.isin(B.argmin(1), (0, 2))
+    out.append(np.where(even[:, None], np.stack([B[:, 0], B[:, 1], B[:, 2], z], 1),
+                        np.stack([B[:, 1], B[:, 2], B[:, 3], z], 1)))
+    out.append(np.where(even[:, None], np.stack([B[:, 0], B[:, 2], B[:, 3], z], 1),
+                        np.stack([B[:, 1], B[:, 3], B[:, 0], z], 1)))
+    tets = np.concatenate(out)
+    nodes = np.concatenate([pos, cpos])
+    u2 = np.unique(tets)
+    remap = -np.ones(len(nodes), np.int64)
+    remap[u2] = np.arange(len(u2))
+    nodes, tets = nodes[u2], remap[tets]
+    tets = _orient(nodes, tets)
+    vol = tet_volumes(nodes, tets)
+    info = dict(L=float(L), lattice=list(n), sdf_queries=Nb + Nr, snapped=int(snap_b.sum() + snap_r.sum()),
+                cut_points=int(len(ckey)), n_tets=int(len(tets)), n_nodes=int(len(nodes)), volume=float(vol.sum()),
+                min_tet_volume=float(vol.min()), seconds_sdf=t_sdf, seconds=time.time() - t0)
+    log(f"[stuff] {info}")
+    return nodes, tets, info
+
+
+def boundary_faces(tets: np.ndarray) -> np.ndarray:
+    """Faces of a tet mesh used by one tet, outward for positively oriented tets."""
+    F = tets[:, [[1, 2, 3], [0, 3, 2], [0, 1, 3], [0, 2, 1]]].reshape(-1, 3)
+    _, inv, cnt = np.unique(np.sort(F, 1), axis=0, return_inverse=True, return_counts=True)
+    return F[cnt[inv.ravel()] == 1]
+
+
+def surface_deviation(V: np.ndarray, T: np.ndarray, Vr: np.ndarray, Tr: np.ndarray, device: str = "auto",
+                      max_ref_points: int = 50_000_000) -> dict:
+    """Two-sided distance between a body-fitted surface (V, T) and the reference (exported) surface (Vr, Tr):
+    `to_ref` from the vertices and face centroids of (V, T) to the reference, `from_ref` from the reference vertices
+    (all, or a uniform subsample of max_ref_points) to (V, T); max, 99.9/99 % quantiles, mean (mm), and the volume
+    difference V/V_ref − 1. Hausdorff = max of the two maxima."""
+    def vol(X, F):
+        return float(np.einsum("ij,ij->", X[F[:, 0]], np.cross(X[F[:, 1]], X[F[:, 2]]))) / 6.0
+
+    V, Vr = np.asarray(V, float), np.asarray(Vr, float)
+    c0 = 0.5 * (Vr.min(0) + Vr.max(0))
+    out = dict(volume_rel=vol(V, T) / vol(Vr, Tr) - 1.0)
+    be = _sdf_backend(Vr, Tr, c0, device)
+    P = np.concatenate([V[np.unique(T)], V[T].mean(1)])
+    d = np.abs(be.query(P - c0, signed=False)[0].astype(float))
+    del be
+    out["to_ref"] = dict(max=float(d.max()), q999=float(np.quantile(d, .999)), q99=float(np.quantile(d, .99)),
+                         mean=float(d.mean()), argmax=[round(float(x), 3) for x in P[d.argmax()]])
+    be = _sdf_backend(V, T, c0, device)
+    P = Vr if len(Vr) <= max_ref_points else Vr[np.random.default_rng(0).choice(len(Vr), max_ref_points, False)]
+    d = np.abs(be.query(P - c0, signed=False)[0].astype(float))
+    del be
+    out["from_ref"] = dict(max=float(d.max()), q999=float(np.quantile(d, .999)), q99=float(np.quantile(d, .99)),
+                           mean=float(d.mean()), argmax=[round(float(x), 3) for x in P[d.argmax()]], points=int(len(P)))
+    out["hausdorff"] = max(out["to_ref"]["max"], out["from_ref"]["max"])
+    return out
+
+
+def _thin_faces(V: np.ndarray, T: np.ndarray, d: float, rings: int = 2, device: str | None = None) -> np.ndarray:
+    """Faces whose inward wall (ray along −n) or outward gap (ray along +n) from the centroid is shorter than d,
+    dilated by `rings` vertex rings (Warp ray casts, GPU or CPU)."""
+    import warp as wp
+    import scipy.sparse as sps
+    wp.config.quiet = True
+    if "SCRATCH" in os.environ:
+        wp.config.kernel_cache_dir = os.path.join(os.environ["SCRATCH"], "warp_cache")
+    wp.init()
+    dev = device or os.environ.get("CSHELL_WARP_DEVICE") or ("cuda:0" if wp.get_cuda_device_count() else "cpu")
+
+    @wp.kernel
+    def cast(mesh: wp.uint64, o: wp.array(dtype=wp.vec3), dr: wp.array(dtype=wp.vec3), out: wp.array(dtype=wp.float32)):
+        i = wp.tid()
+        q = wp.mesh_query_ray(mesh, o[i], dr[i], 1.0e8)
+        if q.result:
+            out[i] = q.t
+        else:
+            out[i] = 1.0e8
+
+    c0 = V.mean(0)
+    X = V[T] - c0
+    n = np.cross(X[:, 1] - X[:, 0], X[:, 2] - X[:, 0])
+    n /= np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-300)
+    c = X.mean(1)
+    mesh = wp.Mesh(wp.array(np.ascontiguousarray(V - c0, np.float32), dtype=wp.vec3, device=dev),
+                   wp.array(np.ascontiguousarray(T, np.int32).ravel(), dtype=wp.int32, device=dev))
+    t = []
+    for sgn in (-1.0, 1.0):
+        out = wp.empty(len(T), dtype=wp.float32, device=dev)
+        wp.launch(cast, dim=len(T), inputs=[mesh.id, wp.array((c + sgn * 1e-5 * n).astype(np.float32), dtype=wp.vec3,
+                                                              device=dev),
+                                            wp.array((sgn * n).astype(np.float32), dtype=wp.vec3, device=dev), out],
+                  device=dev)
+        t.append(out.numpy())
+    mask = np.minimum(*t) < d
+    if rings and mask.any():
+        nV = len(V)
+        A = sps.csr_matrix((np.ones(3 * len(T)), (np.repeat(np.arange(len(T)), 3), T.ravel())), shape=(len(T), nV))
+        for _ in range(rings):
+            vm = (A.T @ mask.astype(float)) > 0
+            mask = (A @ vm.astype(float)) > 0
+    return mask
+
+
+def peel_boundary_slivers(nodes: np.ndarray, tets: np.ndarray, h: float, min_deg: float = 5.0,
+                          max_edge: float = 2.5, rounds: int = 5):
+    """Remove boundary tets with >= 2 faces on the boundary whose minimum dihedral is below min_deg or whose longest
+    edge exceeds max_edge·h (flat caps left by the Delaunay pass where four surface nodes are nearly coplanar or span a
+    concave fold). Removing such a tet only replaces two boundary faces by the other two (the surface moves by the
+    cap height); the volume removed is reported. Returns (nodes, tets, info)."""
+    from .bodyfit_gpu import dihedral_min
+    removed, vol = 0, 0.0
+    for _ in range(rounds):
+        F = np.sort(tets[:, [[1, 2, 3], [0, 2, 3], [0, 1, 3], [0, 1, 2]]], axis=2).reshape(-1, 3)
+        _, inv, cnt = np.unique(F, axis=0, return_inverse=True, return_counts=True)
+        nb = (cnt[inv.ravel()] == 1).reshape(-1, 4).sum(1)
+        X = nodes[tets]
+        L = np.max([np.linalg.norm(X[:, i] - X[:, j], axis=1) for i in range(4) for j in range(i + 1, 4)], axis=0)
+        bad = (nb >= 2) & ((dihedral_min(nodes, tets) < min_deg) | (L > max_edge * h))
+        if not bad.any():
+            break
+        removed += int(bad.sum())
+        vol += float(tet_volumes(nodes, tets[bad]).sum())
+        tets = tets[~bad]
+    used = np.unique(tets)
+    remap = -np.ones(len(nodes), np.int64)
+    remap[used] = np.arange(len(used))
+    return nodes[used], remap[tets], dict(peeled=removed, peeled_mm3=vol)
+
+
 def remesh_surface(V: np.ndarray, T: np.ndarray, h: float, max_dev: float = 0.02, repair_iters: int = 4,
-                   max_vol_rel: float = 5e-3, isolate: bool = True):
+                   max_vol_rel: float = 5e-3, isolate: bool = True, thin: float | None = None, fine: float | None = None):
     """`_remesh_surface` in a fresh (spawned) process. In one process the second call of pymeshlab's isotropic remesher
     silently does nothing (B2 design: 929k faces instead of 107k at h = 0.354 after a first call at 0.5; same input
     arrays, copies made; research/vf_b2/meshgate2.py), so the two mesh levels of a collect run would be garbage."""
     if not isolate:
-        return _remesh_surface(V, T, h, max_dev, repair_iters, max_vol_rel)
+        return _remesh_surface(V, T, h, max_dev, repair_iters, max_vol_rel, thin, fine)
     import concurrent.futures as cf
     import multiprocessing as mp
     with cf.ProcessPoolExecutor(1, mp_context=mp.get_context("spawn")) as ex:
         return ex.submit(_remesh_surface, np.asarray(V, float), np.asarray(T, np.int64), h, max_dev, repair_iters,
-                         max_vol_rel).result()
+                         max_vol_rel, thin, fine).result()
 
 
 def _remesh_surface(V: np.ndarray, T: np.ndarray, h: float, max_dev: float = 0.02, repair_iters: int = 4,
-                    max_vol_rel: float = 5e-3):
+                    max_vol_rel: float = 5e-3, thin: float | None = None, fine: float | None = None):
     """Isotropic remesh (pymeshlab) of a closed surface to edge h, after quadric pre-decimation of very fine
     (marching-cubes) input to edge h/3, then repair of self-intersections and projection back onto the input.
 
@@ -257,8 +741,52 @@ def _remesh_surface(V: np.ndarray, T: np.ndarray, h: float, max_dev: float = 0.0
     e0 = np.linalg.norm(V[T[:, [1, 2, 0]]] - V[T], axis=2).max()
     if e0 > 1.5 * h:      # coarse input (STEP tessellation, 248 faces on B2): split long edges first, the remesher then
         ms.meshing_surface_subdivision_midpoint(iterations=12, threshold=pymeshlab.PureValue(h))   # starts from a resolved surface
-    ms.meshing_isotropic_explicit_remeshing(targetlen=pymeshlab.PureValue(h), iterations=8, featuredeg=60,
-                                            checksurfdist=True, maxsurfdist=pymeshlab.PureValue(max_dev))
+    n_thin, repairs_pre = 0, None
+    if thin:
+        # Thickness-aware remesh (level-set input, research/bodyfit_scale): faces whose inward wall or outward gap is
+        # below thin*h (knife-edge rims, thin walls, narrow slits) are NOT remeshed at h - triangles of edge h there
+        # cross the opposite sheet (the self-intersections of the production designs, whose delete/close repair then
+        # broke watertightness). They are remeshed at `fine` (the lattice spacing), the rest at h.
+        # Adaptive: where the h-pass still self-intersects (oblique gaps the normal rays miss, region borders), the
+        # input faces within 2h of the intersecting faces join the fine set and the remesh restarts from the input
+        # (up to 4 attempts; the delete/close repair below stays as the last resort).
+        from scipy.spatial import cKDTree
+        mask = _thin_faces(V, T, thin * h)
+        cen_in = V[T].mean(1)
+        thin_attempts = []
+        for attempt in range(4):
+            n_thin = int(mask.sum())
+            cen_thin = cen_in[mask]
+            ms = pymeshlab.MeshSet()
+            ms.add_mesh(pymeshlab.Mesh(V.copy(), T.astype(np.int32), f_scalar_array=mask.astype(float)))
+            ms.compute_selection_by_condition_per_face(condselect="fq < 0.5")
+            ms.meshing_isotropic_explicit_remeshing(targetlen=pymeshlab.PureValue(h), iterations=8, featuredeg=60,
+                                                    selectedonly=True, checksurfdist=True,
+                                                    maxsurfdist=pymeshlab.PureValue(max_dev))
+            if n_thin:
+                m = ms.current_mesh()
+                Vc, Tc = m.vertex_matrix().astype(float), m.face_matrix().astype(np.int64)
+                sel = cKDTree(cen_thin).query(Vc[Tc].mean(1))[0] < 0.5 * (fine or h / 3)
+                ms = pymeshlab.MeshSet()
+                ms.add_mesh(pymeshlab.Mesh(Vc, Tc.astype(np.int32), f_scalar_array=sel.astype(float)))
+                ms.compute_selection_by_condition_per_face(condselect="fq > 0.5")
+                ms.meshing_isotropic_explicit_remeshing(targetlen=pymeshlab.PureValue(fine or h / 3), iterations=4,
+                                                        featuredeg=60, selectedonly=True, checksurfdist=True,
+                                                        maxsurfdist=pymeshlab.PureValue(max_dev))
+            ms.compute_selection_by_self_intersections_per_face()
+            m = ms.current_mesh()
+            si = m.face_selection_array()
+            thin_attempts.append(dict(thin_faces=n_thin, self_intersections=int(si.sum())))
+            if not si.any():
+                break
+            Fm = m.face_matrix()
+            Vm = m.vertex_matrix()
+            near = cKDTree(Vm[Fm[si]].mean(1)).query(cen_in, distance_upper_bound=2 * h)[0] < np.inf
+            mask = mask | near
+        repairs_pre = thin_attempts
+    else:
+        ms.meshing_isotropic_explicit_remeshing(targetlen=pymeshlab.PureValue(h), iterations=8, featuredeg=60,
+                                                checksurfdist=True, maxsurfdist=pymeshlab.PureValue(max_dev))
     stages = [ms.current_mesh().face_number()]
     repairs = []
     for it in range(repair_iters):
@@ -311,7 +839,7 @@ def _remesh_surface(V: np.ndarray, T: np.ndarray, h: float, max_dev: float = 0.0
         nsi = _self_int(V1, T1)
     t1 = trimesh.Trimesh(V1, T1, process=False)
     e_max = float(np.linalg.norm(V1[T1[:, [1, 2, 0]]] - V1[T1], axis=2).max())
-    info = dict(faces=len(T1), faces_in=len(T), area=float(t0.area), stages=stages, watertight=bool(t1.is_watertight), self_intersections=nsi, repairs=repairs, edge_max=e_max,
+    info = dict(faces=len(T1), faces_in=len(T), thin_faces_in=n_thin, thin_attempts=repairs_pre, area=float(t0.area), stages=stages, watertight=bool(t1.is_watertight), self_intersections=nsi, repairs=repairs, edge_max=e_max,
                 vol_rel=float(t1.volume / t0.volume - 1),
                 hausdorff=float(np.sqrt(igl.point_mesh_squared_distance(V1, V, T)[0].max())))
     if not info["watertight"] or nsi or abs(info["vol_rel"]) > max_vol_rel or e_max > 2.5 * h:
@@ -755,17 +1283,27 @@ def validate_design(V: np.ndarray, T: np.ndarray, ctx_V: np.ndarray, ctx_T: np.n
                     h_bc: float | None = None, n_modes: int = 4, nproc: int = 8, want_stress: bool = True,
                     E: float = E_MPA, nu: float = NU, backend: str = "keep", fallback: str | None = None, h_min: float | None = None,
                     load_distribution: str = "area", timeout: float | None = None, exclude_bc_mm: float = 2.0,
-                    engine: str = "gpu", enforce_gate: bool = True, gate: dict | None = None) -> BodyFitted:
+                    engine: str = "gpu", enforce_gate: bool = True, gate: dict | None = None,
+                    remesh_kw: dict | None = None, peel: bool = False) -> BodyFitted:
     """Mesh the STL surface (V, T), write and run the deck, parse the result (§8.6.2-3).
 
     (ctx_V, ctx_T, ctx_TF) with `support` face ids and `loads` locate the BC nodes (original tessellation).
+    remesh_kw: passed to `remesh_surface` (backend "keep"; e.g. thin/fine for a `levelset_surface` input);
+    peel: remove flat boundary caps after the volume mesh (`peel_boundary_slivers`).
     """
     wd = Path(workdir)
     wd.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
-    n4, t4 = tetrahedralise(V, T, h, layers=layers, h_min=h_min, backend=backend, workdir=wd)
+    minfo = {}
+    n4, t4 = tetrahedralise(V, T, h, layers=layers, h_min=h_min, backend=backend, workdir=wd, remesh_kw=remesh_kw,
+                            peel=peel, info=minfo)
     nodes, tets10 = to_quadratic(n4, t4)
-    q = mesh_gate(nodes, tets10, V, T, gate, h=h, enforce=enforce_gate)
+    Vg, Tg = (n4, boundary_faces(t4)) if backend == "stuff" else (V, T)     # wall rays on the meshed boundary
+    q = mesh_gate(nodes, tets10, Vg, Tg, gate, h=h, enforce=enforce_gate)
+    q.update(minfo)
+    if backend == "stuff":
+        q["deviation"] = surface_deviation(n4, Tg, V, T)
+    del Vg, Tg
     case = build_case(nodes, tets10, ctx_V, ctx_T, ctx_TF, support, loads, 0.75 * (h_bc or h), E, nu, load_distribution)
     case.info["mesh_quality"] = q
     t_mesh = time.time() - t0
@@ -777,7 +1315,7 @@ def validate_design(V: np.ndarray, T: np.ndarray, ctx_V: np.ndarray, ctx_T: np.n
         o.pop("_phi_nodes", None)
         return BodyFitted(o["C"], np.asarray(o["lam"]), o["sigma_q"], o["volume"], len(nodes), len(tets10), t_mesh,
                           time.time() - t1, "gpu-P2", dict(case.info, lam_unexcl=o["lam_unexcl"], n_ks_excluded=o["n_ks_excluded"],
-                                                       **{k: o[k] for k in ("ndof", "eig_res", "timings_s", "factor_GiB")}))
+                                                       **{k: o[k] for k in ("ndof", "eig_res", "timings_s", "factor_GiB", "hybrid", "factor_host_GiB")}))
     inp = write_inp(wd / f"{name}.inp", case, n_modes, want_stress)
     run = run_ccx(inp, nproc, timeout)
     ok = run.returncode == 0 and run.dat.exists()

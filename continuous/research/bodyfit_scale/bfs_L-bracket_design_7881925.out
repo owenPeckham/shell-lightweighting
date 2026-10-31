@@ -1,0 +1,91 @@
+NVIDIA GH200 120GB, 97871 MiB
+loaded design: 14549066 V 29098532 T in 13 s
+[levelset] s = 0.1667 mm, lattice (np.int64(751), np.int64(1087), np.int64(494)), 4666 active blocks of 16^3 cells (29098532 input faces), 5.1 s
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /home/b6bl/owenpeckham.b6bl/.cache/warp/1.18.0
+Module cshell.band ad91966 load on device 'cuda:0' took 3.47 ms  (cached)
+[levelset] {'spacing': 0.16666666666666666, 'lattice': [751, 1087, 494], 'active_blocks': 4666, 'sdf_queries': 22592320, 'faces': 2585928, 'vertices': 1292892, 'bodies': 1, 'body_volumes': [41948.652336613995], 'dropped_bodies': 25, 'dropped_mm3': 0.03245288329544711, 'volume': 41948.652336613995, 'ambiguous_flipped': 2934, 'ambiguous_iters': 5, 'duplicate_directed_edges': 0, 'missing_reverse_edges': 0, 'seconds_sdf': 9.201719522476196, 'seconds': 32.05692195892334, 'closed_manifold': True}
+concurrent.futures.process._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/concurrent/futures/process.py", line 264, in _process_worker
+    r = call_item.fn(*call_item.args, **call_item.kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/cshell/validate.py", line 504, in _remesh_surface
+    raise RuntimeError(f"surface remesh check failed: {info}")
+RuntimeError: surface remesh check failed: {'faces': 330716, 'faces_in': 2585928, 'area': 26442.476008938975, 'stages': [331252, 330716], 'watertight': True, 'self_intersections': 0, 'repairs': [21], 'edge_max': 2.3541923941913137, 'vol_rel': -0.0002521290697908851, 'hausdorff': 0.4727989559151831}
+"""
+RESULT {"part": "L-bracket", "which": "design", "variant": "B0.5", "levelset": {"spacing": 0.16666666666666666, "lattice": [751, 1087, 494], "active_blocks": 4666, "sdf_queries": 22592320, "faces": 2585928, "vertices": 1292892, "bodies": 1, "body_volumes": [41948.652336613995], "dropped_bodies": 25, "dropped_mm3": 0.03245288329544711, "volume": 41948.652336613995, "ambiguous_flipped": 2934, "ambiguous_iters": 5, "duplicate_directed_edges": 0, "missing_reverse_edges": 0, "seconds_sdf": 9.201719522476196, "seconds": 32.05692195892334, "closed_manifold": true}, "dev_mc": {"volume_rel": -0.00017336158707892402, "to_ref": {"max": 0.20881891250610352, "q999": 0.06622385719418517, "q99": 0.031624782644212285, "mean": 0.0028734158866431055, "argmax": [-31.803, -11.289, 138.705]}, "from_ref": {"max": 0.7455074787139893, "q999": 0.15851661153138022, "q99": 0.05042214542627327, "mean": 0.004677583905029531, "argmax": [-38.247, -12.526, 145.775], "points": 14549066}, "hausdorff": 0.7455074787139893}, "t_mc": 36.781840324401855, "error": "RuntimeError(\"surface remesh check failed: {'faces': 330716, 'faces_in': 2585928, 'area': 26442.476008938975, 'stages': [331252, 330716], 'watertight': True, 'self_intersections': 0, 'repairs': [21], 'edge_max': 2.3541923941913137, 'vol_rel': -0.0002521290697908851, 'hausdorff': 0.4727989559151831}\")"}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/continuous/research/bodyfit_scale/diag.py", line 42, in main
+    Vs, Ts, rinfo = cval.remesh_surface(Vs, Ts, hh)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/cshell/validate.py", line 414, in remesh_surface
+    max_vol_rel).result()
+                 ^^^^^^^^
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+RuntimeError: surface remesh check failed: {'faces': 330716, 'faces_in': 2585928, 'area': 26442.476008938975, 'stages': [331252, 330716], 'watertight': True, 'self_intersections': 0, 'repairs': [21], 'edge_max': 2.3541923941913137, 'vol_rel': -0.0002521290697908851, 'hausdorff': 0.4727989559151831}
+concurrent.futures.process._RemoteTraceback: 
+"""
+Traceback (most recent call last):
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/concurrent/futures/process.py", line 264, in _process_worker
+    r = call_item.fn(*call_item.args, **call_item.kwargs)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/cshell/validate.py", line 504, in _remesh_surface
+    raise RuntimeError(f"surface remesh check failed: {info}")
+RuntimeError: surface remesh check failed: {'faces': 521507, 'faces_in': 2585928, 'area': 26442.476008938975, 'stages': [521912, 521507], 'watertight': False, 'self_intersections': 0, 'repairs': [17], 'edge_max': 0.9339795542755587, 'vol_rel': 3.406428858565569e-05, 'hausdorff': 6.532381703353014e-13}
+"""
+RESULT {"part": "L-bracket", "which": "design", "variant": "B0.354", "levelset": {"spacing": 0.16666666666666666, "lattice": [751, 1087, 494], "active_blocks": 4666, "sdf_queries": 22592320, "faces": 2585928, "vertices": 1292892, "bodies": 1, "body_volumes": [41948.652336613995], "dropped_bodies": 25, "dropped_mm3": 0.03245288329544711, "volume": 41948.652336613995, "ambiguous_flipped": 2934, "ambiguous_iters": 5, "duplicate_directed_edges": 0, "missing_reverse_edges": 0, "seconds_sdf": 9.201719522476196, "seconds": 32.05692195892334, "closed_manifold": true}, "dev_mc": {"volume_rel": -0.00017336158707892402, "to_ref": {"max": 0.20881891250610352, "q999": 0.06622385719418517, "q99": 0.031624782644212285, "mean": 0.0028734158866431055, "argmax": [-31.803, -11.289, 138.705]}, "from_ref": {"max": 0.7455074787139893, "q999": 0.15851661153138022, "q99": 0.05042214542627327, "mean": 0.004677583905029531, "argmax": [-38.247, -12.526, 145.775], "points": 14549066}, "hausdorff": 0.7455074787139893}, "t_mc": 1.9073486328125e-06, "error": "RuntimeError(\"surface remesh check failed: {'faces': 521507, 'faces_in': 2585928, 'area': 26442.476008938975, 'stages': [521912, 521507], 'watertight': False, 'self_intersections': 0, 'repairs': [17], 'edge_max': 0.9339795542755587, 'vol_rel': 3.406428858565569e-05, 'hausdorff': 6.532381703353014e-13}\")"}
+
+The above exception was the direct cause of the following exception:
+
+Traceback (most recent call last):
+  File "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/continuous/research/bodyfit_scale/diag.py", line 42, in main
+    Vs, Ts, rinfo = cval.remesh_surface(Vs, Ts, hh)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/cshell/validate.py", line 414, in remesh_surface
+    max_vol_rel).result()
+                 ^^^^^^^^
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/concurrent/futures/_base.py", line 456, in result
+    return self.__get_result()
+           ^^^^^^^^^^^^^^^^^^^
+  File "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell/lib/python3.12/concurrent/futures/_base.py", line 401, in __get_result
+    raise self._exception
+RuntimeError: surface remesh check failed: {'faces': 521507, 'faces_in': 2585928, 'area': 26442.476008938975, 'stages': [521912, 521507], 'watertight': False, 'self_intersections': 0, 'repairs': [17], 'edge_max': 0.9339795542755587, 'vol_rel': 3.406428858565569e-05, 'hausdorff': 6.532381703353014e-13}
+	Command being timed: "python continuous/research/bodyfit_scale/diag.py /home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/runs_cshell/FULL/L-bracket design B0.5,B0.354"
+	User time (seconds): 620.94
+	System time (seconds): 6.02
+	Percent of CPU this job got: 101%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 10:16.08
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 5988480
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 2367
+	Minor (reclaiming a frame) page faults: 1505638
+	Voluntary context switches: 24076
+	Involuntary context switches: 64855
+	Swaps: 0
+	File system inputs: 1465390
+	File system outputs: 384
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 65536
+	Exit status: 0
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 10:16.08
+	Maximum resident set size (kbytes): 5988480

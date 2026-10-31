@@ -233,6 +233,90 @@ def test_remesh_unwelded_stl_and_long_edges():
         assert info["edge_max"] <= 2.5 * 0.5 and info["watertight"]
 
 
+# -- level-set surface input (research/bodyfit_scale) -------------------------------------------------------------------
+def _closed_manifold(T):
+    E = np.concatenate([T[:, [0, 1]], T[:, [1, 2]], T[:, [2, 0]]])
+    k = E[:, 0] * (T.max() + 1) + E[:, 1]
+    r = E[:, 1] * (T.max() + 1) + E[:, 0]
+    return len(np.unique(k)) == len(k) and np.isin(r, k).all()
+
+
+@pytest.mark.parametrize("s", [0.5, 0.25])
+def test_levelset_surface_sphere_shell_closed_and_second_order(s):
+    """Spherical shell r 8 / 7 (two sheets, one body with an enclosed void): the re-extraction is closed and 2-manifold,
+    one body (|V| incl. the void), outward; volume and distance errors are O(s^2 kappa): measured volume error and
+    Hausdorff distance fall by ~4 when s halves (second order); Hausdorff <= s/4."""
+    V, T = shell_stl(sub=5)
+    exact = 4 / 3 * np.pi * (8 ** 3 - 7 ** 3)
+    V1, T1, info = vd.levelset_surface(V, T, s, device="cpu")
+    assert info["closed_manifold"] and _closed_manifold(T1) and info["bodies"] == 2      # outer sheet + void sheet
+    assert info["volume"] > 0 and abs(info["volume"] / exact - 1) < 2e-2 * s
+    dev = vd.surface_deviation(V1, T1, V, T, device="cpu")
+    assert dev["hausdorff"] <= s / 4 and abs(dev["volume_rel"]) < 2e-2 * s, dev
+
+
+def test_levelset_surface_long_cad_triangles():
+    """A box of 12 triangles (edges 20 mm >> s): long triangles are bisected for the band, so no crossing is missed."""
+    m = trimesh.creation.box(extents=[20.0, 10.0, 4.0])
+    V1, T1, info = vd.levelset_surface(np.asarray(m.vertices), np.asarray(m.faces), 0.25, device="cpu")
+    assert info["closed_manifold"] and info["bodies"] == 1 and abs(info["volume"] / 800.0 - 1) < 5e-3
+
+
+def test_thin_faces_and_thickness_aware_remesh():
+    """Plate 30 x 30 x 0.6 mm through the level-set path: every face is 'thin' at h = 1 (wall < 2h); a box 30^3 has
+    none. The thickness-aware remesh of the plate (thin faces at s, rest at h) is watertight without self-intersection."""
+    plate = trimesh.creation.box(extents=[30.0, 30.0, 0.6])
+    V, T, _ = vd.levelset_surface(np.asarray(plate.vertices), np.asarray(plate.faces), 0.2, device="cpu")
+    assert vd._thin_faces(V, T, 2.0, device="cpu").mean() > 0.95
+    cube = trimesh.creation.box(extents=[30.0, 30.0, 30.0])
+    Vc, Tc, _ = vd.levelset_surface(np.asarray(cube.vertices), np.asarray(cube.faces), 1.0, device="cpu")
+    assert vd._thin_faces(Vc, Tc, 2.0, rings=0, device="cpu").mean() < 0.02          # only the rounded edges
+    V1, T1, info = vd.remesh_surface(V, T, 1.0, thin=2.0, fine=0.2)
+    assert info["watertight"] and info["self_intersections"] == 0 and info["thin_faces_in"] > 0
+
+
+@pytest.mark.parametrize("L", [0.5, 0.25])
+def test_stuff_tets_sphere_shell(L):
+    """Isosurface stuffing of the spherical shell r 8 / 7 (1 mm wall, enclosed void): conforming (every face used by one
+    or two tets), the boundary is a closed 2-manifold of two sheets, all tets positive, dihedral angles bounded
+    (Labelle-Shewchuk: >= 10.7 deg in exact arithmetic; the min-index diagonal rule is used here, so >= 5 deg is asserted),
+    longest edge <= 1.5 L, volume error O(L^2): falls when L halves, boundary within L/4 of the sphere surfaces."""
+    from cshell.bodyfit_gpu import dihedral_min
+    V, T = shell_stl(sub=5)
+    exact = 4 / 3 * np.pi * (8 ** 3 - 7 ** 3)
+    nodes, tets, info = vd.stuff_tets(V, T, L, device="cpu")
+    vol = vd.tet_volumes(nodes, tets)
+    assert vol.min() > 0
+    F = np.sort(tets[:, [[1, 2, 3], [0, 2, 3], [0, 1, 3], [0, 1, 2]]].reshape(-1, 3), 1)
+    _, cnt = np.unique(F, axis=0, return_counts=True)
+    assert cnt.max() == 2
+    Tb = vd.boundary_faces(tets)
+    assert _closed_manifold(Tb)
+    assert dihedral_min(nodes, tets).min() > 5.0
+    X = nodes[tets]
+    assert max(np.linalg.norm(X[:, i] - X[:, j], axis=1).max() for i in range(4) for j in range(i + 1, 4)) <= 1.5 * L
+    r = np.linalg.norm(nodes[np.unique(Tb)], axis=1)
+    assert np.minimum(np.abs(r - 8), np.abs(r - 7)).max() < L / 4
+    assert abs(vol.sum() / exact - 1) < 0.05 * L ** 2
+
+
+def test_peel_boundary_slivers():
+    """A flat cap tet (apex 1e-3 above a boundary face) glued onto a cube mesh is removed; the cube is untouched."""
+    m = trimesh.creation.box(extents=[2.0, 2.0, 2.0])
+    nodes, tets = vd._gmsh_inside(np.asarray(m.vertices, float), np.asarray(m.faces), 1.0)
+    F = np.sort(tets[:, [[1, 2, 3], [0, 2, 3], [0, 1, 3], [0, 1, 2]]], axis=2).reshape(-1, 3)
+    u, c = np.unique(F, axis=0, return_counts=True)
+    bf = u[c == 1]
+    a, b, d = bf[0]
+    apex = nodes[[a, b, d]].mean(0)
+    n = np.cross(nodes[b] - nodes[a], nodes[d] - nodes[a])
+    apex = apex + 1e-3 * n / np.linalg.norm(n) * np.sign(np.dot(n, apex))            # outward (cube centred at 0)
+    nodes2 = np.vstack([nodes, apex])
+    tets2 = vd._orient(nodes2, np.vstack([tets, [a, b, d, len(nodes)]]))
+    n3, t3, info = vd.peel_boundary_slivers(nodes2, tets2, 1.0)
+    assert info["peeled"] == 1 and len(t3) == len(tets) and np.isclose(vd.tet_volumes(n3, t3).sum(), 8.0)
+
+
 # -- GPU engine (needs a GPU: cuDSS) -----------------------------------------------------------------------------------
 def _has_gpu():
     try:

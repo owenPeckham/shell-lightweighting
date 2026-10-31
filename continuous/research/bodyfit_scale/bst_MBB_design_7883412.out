@@ -1,0 +1,37 @@
+NVIDIA GH200 120GB, 97871 MiB
+[cshell] context: 118478 vertices, mounts 76 faces, r_MA 3.22 mm median, 49 s
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /home/b6bl/owenpeckham.b6bl/.cache/warp/1.18.0
+Module cshell.band ad91966 load on device 'cuda:0' took 3.45 ms  (cached)
+RESULT {"part": "MBB", "which": "design", "h": 0.5, "c": 1.4142135623730951, "n_elems": 3510303, "n_nodes10": 5453869, "gate": {"dihedral_min": 3.6982255090338754, "frac_dihedral_lt_5": 2.8487569306695177e-06, "n_dihedral_lt_5": 10, "edge_max": 1.044856336893531, "edge_max_over_h": 2.089712673787062, "layers_p01": 2.216, "passed": true, "failures": [], "stuff": {"L": 0.7071067811865476, "lattice": [430, 161, 77], "sdf_queries": 10547350, "snapped": 119713, "cut_points": 247076, "n_tets": 3510303, "n_nodes": 788522, "volume": 85354.46929551857, "min_tet_volume": 0.0003696321860619531, "seconds_sdf": 8.070264339447021, "seconds": 15.418611526489258}, "deviation": {"volume_rel": 0.0013661838845004937, "to_ref": {"max": 0.34457117319107056, "q999": 0.19883034844696365, "q99": 0.11985273376107214, "mean": 0.011566633737663225, "argmax": [-102.973, -36.921, 9.925]}, "from_ref": {"max": 2.395582914352417, "q999": 1.2279850381612532, "q99": 0.5582598888874051, "mean": 0.0313965014623776, "argmax": [90.644, -45.829, 12.833], "points": 41448308}, "hausdorff": 2.395582914352417}}, "seconds": 41.64332342147827}
+RESULT {"part": "MBB", "which": "design", "h": 0.35355339059327373, "c": 1.4142135623730951, "n_elems": 9448542, "n_nodes10": 14169152, "gate": {"dihedral_min": 3.194659044814898, "frac_dihedral_lt_5": 4.233457394802288e-07, "n_dihedral_lt_5": 4, "edge_max": 0.7251615524291992, "edge_max_over_h": 2.0510666047138035, "layers_p01": 3.098, "passed": true, "failures": [], "stuff": {"L": 0.5, "lattice": [605, 225, 107], "sdf_queries": 28906751, "snapped": 242473, "cut_points": 502680, "n_tets": 9448542, "n_nodes": 1987991, "volume": 85318.2852364688, "min_tet_volume": 0.00013745748523015503, "seconds_sdf": 15.212966442108154, "seconds": 37.261534690856934}, "deviation": {"volume_rel": 0.0009416777815818289, "to_ref": {"max": 0.2521705627441406, "q999": 0.1381446630954749, "q99": 0.08118088364601125, "mean": 0.007497675170496556, "argmax": [88.087, -37.545, 13.877]}, "from_ref": {"max": 1.9512889385223389, "q999": 0.9681113071441239, "q99": 0.3335314607620239, "mean": 0.019080705438667203, "argmax": [71.593, -41.93, 21.683], "points": 41448308}, "hausdorff": 1.9512889385223389}}, "seconds": 96.15832471847534}
+	Command being timed: "python continuous/research/bodyfit_scale/stuff_check.py /home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/runs_cshell/FULL/MBB design nosolve"
+	User time (seconds): 232.89
+	System time (seconds): 9.31
+	Percent of CPU this job got: 100%
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 4:00.82
+	Average shared text size (kbytes): 0
+	Average unshared data size (kbytes): 0
+	Average stack size (kbytes): 0
+	Average total size (kbytes): 0
+	Maximum resident set size (kbytes): 18030336
+	Average resident set size (kbytes): 0
+	Major (requiring I/O) page faults: 4878
+	Minor (reclaiming a frame) page faults: 2151215
+	Voluntary context switches: 93231
+	Involuntary context switches: 25343
+	Swaps: 0
+	File system inputs: 2508554
+	File system outputs: 768
+	Socket messages sent: 0
+	Socket messages received: 0
+	Signals delivered: 0
+	Page size (bytes): 65536
+	Exit status: 0
+	Elapsed (wall clock) time (h:mm:ss or m:ss): 4:00.82
+	Maximum resident set size (kbytes): 18030336

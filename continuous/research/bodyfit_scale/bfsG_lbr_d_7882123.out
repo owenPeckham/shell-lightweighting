@@ -1,0 +1,13 @@
+NVIDIA GH200 120GB, 97871 MiB
+loaded design: 14549066 V 29098532 T in 13 s
+[levelset] s = 0.1667 mm, lattice (np.int64(751), np.int64(1087), np.int64(494)), 4666 active blocks of 16^3 cells (29098532 input faces), 5.1 s
+Warp 1.18.0 initialized:
+   CUDA Toolkit 13.4, Driver 13.0
+   Devices:
+     "cpu"      : "aarch64"
+     "cuda:0"   : "NVIDIA GH200 120GB" (95 GiB, sm_90, mempool enabled)
+   Kernel cache:
+     /home/b6bl/owenpeckham.b6bl/.cache/warp/1.18.0
+Module cshell.band ad91966 load on device 'cuda:0' took 3.43 ms  (cached)
+[levelset] {'spacing': 0.16666666666666666, 'lattice': [751, 1087, 494], 'active_blocks': 4666, 'sdf_queries': 22592320, 'faces': 2585928, 'vertices': 1292892, 'bodies': 1, 'body_volumes': [41948.652336613995], 'dropped_bodies': 25, 'dropped_mm3': 0.03245288329544711, 'volume': 41948.652336613995, 'ambiguous_flipped': 2934, 'ambiguous_iters': 5, 'duplicate_directed_edges': 0, 'missing_reverse_edges': 0, 'seconds_sdf': 9.5632905960083, 'seconds': 33.53344511985779, 'closed_manifold': True}
+[2026-10-31T03:23:18.370] error: *** JOB 7882123 ON nid010066 CANCELLED AT 2026-10-31T03:23:18 DUE to SIGNAL Terminated ***
