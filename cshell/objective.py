@@ -190,6 +190,8 @@ def evaluate_compliance(fe: SparseFE, rho_hat_active, rho_active, m_active, st: 
     do_b = (("buckling" in st.constraints) and st.buckling) if want_buckling is None else want_buckling
     sp = bk = None
     sig, mu = float("nan"), 0.0
+    if do_s and not float(fe.xp.asarray(m_active).sum()) > 0:     # exclusion zones cover the part: no strength term
+        do_s = False
     if do_s:
         sp = stress_pnorm(fe, pr, rho_active, m_active, p=st.stress_p, q=st.stress_q, quantile=st.quantile,
                           rho_min=st.rho_min)
@@ -206,6 +208,8 @@ def evaluate_compliance(fe: SparseFE, rho_hat_active, rho_active, m_active, st: 
         if sp is not None and "strength" in st.constraints:
             g["strength"] = float(np.log(sig / base["sigma_pn0"]))
             dg["strength"] = sp.grad / sig
+        elif "strength" in st.constraints:                    # no element outside the exclusion zones: inactive
+            g["strength"], dg["strength"] = -np.inf, np.zeros_like(dC)
         if bk is not None and "buckling" in st.constraints:
             if base.get("mu0", 0.0) > 0 and mu > 0:
                 g["buckling"] = float(np.log(mu / base["mu0"]))
