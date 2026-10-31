@@ -345,7 +345,7 @@ class DesignMap:
 # -- GPU chain (compact band, fused kernels) -------------------------------------------------------------------------
 _KERNELS = r"""
 extern "C" {
-__device__ __forceinline__ double cell_psi(long long c, const float* phi, const int* face, const float* bary,
+__device__ __forceinline__ double cell_psi_cl(long long c, const float* phi, const int* face, const float* bary,
         const int* Th, const double* d, const double* a, const double* cl, int has_cl, double bo, int solid,
         bool* outer, int* v, double* w) {
     double ph = (double)phi[c];
@@ -366,6 +366,12 @@ __device__ __forceinline__ double cell_psi(long long c, const float* phi, const 
     }
     *outer = o >= i;
     return *outer ? o : i;
+}
+
+// the interpolation without the closure rule (signature used by the export's kernels)
+__device__ __forceinline__ double cell_psi(long long c, const float* phi, const int* face, const float* bary,
+        const int* Th, const double* d, const double* a, double bo, int solid, bool* outer, int* v, double* w) {
+    return cell_psi_cl(c, phi, face, bary, Th, d, a, d, 0, bo, solid, outer, v, w);
 }
 
 __device__ __forceinline__ double block_sum(double x) {
@@ -390,7 +396,7 @@ __global__ void geo_fwd(long long n, const float* phi, const int* face, const fl
     int v[3]; double w[3]; bool outer;
     for (long long c = blockIdx.x * (long long)blockDim.x + threadIdx.x; c < n;
          c += (long long)gridDim.x * blockDim.x) {
-        double s = -cell_psi(c, phi, face, bary, Th, d, a, cl, has_cl, bo, solid, &outer, v, w);
+        double s = -cell_psi_cl(c, phi, face, bary, Th, d, a, cl, has_cl, bo, solid, &outer, v, w);
         double z = fmin(fmax(s / eps, -1.0), 1.0);
         double H = 0.5 + z * (15.0 / 16.0 - z * z * (5.0 / 8.0 - z * z * 3.0 / 16.0));
         if (H != 0.0) {
@@ -409,7 +415,7 @@ __global__ void geo_rev(long long n, const float* phi, const int* face, const fl
     int v[3]; double w[3]; bool outer;
     for (long long c = blockIdx.x * (long long)blockDim.x + threadIdx.x; c < n;
          c += (long long)gridDim.x * blockDim.x) {
-        double s = -cell_psi(c, phi, face, bary, Th, d, a, cl, has_cl, bo, 0, &outer, v, w);
+        double s = -cell_psi_cl(c, phi, face, bary, Th, d, a, cl, has_cl, bo, 0, &outer, v, w);
         if (fabs(s) < eps) {
             double z = fmin(fmax(s / eps, -1.0), 1.0);
             double t = 1.0 - z * z;

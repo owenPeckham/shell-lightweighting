@@ -89,7 +89,7 @@ def test_evaluate_matches_run(grown):
     r = evaluate(ctx, dsg["xi"], 0, hollow=dsg["hollow"], D_comp=dsg["D_comp"])
     for k in ("J", "K_K0", "lamB_ratio", "sig_ratio", "mass_err", "feasible", "governing"):
         assert k in r, k
-    J_last = res["phase_0"]["growth"]["J_b"][-1]
+    J_last = res["phase_0"]["growth"]["best_J"]                # growth ends on the best boundary design (sr-fix 1)
     assert abs(r["J"] - J_last) < 1e-6 * max(1.0, abs(J_last)), (r["J"], J_last)
     assert abs(r["mass_err"]) < 2e-4 and r["K_K0"] == pytest.approx(np.exp(r["J"]))
     rs = evaluate(ctx, dsg["xi"], 0, shift=(0.4, 0.4, 0.4), hollow=dsg["hollow"], D_comp=dsg["D_comp"])
@@ -118,13 +118,18 @@ def test_export_volume_matches_optimiser(grown, tmp_path):
     from cshell.design import vertex_fields_final
     from cshell.optimise import evaluate, load_design
     ctx, cfg, out, res, hist = grown
-    dsg = load_design(str(out))
-    r = evaluate(ctx, dsg["xi"], 0, hollow=dsg["hollow"], D_comp=dsg["D_comp"])
+    nv = ctx.surf.n_vertices
+    # a design with real voids: open (ξᵃ = 0.2) on the middle third of the rod, closed elsewhere, d = 0.3
+    x = ctx.surf.V[:, 0]
+    mid = (x > x.min() + (x.max() - x.min()) / 3) & (x < x.max() - (x.max() - x.min()) / 3)
+    xi = np.concatenate([np.full(nv, 0.3), np.where(mid, 0.2, 1.0)])
+    r = evaluate(ctx, xi, 0)
     h_g = float(cfg["grid"]["phases"][-1]["h_g"])
-    f = vertex_fields_final(ctx, dsg["xi"], h_g, dsg["D_comp"], dsg["hollow"])
+    f = vertex_fields_final(ctx, xi, h_g, None, None)
     assert np.all(f["closed"][f["xt_a"] >= cfg["export"]["closed_thr"]])
-    ex = cex.export_design_gpu(ctx, dsg["xi"], str(tmp_path), dsg["D_comp"], name="t", h_g=h_g, fields=f,
-                               closed_thr=cfg["export"]["closed_thr"], h_x=0.2)
+    ex = cex.export_design_gpu(ctx, xi, str(tmp_path), cfg["design"]["outward_extent_initial_mm"], name="t", h_g=h_g,
+                               fields=f, closed_thr=cfg["export"]["closed_thr"], h_x=0.2)
     V_ex = ex["mass_correction"]["V_before_mm3"]
-    print("V optimiser", r["V"], "V export before δ", V_ex, "rel", V_ex / r["V"] - 1)
+    print("V0", r["V0"], "V optimiser", r["V"], "V export before δ", V_ex, "rel", V_ex / r["V"] - 1)
+    assert np.mean(~f["closed"][mid & ~f["passive"]]) > 0.5                              # voids are present
     assert abs(V_ex / r["V"] - 1) < 3e-3
