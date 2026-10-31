@@ -128,7 +128,8 @@ def test_export_volume_matches_optimiser(grown, tmp_path):
     f = vertex_fields_final(ctx, xi, h_g, None, None)
     assert np.all(f["closed"][f["xt_a"] >= cfg["export"]["closed_thr"]])
     ex = cex.export_design_gpu(ctx, xi, str(tmp_path), cfg["design"]["outward_extent_initial_mm"], name="t", h_g=h_g,
-                               fields=f, closed_thr=cfg["export"]["closed_thr"], h_x=0.2)
+                               fields=f, closed_thr=cfg["export"]["closed_thr"], h_x=0.2,
+                               holes=False)      # escape holes are export-only material removal (~35 mm³ here)
     V_ex = ex["mass_correction"]["V_before_mm3"]
     print("V0", r["V0"], "V optimiser", r["V"], "V export before δ", V_ex, "rel", V_ex / r["V"] - 1)
     assert np.mean(~f["closed"][mid & ~f["passive"]]) > 0.5                              # voids are present
