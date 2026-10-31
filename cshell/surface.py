@@ -480,8 +480,14 @@ class DesignSurface:
         n = bu[:, None] * CN[tri, 0] + bv[:, None] * CN[tri, 1] + bw[:, None] * CN[tri, 2]
         return n / np.maximum(np.linalg.norm(n, axis=1, keepdims=True), 1e-300)
 
-    def filter(self, r_f: float) -> "HelmholtzFilter":
-        return HelmholtzFilter(self.M, self.L, r_f)
+    def filter(self, r_f: float, passes: int = 1):
+        """Helmholtz filter F of radius r_f; with passes = n > 1 the n-fold product Fⁿ (`RepeatedFilter`)."""
+        F = HelmholtzFilter(self.M, self.L, r_f)
+        return F if int(passes) == 1 else RepeatedFilter(F, int(passes))
+
+    def distance_to(self, sources: np.ndarray) -> np.ndarray:
+        """Shortest edge-path distance (mm) on Γ_h from each vertex to the vertex set `sources` (bool or ids)."""
+        return surface_distance(self.V, self.T, sources)
 
     def depth(self, h_g: float, **kw):
         """`medial_depth` for the vertices of this surface (inward marching along `projected_normals`)."""
@@ -545,6 +551,55 @@ class HelmholtzFilter:
     def invert(self, x_tilde: np.ndarray) -> np.ndarray:
         x_tilde = np.asarray(x_tilde, dtype=np.float64)
         return self._mul(1.0 / self.m, self.A @ x_tilde)
+
+
+class RepeatedFilter:
+    """Fⁿ for a filter F with apply/adjoint/invert (PLAN_single_run §2: ξ̃ = clip(F² ξ)). One factor serves all passes:
+    apply = F(F(x)), adjoint = Fᵀ(Fᵀ(g)) (the adjoint of Fⁿ is (Fᵀ)ⁿ), invert = F⁻¹(F⁻¹(x̃)). A one-vertex spike comes
+    out ~1.1× its 1-ring instead of ~2× with one pass (research/pockmarks/FINDINGS.md)."""
+
+    def __init__(self, base, passes: int = 2):
+        if passes < 1:
+            raise ValueError("passes must be >= 1")
+        self.base, self.passes = base, int(passes)
+        self.r_f = getattr(base, "r_f", None)
+
+    def _rep(self, fn, x):
+        for _ in range(self.passes):
+            x = fn(x)
+        return x
+
+    def apply(self, x):
+        return self._rep(self.base.apply, x)
+
+    def adjoint(self, g):
+        return self._rep(self.base.adjoint, g)
+
+    def invert(self, x_tilde):
+        return self._rep(self.base.invert, x_tilde)
+
+
+def surface_distance(V: np.ndarray, T: np.ndarray, sources) -> np.ndarray:
+    """Multi-source Dijkstra over the mesh edges (edge length weights): distance from every vertex to the nearest
+    source vertex, ∞ if none is reachable or `sources` is empty. Overestimates the geodesic distance by up to ~20 %
+    (zig-zag edge paths), which is ample for tapers of width r_f."""
+    from scipy.sparse.csgraph import dijkstra
+    nv = len(V)
+    src = np.asarray(sources)
+    src = np.flatnonzero(src) if src.dtype == bool else src.astype(np.int64)
+    if src.size == 0:
+        return np.full(nv, np.inf)
+    E = np.concatenate([T[:, [0, 1]], T[:, [1, 2]], T[:, [2, 0]]])
+    E = np.unique(np.sort(E, 1), axis=0)
+    w = np.linalg.norm(V[E[:, 0]] - V[E[:, 1]], axis=1)
+    # one virtual super-source joined to every source by a zero-length edge (csgraph drops explicit zeros: use 1e-30)
+    n = nv + 1
+    rows = np.concatenate([E[:, 0], np.full(src.size, nv)])
+    cols = np.concatenate([E[:, 1], src])
+    G = sp.csr_matrix((np.concatenate([w, np.full(src.size, 1e-30)]), (rows, cols)), shape=(n, n))
+    dist = dijkstra(G, directed=False, indices=nv)[:nv]
+    dist[src] = 0.0
+    return dist
 
 
 # ----------------------------------------------------------------------------------------------------------------

@@ -7,6 +7,14 @@ t_min still holds (up to the smoothing width w). The inset is a_i = a_lo(d_i) + 
 Arrays may be NumPy (CPU, float64, tests) or CuPy (GPU); `xp` is taken from the cell arrays. Sparse P is
 scipy.sparse or cupyx.scipy.sparse CSR (n_cells × N_v, 3 nnz per row).
 
+PLAN_single_run §2/§4 (Owen 2026-10-31) adds three optional per-vertex maps between the filter and (d, a), all off
+when their DesignSpace field is None (the Stage 2 behaviour):
+  taper_d  τ_d ∈ [0, 1]:  ξ̃ᵈ ← τ_d ξ̃ᵈ              (d tapers to 0 towards passive regions over r_f; no cliff)
+  taper_a  τ_a ∈ [0, 1]:  ξ̃ᵃ ← 1 − τ_a (1 − ξ̃ᵃ)      (closed outside the hollow-allowed set H and on passive
+                                                     vertices, tapered over r_f inside H)
+  closure_xi ξ_c:          ξ̂ᵃ = g(min(ξ̃ᵃ/ξ_c, 1)), g(z) = z(2 − z)   (C¹ projection: closed, a = a^hi, for ξ̃ᵃ ≥ ξ_c)
+and a = a_lo(d) + (a^hi − a_lo(d)) ξ̂ᵃ. Without a taper the passive override is the hard one (τ = 0/1).
+
 `DeviceDesignMap` is the production GPU chain: per-vertex arithmetic stays on the host (NumPy, the filter is a
 host factorisation), the band lives on the device in compact form (`DeviceDisc`: φ float32, closest Γ_h triangle
 int32, raw barycentrics 3 × float32, FE element int32 = 24 B per cell) and fused CUDA kernels evaluate ψ, χ, ρ, V
@@ -67,6 +75,18 @@ class DesignSpace:
     b_v: float = 0.2             # as-built bias, void side
     b_o: float = 0.0             # as-built bias, outer side
     soft_w: float = 0.1          # D1 smoothing width of a_lo(d) (mm)
+    taper_d: Any = None          # τ_d per vertex (None: ξ̃ᵈ = 0 on passive, hard)
+    taper_a: Any = None          # τ_a per vertex (None: ξ̃ᵃ = 1 on passive, hard)
+    closure_xi: float | None = None   # ξ_c of the closure projection (None: linear, ξ̂ = ξ̃)
+    a_cl: Any = None             # closed inset ≥ a_hi (None: a_hi): a += (a_cl − a_hi) B(ξ̂), B = S((ξ̂ − ξ_b)/(1 − ξ_b))
+    a_cl_from: float = 0.97      # ξ_b: the blend acts only on nearly closed vertices (above the solid start's ξ̂ᵃ ≈ 0.9-0.95
+                                 # for r_MA ≲ 6 mm), so open void surfaces and the a = r_MA start stay smooth
+
+    def tau_d(self, xp=np):
+        return xp.asarray(self.taper_d) if self.taper_d is not None else (~xp.asarray(self.passive)).astype(float)
+
+    def tau_a(self, xp=np):
+        return xp.asarray(self.taper_a) if self.taper_a is not None else (~xp.asarray(self.passive)).astype(float)
 
 
 @dataclass
@@ -90,7 +110,7 @@ class Discretisation:
 class State:
     """Forward values kept for the pull-back."""
     xit_d: Any
-    xit_a: Any
+    xit_a: Any                   # ξ̃ᵃ after the taper, before the closure projection
     d: Any
     a: Any
     a_used: Any                  # a_ab (as-built) or a (nominal)
@@ -104,6 +124,63 @@ class State:
     as_built: bool
     b_o: float = 0.0             # outer bias used in ψ (b_o as-built, 0 nominal)
     dev: Any = None              # DeviceDesignMap: (d, a_used) on the device; cell fields are recomputed, not stored
+    xh_a: Any = None             # ξ̂ᵃ (projected); None: = xit_a
+    dxh_a: Any = None            # dξ̂ᵃ/dξ̃ᵃ; None: 1
+    dadxh: Any = None            # ∂a/∂ξ̂ᵃ at fixed d; None: a_hi − a_lo
+
+
+def closure_projection(xp, xt, xi_c):
+    """ξ̂ = g(min(ξ̃/ξ_c, 1)), g(z) = z(2 − z): C¹, monotone, g(0) = 0, ξ̂ = 1 (closed) for ξ̃ ≥ ξ_c. Returns (ξ̂, dξ̂/dξ̃);
+    ξ_c None or ≥ 1 is the identity."""
+    if xi_c is None or xi_c >= 1.0:
+        return xt, xp.ones_like(xt)
+    z = xt / xi_c
+    zc = xp.clip(z, 0.0, 1.0)
+    return zc * (2.0 - zc), xp.where(z < 1.0, (2.0 - 2.0 * zc) / xi_c, 0.0)
+
+
+def closure_projection_inverse(xh, xi_c):
+    """ξ̃ with g(ξ̃/ξ_c) = ξ̂ on 0 ≤ ξ̂ ≤ 1 (the smallest such ξ̃)."""
+    xh = np.clip(xh, 0.0, 1.0)
+    if xi_c is None or xi_c >= 1.0:
+        return xh
+    return xi_c * (1.0 - np.sqrt(1.0 - xh))
+
+
+def taper_weight(dist, width: float):
+    """τ = S(dist/width) (smoothstep): 0 on the source set, 1 beyond `width`; ∞ distance → 1."""
+    if width <= 0:
+        return (np.asarray(dist) > 0).astype(float)
+    return smoothstep(np, np.minimum(np.asarray(dist, float), 2.0 * width) / width)[0]
+
+
+def design_vertex_fields(xp, ds: "DesignSpace", xi_d, xi_a) -> dict:
+    """Per-vertex chain ξ → ξ̃ (filter, clip) → taper → ξ̂ᵃ (closure projection) → (d, a) (THEORY §3.4-3.5, D1)."""
+    xt_d = xp.clip(ds.filt.apply(xi_d), 0.0, 1.0) * ds.tau_d(xp)
+    xt_a = 1.0 - ds.tau_a(xp) * (1.0 - xp.clip(ds.filt.apply(xi_a), 0.0, 1.0))
+    xh_a, dxh = closure_projection(xp, xt_a, ds.closure_xi)
+    d = ds.d_hi * xt_d
+    a_lo, da_lo = softplus(xp, ds.t_min - d, ds.soft_w)          # D1; da_lo/dd = −σ
+    a = a_lo + (ds.a_hi - a_lo) * xh_a
+    dadxh = ds.a_hi - a_lo
+    if ds.a_cl is not None:                                       # closed vertices reach the raw local depth
+        B, dB = smoothstep(xp, (xh_a - ds.a_cl_from) / (1.0 - ds.a_cl_from))
+        a = a + (ds.a_cl - ds.a_hi) * B
+        dadxh = dadxh + (ds.a_cl - ds.a_hi) * dB / (1.0 - ds.a_cl_from)
+    return dict(xt_d=xt_d, xt_a=xt_a, xh_a=xh_a, dxh_a=dxh, d=d, a=a, a_lo=a_lo, da_lo=-da_lo, dadxh=dadxh)
+
+
+def solid_start_xi_a(ds: "DesignSpace", passes: int = 30) -> np.ndarray:
+    """Raw ξᵃ whose design has a = r_MA at d = 0 (PLAN_single_run §1: geometrically solid, with a zero-thickness void
+    surface on the medial axis so ∂/∂ξᵃ ≠ 0): ξ̂ᵃ target (r_MA − a_lo(0))/(a^hi − a_lo(0)), inverted through the
+    projection, then raw ξ ∈ [0, 1] with F ξ ≈ target by projected Richardson iteration (F⁻¹ amplifies roughness)."""
+    a_lo = softplus(np, ds.t_min - np.zeros_like(ds.r_ma), ds.soft_w)[0]
+    xh = np.clip((ds.r_ma - a_lo) / np.maximum(ds.a_hi - a_lo, 1e-12), 0.0, 1.0)
+    t = closure_projection_inverse(xh, ds.closure_xi)
+    x = t.copy()
+    for _ in range(passes):
+        x = np.clip(x + (t - ds.filt.apply(x)), 0.0, 1.0)
+    return x
 
 
 def _xp(a):
@@ -125,26 +202,22 @@ class DesignMap:
 
     # -- vertex fields --------------------------------------------------------------------------------------------
     def vertex_fields(self, xi_d, xi_a):
-        xp, ds = self.xp, self.ds
-        xt_d = xp.clip(ds.filt.apply(xi_d), 0.0, 1.0)
-        xt_a = xp.clip(ds.filt.apply(xi_a), 0.0, 1.0)
-        xt_d = xp.where(ds.passive, 0.0, xt_d)
-        xt_a = xp.where(ds.passive, 1.0, xt_a)
-        d = ds.d_hi * xt_d
-        a_lo, da_lo = softplus(xp, ds.t_min - d, ds.soft_w)          # D1; da_lo/dd = −σ
-        a = a_lo + (ds.a_hi - a_lo) * xt_a
-        return xt_d, xt_a, d, a, a_lo, -da_lo
+        """(ξ̃ᵈ, ξ̃ᵃ, d, a, a_lo, ∂a_lo/∂d); ξ̃ are after the taper (ξ̃ᵃ before the closure projection)."""
+        f = design_vertex_fields(self.xp, self.ds, xi_d, xi_a)
+        return f["xt_d"], f["xt_a"], f["d"], f["a"], f["a_lo"], f["da_lo"]
 
     def forward(self, xi_d, xi_a, as_built: bool = True) -> State:
         xp, ds = self.xp, self.ds
-        xt_d, xt_a, d, a, a_lo, da_lo = self.vertex_fields(xi_d, xi_a)
+        f = design_vertex_fields(xp, ds, xi_d, xi_a)
+        xt_d, xt_a, d, a, a_lo, da_lo = f["xt_d"], f["xt_a"], f["d"], f["a"], f["a_lo"], f["da_lo"]
         if as_built:
             S, dS = smoothstep(xp, (ds.r_ma - a) / ds.b_v)
             a_used, dab = a - ds.b_v * S, 1.0 + dS                   # THEORY §3.9
             b_o = ds.b_o
         else:
             a_used, dab, b_o = a, xp.ones_like(a), 0.0
-        st = State(xt_d, xt_a, d, a, a_used, a_lo, da_lo, dab, None, None, None, None, as_built, b_o)
+        st = State(xt_d, xt_a, d, a, a_used, a_lo, da_lo, dab, None, None, None, None, as_built, b_o,
+                   xh_a=f["xh_a"], dxh_a=f["dxh_a"], dadxh=f["dadxh"])
         return self._cells(st)
 
     def _cells(self, st: State) -> State:
@@ -210,12 +283,14 @@ class DesignMap:
     def pull_vertex(self, st: State, g_d, g_aused):
         """∂R/∂ξ given ∂R/∂d and ∂R/∂a_used per vertex (a_used = a_ab or a)."""
         xp, ds = self.xp, self.ds
+        xh = st.xit_a if st.xh_a is None else st.xh_a
         g_a = g_aused * st.dab_da
-        g_d = g_d + g_a * st.da_lo * (1.0 - st.xit_a)                 # a = a_lo(d)(1 − ξ̃ᵃ) + a_hi ξ̃ᵃ
-        g_xt_d = g_d * ds.d_hi
-        g_xt_a = g_a * (ds.a_hi - st.a_lo)
-        g_xt_d = xp.where(ds.passive, 0.0, g_xt_d)
-        g_xt_a = xp.where(ds.passive, 0.0, g_xt_a)
+        g_d = g_d + g_a * st.da_lo * (1.0 - xh)                       # a = a_lo(d)(1 − ξ̂ᵃ) + a_hi ξ̂ᵃ
+        g_xt_d = g_d * ds.d_hi * ds.tau_d(xp)                         # ξ̃ᵈ = τ_d clip(Fξᵈ)
+        g_xt_a = g_a * (ds.a_hi - st.a_lo if st.dadxh is None else st.dadxh)
+        if st.dxh_a is not None:
+            g_xt_a = g_xt_a * st.dxh_a
+        g_xt_a = g_xt_a * ds.tau_a(xp)                                # ξ̃ᵃ = 1 − τ_a(1 − clip(Fξᵃ))
         return ds.filt.adjoint(g_xt_d), ds.filt.adjoint(g_xt_a)
 
     def pull_rho_hat(self, st: State, g_rho_hat):
@@ -568,6 +643,15 @@ class DeviceDesignMap(DesignMap):
 
     def volume_grad(self, st: State):
         return self._rev(st, None, 0.0, 1.0, self.disc.h_g ** 3)
+
+
+def vertex_fields_final(ctx, xi, h_g: float | None = None, D_comp: float | None = None, hollow=None) -> dict:
+    """Vertex fields of design ξ with the optimiser's final-phase chain (F² filter, smoothed r_MA, d taper, hollow-set
+    taper, closure projection), for the exporter: dict(d, a, d_hi, xt_a, passive, r_ma, closed, ...) as
+    `optimise.vertex_fields`. Pass the run's hollow-allowed set (optimise.load_design(run_dir)["hollow"]): without it
+    the vertices outside H, held at the solid-start ξᵃ, would open."""
+    from .optimise import vertex_fields
+    return vertex_fields(ctx, xi, -1, D_comp, hollow, h_g=h_g)
 
 
 def passive_thin(a_hi, t_min: float, v_min: float, margin: float = 0.05):
