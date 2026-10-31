@@ -244,6 +244,22 @@ def test_inset_map_matches_export_closure():
         prev = a
 
 
+def test_closed_cells_have_no_void():
+    """sr-fix 2 (export closure rule): with every vertex closed (ξ̃ᵃ ≥ ξ_c) the design is the solid even where the
+    closed inset under-reaches the local depth (a_cl = r_MA/2 here); one open vertex opens only its own triangles."""
+    ds, disc, V, T, H = _tapered_space()
+    nv = len(V)
+    ds.passive = np.zeros(nv, bool)
+    ds.taper_a = ds.taper_d = None
+    ds.a_cl = 0.5 * ds.r_ma
+    dm = DesignMap(ds, disc)
+    V0 = dm.solid_volume()
+    st = dm.forward(np.zeros(nv), np.ones(nv), as_built=False)
+    assert abs(dm.volume(st) / V0 - 1) < 1e-12
+    ds_off = DesignSpace(**{**ds.__dict__, "a_top": None})          # rule off (legacy): the under-reach cuts voids
+    assert DesignMap(ds_off, disc).volume(DesignMap(ds_off, disc).forward(np.zeros(nv), np.ones(nv), False)) < 0.99 * V0
+
+
 def test_solid_start_gradient_nonzero():
     """§1: the solid start (ξᵈ = 0, a = r_MA) is solid to < 1e-3 in volume and has ∂V/∂ξᵃ ≠ 0; the old closed start
     (ξᵃ = 1, a = a^hi) has ∂V/∂ξᵃ = 0."""
