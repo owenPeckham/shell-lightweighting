@@ -7,9 +7,9 @@
 #SBATCH --time=00:20:00
 #SBATCH --output=logs/%x_%j.out
 set -euo pipefail
-source continuous/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
+source cshell/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
 export CUDA_VISIBLE_DEVICES=""
-B=runs_cshell/TG_bench; C="python continuous/research/twogrid/bench_design.py --compare"
+B=runs_cshell/TG_bench; C="python docs/cshell/research/twogrid/bench_design.py --compare"
 echo "== direct vs previous two-grid (atomic kernels)"; $C $B/mbb_directM_ph1.npz $B/mbbATOM_ph1.npz
 echo "== direct vs full-deterministic a";  $C $B/mbb_directM_ph1.npz $B/mbbFa_ph1.npz
 echo "== direct vs kernels-deterministic a"; $C $B/mbb_directM_ph1.npz $B/mbbKa_ph1.npz

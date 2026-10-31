@@ -1,9 +1,11 @@
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
+
 # PLAN: export (§8.1–8.5) and body-fitted validation (§8.6), built in parallel (agreed plan: STATUS.md §2.4 item 4)
 
 Repo `/home/b6bl/owenpeckham.b6bl/shell-lightweighting`, branch `cshell` (checked out). **Do not commit, switch branch or
-push**; touch only your task's files. Spec: `continuous/THEORY_continuous.md` v1.2 (note §14 D6: inset bound
+push**; touch only your task's files. Spec: `docs/cshell/THEORY_continuous.md` v1.2 (note §14 D6: inset bound
 a ≥ a_lo(d), and §4.2 v1.2 note on the FE engine). Common rules (env, sbatch, tests, style) as in
-`continuous/plans/PLAN_parallel_modules.md` "Common rules". Env:
+`docs/cshell/plans/PLAN_parallel_modules.md` "Common rules". Env:
 `/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell` (has trimesh, scikit-image, pyvista,
 tetgen, gmsh/python-gmsh, ccx (CalculiX 2.20 binary at `$CSHELL_ENV/bin/ccx`), scikit-fem, warp, igl).
 
@@ -40,7 +42,7 @@ Tests (`tests/cshell/test_export.py`, CPU, small): sphere/rod with a known analy
 void count; opening rule on a synthetic sliver (sliver filled, ≥ v_min void kept with rounded ends); escape holes cut
 and the void connected to the exterior afterwards; mass correction restores V within 2e-3 on the mesh. A GPU/CPU job
 exporting the B2 rod from a hollow ξ (ξᵈ = 0.5, ξᵃ = 0) end to end, timing reported. Then the cantilever solid +
-uniform shell export timing (h_x = 0.05) to `continuous/research/export/bench.md`.
+uniform shell export timing (h_x = 0.05) to `docs/cshell/research/export/bench.md`.
 
 ## Task V: `cshell/validate.py` (§8.6)
 1. Tetrahedral mesh of an STL (TetGen via `tetgen` python, or gmsh) with quadratic tets (C3D10), ≥ 2 elements through
@@ -59,9 +61,9 @@ Tests (`tests/cshell/test_validate.py`): cantilever rod (r = 5, L = 40, tip shea
 clamped–free column buckling vs π²EI/(4L²) within 3 %; deck/parse round-trip. Then **V3-b**: tube R_m = 10, t = 1.5,
 L = 60, axial compression, ccx `*BUCKLE` on C3D10 (mesh-converged, ≥ 3 element layers through t), and compare with
 cshell's sparse engine (`cshell.fe_sparse.buckling`, build the voxel tube like
-`continuous/research/stage0/tubes.py::euler_rod` does for a rod) at h_e = 0.8 and 0.4 mm (0.2 if it fits; the engine
+`docs/cshell/research/stage0/tubes.py::euler_rod` does for a rod) at h_e = 0.8 and 0.4 mm (0.2 if it fits; the engine
 falls back to cuDSS hybrid memory when the factor does not fit — request `--mem` ≥ 200G for that). Record in
-`continuous/research/validate/v3b.md`.
+`docs/cshell/research/validate/v3b.md`.
 
 ## Return (each, under 250 words)
 Files written; test results with job ids; measured timings; deviations from the spec and why; open issues.

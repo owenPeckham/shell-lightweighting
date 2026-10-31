@@ -1,6 +1,6 @@
 """Host-memory profile of `cshell collect` per stage (diagnosis only; cshell/ is not edited, functions are wrapped).
 
-Usage (GPU job, from the repo root):  python continuous/research/collect_mem/memprof.py <run_dir_copy>
+Usage (GPU job, from the repo root):  python docs/cshell/research/collect_mem/memprof.py <run_dir_copy>
 A sampler thread records every 2 s: parent RSS, the summed PSS of the parent and its (forked) children, and the job
 cgroup's anon / file memory (what the Slurm OOM killer counts). Wrapped stages log before/after/peak to
 <run_dir_copy>/memprof.json. PCG failures in raw_responses are caught (NaN responses) so that every stage runs.

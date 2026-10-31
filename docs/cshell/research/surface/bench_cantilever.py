@@ -5,7 +5,7 @@ from vshell import geometry as g
 from cshell import surface as S
 stage = {}
 t = time.time()
-shape = g.load_step('examples/step/Solid Cantilever.step'); V, T, TF = g.tessellate(shape, 0.02, 0.2)
+shape = g.load_step('examples/parts/Solid Cantilever.step'); V, T, TF = g.tessellate(shape, 0.02, 0.2)
 stage['step+tessellate'] = time.time() - t; t = time.time()
 ds = S.DesignSurface.build(V, T, TF, ell=0.75, hausdorff_tol=0.02, tess_tol=0.02, verbose=True)
 stage['design_surface(remesh+operators+face_id)'] = time.time() - t
@@ -21,4 +21,4 @@ t = time.time(); ro = ds.clearance(); stage['outward_clearance'] = time.time() -
 print('r_out finite frac', np.isfinite(ro).mean(), 'pct', np.percentile(ro[np.isfinite(ro)], [0, 5, 50, 95]))
 stage['total'] = sum(stage.values())
 print(json.dumps(stage, indent=1))
-np.savez('continuous/research/surface/cant_surface.npz', V=ds.V, T=ds.T, face_id=ds.face_id, r_ma=r, r_out=ro)
+np.savez('docs/cshell/research/surface/cant_surface.npz', V=ds.V, T=ds.T, face_id=ds.face_id, r_ma=r, r_out=ro)

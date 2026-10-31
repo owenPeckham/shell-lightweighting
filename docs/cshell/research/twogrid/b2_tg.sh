@@ -7,7 +7,7 @@
 #SBATCH --time=00:40:00
 #SBATCH --output=logs/%x_%j.out
 set -uo pipefail
-source continuous/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
+source cshell/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
 for BK in ${BACKENDS:-gpu cpu}; do for S in uniform neutral; do
   echo "== backend $BK start $S"
   python -m cshell run examples/cshell/bench/B2_slender.json --start $S \

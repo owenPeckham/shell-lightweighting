@@ -1,5 +1,5 @@
 import numpy as np, igl, time
-d=np.load('continuous/research/surface/cant_tess.npz');V,T,F=d['V'],d['T'],d['F']
+d=np.load('docs/cshell/research/surface/cant_tess.npz');V,T,F=d['V'],d['T'],d['F']
 import pymeshlab as pm
 ms=pm.MeshSet(); ms.add_mesh(pm.Mesh(V,T))
 ms.meshing_isotropic_explicit_remeshing(targetlen=pm.PureValue(0.75),iterations=10,featuredeg=30,checksurfdist=False)

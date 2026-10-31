@@ -9,6 +9,6 @@ for p in $PARTS; do
   d="$REPO/runs_cshell/FULL/$p"; [ "$p" = B2 ] && d="$REPO/runs_cshell/VF_B2"
   for w in $WHICH; do
     sbatch --parsable --time=03:00:00 --mem=150G --job-name=bst_${p}_$w \
-      continuous/research/bodyfit_scale/gpu_py.sh continuous/research/bodyfit_scale/stuff_check.py "$d" $w $SOLVE
+      docs/cshell/research/bodyfit_scale/gpu_py.sh docs/cshell/research/bodyfit_scale/stuff_check.py "$d" $w $SOLVE
   done
 done

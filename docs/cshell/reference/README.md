@@ -1,4 +1,6 @@
-# continuous/reference
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
+
+# docs/cshell/reference
 
 Read-only reference material for developing `cshell`, the continuous variable-thickness optimiser (see `../THEORY_continuous.md` and `../PROMPT_claude_code.md`).
 
@@ -17,7 +19,7 @@ Read-only reference material for developing `cshell`, the continuous variable-th
 Quick import check (CPU-only works; the `cpu_direct` engine is selected automatically):
 
 ```python
-import sys; sys.path.insert(0, "continuous/reference")
+import sys; sys.path.insert(0, "docs/cshell/reference")
 import analysis, gpu_analysis
 print(gpu_analysis.ELEMENT_TYPES)          # ('q1_gauss', 'q1', 'q1_im')
 ```

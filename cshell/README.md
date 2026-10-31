@@ -3,8 +3,8 @@
 `cshell` turns a solid part (STEP) into a hollowed, variable-thickness shell part of the **same mass** that is
 stiffer and stronger: it maximises J = w_K ln K/K₀ + w_P ln P/P₀ (stiffness and capacity — strength p-norm and
 linear buckling, soft-min — relative to the solid), subject to constant mass, minimum wall t_min, minimum void
-v_min, as-built biases and closed escape holes. Spec: `continuous/THEORY_continuous.md`; validation record:
-`continuous/VALIDATION.md`; costs: `continuous/BENCHMARKS.md`; state: `continuous/STATUS.md`.
+v_min, as-built biases and closed escape holes. Spec: `docs/cshell/THEORY_continuous.md`; validation record:
+`docs/cshell/VALIDATION.md`; costs: `docs/cshell/BENCHMARKS.md`; state: `docs/cshell/STATUS.md`.
 
 ## Use (Isambard-AI; nothing on the login node)
 
@@ -12,17 +12,21 @@ v_min, as-built biases and closed escape holes. Spec: `continuous/THEORY_continu
    `loads` (face selectors + `force_N`). Everything else defaults (`cshell/config.py`); override with `--set k=v`.
    `python -m cshell init` / `faces` print a template and the STEP faces (run them via `gpu_test.sh`, not on the login
    node).
-2. Run the three starts (uniform, vshell, neutral), one GPU each, auto-resumed, collect submitted by the last one:
+2. Run the three starts (uniform, dshell, neutral; `vshell` is accepted as the old name of dshell), one GPU each, auto-resumed, collect submitted by the last one:
 
        CSHELL_TIME=04:00:00 SBATCH_MEM_PER_NODE=64G CSHELL_COLLECT_MEM=180G \
-         continuous/cluster/launch_part.sh examples/cshell/<part>.json uniform vshell neutral
+         cshell/cluster/launch_part.sh examples/cshell/<part>.json uniform dshell neutral
 
-   or a single start: `sbatch continuous/cluster/run.sh <cfg> --start uniform`; collect by hand:
-   `sbatch --mem=180G continuous/cluster/collect.sh <abs run dir>`.
+   or a single start: `sbatch cshell/cluster/run.sh <cfg> --start uniform`; collect by hand:
+   `sbatch --mem=180G cshell/cluster/collect.sh <abs run dir>`.
 3. Results in `<output_dir>/<name>/`: `summary.txt` / `summary.json` (decision, reason, per-resolution J, K/K₀,
-   P/P₀, mass error, baselines: solid, uniform shell with solid mounts, vshell best), `final_design.stl` (the shell
+   P/P₀, mass error, baselines: solid, uniform shell with solid mounts, dshell best), `final_design.stl` (the shell
    part if accepted, else the original), `best_candidate.stl`, `fields.vtp` (ParaView: thickness, offsets, stress),
    `buckling_modes.npz`, `sensitivity.csv`, `validation.csv` (body-fitted check where it ran), `report.pdf`.
+
+Committed results for the three example parts (MBB, Cantilever, L-bracket; reports, summaries, histories, fields,
+preview STLs): `examples/cshell/runs/<part>/`, described in `examples/cshell/runs/README.md`. The `dshell` start
+reads the discrete optimiser's result from `examples/dshell/runs/<name>` (`optimiser.dshell_run`).
 
 ## What runs
 
@@ -43,7 +47,7 @@ A start: 34–44 min (phase-B 25–50 s per iteration, 6–9 M DOF), ≤ 26 GiB 
 64–80 GiB host, ≤ 57 GiB GPU. Three parts × three starts ≈ 6 GPU-hours.
 
 ## Validation status and limits
-See `continuous/VALIDATION.md`. Known limits: body-fitted validation of full production parts needs a scalable
+See `docs/cshell/VALIDATION.md`. Known limits: body-fitted validation of full production parts needs a scalable
 (iterative / multi-GPU) solver (Stage 3); V5-B1b stub closure is not reproduced under a compliance-only load
 (documented); export mass residual up to +0.5 % before correction on passive mount regions (absorbed by the mass
 correction).

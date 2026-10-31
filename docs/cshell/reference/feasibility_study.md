@@ -1,3 +1,5 @@
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
+
 # Variable-Thickness Shell Optimisation: Feasibility Study
 
 Oct 28, 2026 · @Owen
@@ -223,7 +225,7 @@ Four phases, the first three closed by a measurable gate; the Phase 2 print-and-
 ## Sources
 
 - main.pdf: Peckham, Hicks and Goudswaard, *Hollow Promises?* (manuscript dated 23 October 2026), Tables 2–5, Sections 6.1–6.2
-- shell-lightweighting repo: `shell_lightweighting/ShellOptimisation.py` and the example log
+- shell-lightweighting repo: `ushell/ShellOptimisation.py` and the example log
 - [Fusion API: ShellFeatureInput](https://help.autodesk.com/cloudhelp/ENU/Fusion-360-API/files/ShellFeatureInput.htm) and [ShellFeature.setThicknesses](https://help.autodesk.com/cloudhelp/ENU/Fusion-360-API/files/ShellFeature_setThicknesses.htm)
 - [Autodesk forum: simulation from the API](https://forums.autodesk.com/t5/fusion-api-and-scripts-forum/how-to-run-simulation-from-api-and-extract-found-parameters/m-p/8841078) (2019, newest answer found)
 - [Ansys Student problem-size limits](https://ansys.synopsys.com/en-in/academic/students/ansys-student)

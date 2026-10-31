@@ -34,6 +34,6 @@ checks; trimesh cross-check below 2 M faces), |V_mesh/V0 − 1| well below R1 (2
 * Not timed: a void-bearing design of the cantilever at h_x = 0.05 (needs a full `Context`, ~5 min, and a converged xi).
   Its A and B stages scale with the number of tiles that contain void; expect a few times the B2 hollow cost per mm^2 of wall.
 
-Reproduce: `sbatch continuous/research/export/bench_all.sh` (or `bench.sh CASE H_X`); outputs in
+Reproduce: `sbatch docs/cshell/research/export/bench_all.sh` (or `bench.sh CASE H_X`); outputs in
 `$SCRATCH/cshell_export_bench_final/<case>_h<h>/` (`*_export.json` summaries with per-stage timings, STLs,
 `escape_holes.csv`, `wall_thickness.csv`).

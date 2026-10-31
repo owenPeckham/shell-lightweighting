@@ -9,8 +9,8 @@
 #SBATCH --time=01:00:00
 #SBATCH --output=logs/%x_%j.out
 set -euo pipefail
-source continuous/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
-D=continuous/research/twogrid; OUT=runs_cshell/TG_bench; R=examples/cshell/runs_cshell
+source cshell/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
+D=docs/cshell/research/twogrid; OUT=runs_cshell/TG_bench; R=examples/cshell/runs_cshell
 for P in mbb:fixhyb_mbb/MBB cant:fix_cantilever/Cantilever; do
   T=${P%%:*}; RUN=$R/${P#*:}
   python $D/bench_design.py $RUN $OUT/${T}0_twogrid_nbD.npz --engine twogrid --phase 0 --xi $RUN/xi_uniform_phase0.npy --no-buckling

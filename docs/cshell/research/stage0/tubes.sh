@@ -5,5 +5,5 @@
 
 #SBATCH --output=logs/%x_%j.out
 set -euo pipefail
-source continuous/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
-python continuous/research/stage0/tubes.py continuous/research/stage0/tubes_patch2.json 0.8 0.4
+source cshell/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
+python docs/cshell/research/stage0/tubes.py docs/cshell/research/stage0/tubes_patch2.json 0.8 0.4

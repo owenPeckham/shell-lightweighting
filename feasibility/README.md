@@ -1,10 +1,12 @@
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
+
 # Variable-thickness shelling: feasibility prototype
 
 Prototype scripts from the feasibility study for upgrading the constant-mass shelling add-in to variable, region-wise
 wall thickness (up to solid at joints) at constant mass. The full write-up, with results and recommendation, is the
 "Variable-Thickness Shell Optimisation: Feasibility Study" doc.
 
-Nothing here touches `shell_lightweighting/` or Fusion. Everything runs headless in Python on the STEP files.
+Nothing here touches `ushell/` or Fusion. Everything runs headless in Python on the STEP files.
 
 ## Setup
 

@@ -10,7 +10,7 @@ import time
 
 import numpy as np
 
-ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../.."))
+ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
 sys.path.insert(0, ROOT)
 from cshell import export as ex  # noqa: E402
 

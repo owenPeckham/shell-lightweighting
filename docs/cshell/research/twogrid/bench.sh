@@ -1,16 +1,16 @@
 #!/bin/bash
 # One engine on one part: phase-B checkpoints (2, 3) then the phase-A design, each in its own process with its own
 # nvidia-smi peak and /usr/bin/time RSS. Env: RUN (run dir), TAG (output prefix), ENGINE, ARGS (extra bench args).
-# Submit from the worktree root: sbatch [--mem=240G] continuous/research/twogrid/bench.sh
+# Submit from the worktree root: sbatch [--mem=240G] docs/cshell/research/twogrid/bench.sh
 #SBATCH --job-name=tg_bench
 #SBATCH --gpus=1
 #SBATCH --mem=110G
 #SBATCH --time=01:00:00
 #SBATCH --output=logs/%x_%j.out
 set -euo pipefail
-source continuous/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
+source cshell/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
 OUT=runs_cshell/TG_bench; mkdir -p $OUT
-D=continuous/research/twogrid
+D=docs/cshell/research/twogrid
 for PH in ${PHASES:-1 0}; do
   nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits -lms 250 > $TMPDIR/mem$PH.txt &
   SMI=$!

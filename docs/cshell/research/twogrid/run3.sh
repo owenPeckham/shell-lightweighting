@@ -7,7 +7,7 @@
 #SBATCH --time=01:00:00
 #SBATCH --output=logs/%x_%j.out
 set -euo pipefail
-source continuous/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
+source cshell/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
 OUT=$PWD/runs_cshell/TG_run3_${ENG}_${PART}
 nvidia-smi --query-gpu=memory.used --format=csv,noheader,nounits -lms 500 > $TMPDIR/mem.txt &
 SMI=$!

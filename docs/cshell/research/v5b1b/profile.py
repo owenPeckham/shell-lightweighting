@@ -3,7 +3,7 @@ Splits the active surface into slender (x < lo), fillet, and stub (x > hi) and r
 (a >= r_ma), median wall w = a + d, median d, median a."""
 import json, sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 import numpy as np
 from cshell import config
 from cshell.optimise import Context, PhaseModel

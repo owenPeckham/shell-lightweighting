@@ -2,7 +2,7 @@
 mass, scored by J, λ_b, C. python uniform_sweep.py <cfg> <phase> <out.json> [D_comp]"""
 import json, sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 import numpy as np
 from cshell import config
 from cshell.mma import restore_mass

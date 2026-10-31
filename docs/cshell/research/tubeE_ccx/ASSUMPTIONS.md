@@ -2,7 +2,7 @@
 
 Units: mm, N, MPa; k reported in kN/mm.
 
-## Inputs (manuscript continuous/reference/main.pdf pp. 14-15, Table 1, Table 6)
+## Inputs (manuscript docs/cshell/reference/main.pdf pp. 14-15, Table 1, Table 6)
 - PA11: E = 1760 MPa, nu = 0.42, linear isotropic.
 - Tubes (OD/ID): A 15/0, E 25/20 (also B-D defined in tube_ccx.py). Span 288, length 345.6 (10 % overhang each side).
 - Rollers: support pin radius 10 mm, loading pin radius 25 mm (p. 15, Sec. 3.2.4; Abaqus "rollers of the appropriate dimensions").
@@ -23,7 +23,7 @@ Units: mm, N, MPa; k reported in kN/mm.
   time points 0.01 ... 1.0, interpolated to F = 100 N. Abaqus used force control: same F-delta curve.
 - Tube rigid z mode before contact closes: SPRINGA 1e-3 N/mm to ground at midspan bottom (force < 3e-3 N vs 100 N).
 - Small strain (no NLGEOM) by default, NLGEOM run as a check. Contact is nonlinear in both.
-- "Patch" BCs = cshell voxel BCs (continuous/research/tubeE/tubes_pw.py): uniform vertical pressure on outer faces with
+- "Patch" BCs = cshell voxel BCs (docs/cshell/research/tubeE/tubes_pw.py): uniform vertical pressure on outer faces with
   x <= 2 and z >= zmax - 0.5 (4 mm wide); supports = nodes on plane x = 144 with z <= zmin + 0.5, uz = 0;
   k = F^2 / (2 W) (W = strain energy), exactly the voxel definition.
 

@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "tests" / "cshell"))
 import cupy as cp                                                    # noqa: E402
 from cshell.fe_twogrid import LeanGrid, TwoGridFE, _CoarseSolver     # noqa: E402

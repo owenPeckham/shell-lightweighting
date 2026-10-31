@@ -1,3 +1,5 @@
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
+
 # cshell: open questions, assumptions and reference-code issues
 
 Each item: status, the default implemented, and what would change it. Newest at the top of each section.
@@ -9,14 +11,14 @@ Each item: status, the default implemented, and what would change it. Newest at 
 | Q1 | Buckling knock-down κ_b. | 0.85; report re-scores 0.6–1.0. | THEORY §14 |
 | Q2 | Escape holes: diameter and count. | 3 mm, 2 per void. | THEORY §14 |
 | Q3 | Plastic limit-load capacity (Stage 3e) before a test campaign? | Not started. | THEORY §14 |
-| Q4 | **V2-b tolerance vs vshell's own result.** vshell's tube validation at h = 0.8 mm is +4.5 % in E (+4.1 % in ratio) against Abaqus, already outside the 4 % gate. Only h = 0.8 mm results are stored. | Gate kept at 4 %; report the h = 0.8/0.4/0.2 mm numbers and the trend. | `continuous/research/manuscript_numbers.md` |
+| Q4 | **V2-b tolerance vs vshell's own result.** vshell's tube validation at h = 0.8 mm is +4.5 % in E (+4.1 % in ratio) against Abaqus, already outside the 4 % gate. Only h = 0.8 mm results are stored. | Gate kept at 4 %; report the h = 0.8/0.4/0.2 mm numbers and the trend. | `docs/cshell/research/manuscript_numbers.md` |
 | Q5 | **V2-c criterion (0.4 within 3 % of 0.2).** The vshell doc reports −6.2 % at 0.4 mm and ±6 % thin-wall noise (with vshell's linear-ramp volume fractions). | Gate kept; the quintic Heaviside and smooth ρ should do better. Report honestly if not. | same |
 | Q6 | **Abaqus is not ground truth for absolute stiffness.** Abaqus over-predicts measured PA11 tube stiffness by +35 to +60 %, and even the K(E)/K(A) ratio is 4.08 in Abaqus against 4.72 measured. V2-b validates the FE against another FE only. | Ratios between designs are what cshell uses; stated in the report. | same |
-| Q7 | THEORY §11.1 quotes the vshell cantilever as K/K₀ 0.992, P/P₀ 2.63 (= `examples/runs/Cantilever/summary.txt`, 7 solid regions); the vshell theory doc's k = 0 row reads +1.2 %, +148 %. | Use the run summary (the repository's actual vshell output). | same |
+| Q7 | THEORY §11.1 quotes the vshell cantilever as K/K₀ 0.992, P/P₀ 2.63 (= `examples/dshell/runs/Cantilever/summary.txt`, 7 solid regions); the vshell theory doc's k = 0 row reads +1.2 %, +148 %. | Use the run summary (the repository's actual vshell output). | same |
 | Q8 | The manuscript text says walls printed "up to 13.6 %" thinner; Table 5 gives 9.9–12.6 %. | b_v = 0.2 mm as specified. | same |
 | Q9 | vshell's solid L-bracket K₀ = 48.3 N/mm lies above the manuscript's Abaqus bounds (25–38 N/mm). Different BC models (vshell clamps whole bolt-hole faces) are the likely cause. | V2-a compares against vshell (same BCs), as specified. | same |
 
-## B. Reference-code issues (continuous/reference, not edited)
+## B. Reference-code issues (docs/cshell/reference, not edited)
 
 ### B1. q1_im buckling sensitivity uses the Gauss solid stiffness (THEORY §6.4)
 
@@ -56,5 +58,5 @@ needs. cshell computes centre stress itself (`fe_sparse.SparseFE.centre_stress`)
 cantilever / L-bracket / MBB, against 257.8 / 48.60 / 473.5 from the fp64 sparse direct solve on the same elements, BCs
 and ρ̂ (and 256.8 / 48.3 / 473 from vshell's independent AMG solver). Compliance from an unconverged CG under-estimates
 the energy, so K comes out high; with ρ_min = 1e-6 void the relative residual does not bound the energy error.
-Reproducer: `continuous/research/stage0/bench_solid.py` (dense run at 0.8 mm). Not used by cshell; worth a look for
+Reproducer: `docs/cshell/research/stage0/bench_solid.py` (dense run at 0.8 mm). Not used by cshell; worth a look for
 PCLS runs that rely on absolute compliance.

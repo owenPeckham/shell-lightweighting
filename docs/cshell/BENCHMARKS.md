@@ -1,8 +1,10 @@
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
+
 # cshell: measured costs (THEORY §4.2)
 
 All on one GH200 (95.6 GiB HBM, Isambard-AI), fp64 cuDSS (nvmath-python 1.0, cuDSS 0.7) unless stated. Solid parts,
-geometry and volume fractions from vshell's PartGrid (h_g = h_e/2). Scripts: `continuous/research/stage0/`.
-Raw numbers: `continuous/research/stage0/bench_*.json`, logs `logs/cshell_bench0_7794574_*.out`.
+geometry and volume fractions from vshell's PartGrid (h_g = h_e/2). Scripts: `docs/cshell/research/stage0/`.
+Raw numbers: `docs/cshell/research/stage0/bench_*.json`, logs `logs/cshell_bench0_7794574_*.out`.
 
 ## Elastic solve, sparse active-set engine vs dense reference (h_e = 0.8 mm)
 

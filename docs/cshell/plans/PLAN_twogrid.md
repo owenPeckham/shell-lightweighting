@@ -1,3 +1,5 @@
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
+
 # PLAN: two-grid PCG FE engine for the optimiser (agreed with Owen 2026-10-29)
 
 Owen's requirements: the analysis used inside the optimiser uses the **minimum GPU memory** while staying **fast and
@@ -9,7 +11,7 @@ Full runs wait for this engine.
 
 Worktree `/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2` (= REPO), branch
 `cshell-stage2`. Do not commit, switch branch or push (the orchestrator commits). Common rules as in
-`continuous/plans/PLAN_parallel_modules.md` "Common rules"; env `source continuous/cluster/env.sh` (cd's to
+`docs/cshell/plans/PLAN_parallel_modules.md` "Common rules"; env `source cshell/cluster/env.sh` (cd's to
 SLURM_SUBMIT_DIR: submit from REPO, pass absolute test paths). Runs under `runs_cshell/TG_*` only.
 
 ## Why
@@ -17,7 +19,7 @@ Hollow designs at h_e = 0.4 mm reach 6.1 M (cantilever) – 8.4 M (MBB) active D
 79–114 GiB and does not fit; today's fallbacks (`cshell/fe_sparse.py`):
 - fp32 factor + fp64 CG: 94–129 s FE per iteration, peak 81–94.8 GiB (MBB at the limit) — jobs 7801143/7801144;
 - hybrid fp64 (factor partly in host RAM, needs `--mem=240G`): 58 s, peak 54 GiB — job 7808291.
-The memory study (`continuous/research/gpu_memory/REPORT.md`, prototype `twogrid.py`, results `*tg*.json`) measured a
+The memory study (`docs/cshell/research/gpu_memory/REPORT.md`, prototype `twogrid.py`, results `*tg*.json`) measured a
 two-grid PCG on the MBB solid at 0.4 mm: 24 iterations, 0.45–0.51 s per solve, buckling 22 s, λ ≤ 4e-8 and dμ ≤ 1.1e-4
 vs the direct solve, memory −55 GiB (−65 matrix-free); at 0.2 mm matrix-free 2.35 s (cantilever 25.5 M DOF, 40 GiB) and
 3.0 s (MBB 35.4 M DOF, 57 GiB). Not yet tried on a voided design.
@@ -64,7 +66,7 @@ vs the direct solve, memory −55 GiB (−65 matrix-free); at 0.2 mm matrix-free
    (target ≤ 30 GiB MBB, measured by nvidia-smi sampling) with the default `--mem` (no 240G).
 3. A 3-iteration phase-B run (cantilever and MBB, `--set optimiser.max_iter=[1,3]`) reproduces the direct history
    (J to 1e-6) with the default resource request.
-4. Numbers into `continuous/BENCHMARKS.md` ("Two-grid engine") and a short `continuous/research/twogrid/notes.md`.
+4. Numbers into `docs/cshell/BENCHMARKS.md` ("Two-grid engine") and a short `docs/cshell/research/twogrid/notes.md`.
 
 Slots: 4 (check `squeue -u $USER -h | wc -l` < 8 before each submission; chain with --dependency, don't poll).
 

@@ -1,8 +1,8 @@
 import sys,time,numpy as np, igl
 sys.path.insert(0,'.')
 from vshell import geometry as g
-s=g.load_step('examples/step/Solid Cantilever.step'); tab=g.face_table(s)
-d=np.load('continuous/research/surface/cant_tess.npz');V,T,F=d['V'],d['T'],d['F']
+s=g.load_step('examples/parts/Solid Cantilever.step'); tab=g.face_table(s)
+d=np.load('docs/cshell/research/surface/cant_tess.npz');V,T,F=d['V'],d['T'],d['F']
 import pymeshlab as pm
 def run(**kw):
     ms=pm.MeshSet(); ms.add_mesh(pm.Mesh(V,T))

@@ -1,11 +1,13 @@
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
+
 # PLAN: Stage 2 completion, built in parallel (agreed with Owen 2026-10-28: skip the Stage 1 compliance-only part runs, go to full Stage 2 runs; build in parallel)
 
 Worktree `/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2` (= REPO below), branch
 `cshell-stage2` (branched from `cshell`). Work and run everything from REPO. **Do not commit, switch branch or push**;
-the orchestrator commits. Touch only your task's files. Spec: `continuous/THEORY_continuous.md` v1.2 (cite § in
+the orchestrator commits. Touch only your task's files. Spec: `docs/cshell/THEORY_continuous.md` v1.2 (cite § in
 docstrings). Common rules (env, sbatch, tests, style, units mm/N/MPa, float64 reductions, no silent fallbacks) as in
-`continuous/plans/PLAN_parallel_modules.md` "Common rules". Env: `source continuous/cluster/env.sh`. Login node: edit
-only; tests and runs via `sbatch continuous/cluster/{cpu_test,gpu_test,run}.sh` from REPO (logs in `REPO/logs/`).
+`docs/cshell/plans/PLAN_parallel_modules.md` "Common rules". Env: `source cshell/cluster/env.sh`. Login node: edit
+only; tests and runs via `sbatch cshell/cluster/{cpu_test,gpu_test,run}.sh` from REPO (logs in `REPO/logs/`).
 `runs_cshell` and `.cache_cshell` are symlinks to projects storage shared with other checkouts: write new runs under
 `runs_cshell/<your task letter>_*` only. Respect your slot budget. Test on the smallest case first (B-rods in
 `examples/cshell/bench/`, then the cantilever with `--set optimiser.max_iter=[2,2]`).
@@ -29,7 +31,7 @@ Goal: phase-B iteration ≲ 15 s (compliance part) without changing any result b
    Also profile `t_mma` (14.5 s): split it into pull-back / gradients / `mmasub` and fix whatever dominates.
 3. GPU memory budget: phase B FE uses up to 84 GiB (cantilever, compliance only; more with buckling, MBB larger).
    Measure the geometry footprint; if FE + geometry would exceed the HBM, free/shrink geometry buffers around the factor
-   or fall back to CPU geometry **with a log line**. Record the numbers in `continuous/BENCHMARKS.md`.
+   or fall back to CPU geometry **with a log line**. Record the numbers in `docs/cshell/BENCHMARKS.md`.
 4. Tests: existing `tests/cshell/test_design.py`, `test_mma.py`, `test_end_to_end.py` pass on CPU; new `@pytest.mark.gpu`
    test that GPU and CPU chains agree (V to 1e-10 relative, gradients to 1e-6) on the B2 rod, and that a 3-iteration B2
    run gives the same history (J to 1e-6) on both devices.
@@ -38,11 +40,11 @@ Goal: phase-B iteration ≲ 15 s (compliance part) without changing any result b
    fits at 0.4 mm (STATUS K11); if not, try in order: fewer eigensolver block vectors, the fp32-preconditioned path.
 Slots: 3.
 
-## Task C: collect, decision, vshell start, CLI (`cshell/collect.py` new, `cshell/cli.py`, `Run.initial_xi` in `optimise.py` only, `continuous/cluster/`)
-1. **S2 vshell start (§7.4):** load `examples/runs/<Name>/arrays.npz` (+ `regions.csv`, `summary.json`; find the
+## Task C: collect, decision, vshell start, CLI (`cshell/collect.py` new, `cshell/cli.py`, `Run.initial_xi` in `optimise.py` only, `cshell/cluster/`)
+1. **S2 vshell start (§7.4):** load `examples/dshell/runs/<Name>/arrays.npz` (+ `regions.csv`, `summary.json`; find the
    region-label grid and θ of vshell's best design there — read the vshell code that writes them) or run vshell if
    absent; ξᵃ_i = θ of the region containing p_i − (r_MA,i/2) n_i, ξᵈ_i = s(1 − θ)/d^{hi}_i (clip to [0,1]).
-   Config key `optimiser.vshell_run` (default `examples/runs/<name>`). Test on the cantilever (CPU job).
+   Config key `optimiser.vshell_run` (default `examples/dshell/runs/<name>`). Test on the cantilever (CPU job).
 2. **`python -m cshell collect <run_dir>` (§5.4, §8, §10.5):** best feasible start by final J; export via `export.py`
    (holes sited by final stress if available); **re-score on the export geometry** (voxel FE of the exported nominal ψ
    through the same as-built pipeline as the optimiser) at (i) the optimisation grid, (ii) grid shifted by ½h_e in x, y,
@@ -57,22 +59,22 @@ Slots: 3.
 3. CLI: `collect`, `setup` (geometry, band, P, caches; prints DOF and memory plan), `faces`/`init` (delegate to vshell's
    equivalents), `bench B1|B2|B3|all` (runs `examples/cshell/bench/*.json`), `report` (calls `cshell.report.build(run_dir)`
    — Task R). Update the module docstring.
-4. `continuous/cluster/run.sh`: confirm it resubmits with `--resume` via `--dependency=afterany` and that one start per
-   job works (`--start`); add `continuous/cluster/collect.sh`.
+4. `cshell/cluster/run.sh`: confirm it resubmits with `--resume` via `--dependency=afterany` and that one start per
+   job works (`--start`); add `cshell/cluster/collect.sh`.
 5. Tests (`tests/cshell/test_collect.py`, CPU, B-rod scale): decision-rule truth table; uniform-shell t solve; re-score of
    the solid equals the baseline; summary schema. One GPU end-to-end `run` + `collect` on the B2 rod.
 Slots: 3.
 
 ## Task R: report (`cshell/report.py` new, `tests/cshell/test_report.py`)
 `build(run_dir) -> path` writes `report.pdf` (§9, 15 pages) from files in the run dir only (rebuildable): follow
-`vshell/report.py` (text pages first, one figure per page, each figure in its own try/except with failures in
+`dshell/report.py` (text pages first, one figure per page, each figure in its own try/except with failures in
 `plots/report_log.txt`, rasterised 3D, PDF < 5 MB). Inputs: `summary.json` (schema in `cshell/collect.py`'s docstring
 once it appears; until then use §9 page 1 and §10.5), `history.csv` (columns `optimise.HIST_COLS`), `config_used.json`,
 `run_info.json`, `xi_<start>_phase<k>.npy`, `fields.vtp`, `validation.csv`, `sensitivity.csv`, `escape_holes.csv`,
 `wall_thickness.csv`. Pages whose inputs are missing render a "not available" page rather than failing. Provenance
 page: git commit + dirty flag, SHA-256 of STEP, config and every source file incl.
-`continuous/reference/{analysis,gpu_analysis}.py`, package versions, CUDA driver/runtime, host, job id (reuse
-`vshell/util.py`). Tests: build from a synthetic run dir (fabricated small files) and from `runs_cshell/timing/Cantilever`
+`docs/cshell/reference/{analysis,gpu_analysis}.py`, package versions, CUDA driver/runtime, host, job id (reuse
+`dshell/util.py`). Tests: build from a synthetic run dir (fabricated small files) and from `runs_cshell/timing/Cantilever`
 (partial: no summary) without exceptions; page count; size < 5 MB. CPU only. Slots: 1.
 
 ## Return (each, under 250 words)

@@ -1,3 +1,5 @@
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
+
 # vshell: Variable-Thickness Shelling Toolchain — Theory and Operation
 
 Oct 28, 2026 · @Owen
@@ -262,7 +264,7 @@ The package is ten plain-Python modules with no compiled code of its own. Each s
 ```bash
 python -m vshell faces "part.step" --png faces.png    # list faces, draw analytic faces with their ids
 python -m vshell init "part.step"                     # template JSON (bolt-hole cylinders pre-selected)
-python -m vshell run examples/l_bracket.json          # optimise, write outputs and report.pdf
+python -m vshell run examples/dshell/l_bracket.json          # optimise, write outputs and report.pdf
 python -m vshell run cfg.json --set grid.sdf_mm=0.5 search.max_fe_evaluations=6
 python -m vshell report runs/L-bracket                # rebuild the report from saved files
 ```
@@ -336,7 +338,7 @@ vshell hollows only the cantilever. There it hollows just the two compression st
 | L-bracket | 15 | 15 / 10 | 48.3 N/mm | 540 N (strength) | 14 of 15 regions hollow, wall 1.81 mm | 1.068 | 0.944 | Solid kept: J = +0.004, below 0.020 | 15 min | 2.4 GB |
 | MBB | 28 | 28 / 10 | 473 N/mm | 2742 N (strength) | 1 region hollow (k = 27) | 1.000 | 1.000 | Solid kept: J = +0.0003 | 23 min | 4.5 GB |
 
-All runs used the default config at 200 N; run times include the report. Reports are in `examples/runs/<part>/report.pdf`.
+All runs used the default config at 200 N; run times include the report. Reports are in `examples/dshell/runs/<part>/report.pdf`.
 
 &#91;image: Cantilever best design: compression struts hollow (blue), tension struts and joints solid\]
 

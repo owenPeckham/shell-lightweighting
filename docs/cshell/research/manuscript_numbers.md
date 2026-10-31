@@ -1,6 +1,8 @@
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
+
 # Manuscript numbers for cshell validation and reporting
 
-Sources: M = continuous/reference/main.pdf ("Hollow Promises?", PDF page = printed page; 41 pp.), V = continuous/reference/vshell_theory_and_operation.md, T = continuous/THEORY_continuous.md, tests/validate_tubes.py + validate_tubes_results.json (J). Stiffness in kN/mm, load capacity in kN unless stated. n = 5 replicates per type in every table (M p.12, p.14).
+Sources: M = docs/cshell/reference/main.pdf ("Hollow Promises?", PDF page = printed page; 41 pp.), V = docs/cshell/reference/vshell_theory_and_operation.md, T = docs/cshell/THEORY_continuous.md, tests/dshell/validate_tubes.py + validate_tubes_results.json (J). Stiffness in kN/mm, load capacity in kN unless stated. n = 5 replicates per type in every table (M p.12, p.14).
 
 ## 1. Material and process (M p.11, p.14)
 | Quantity | Value | Source |

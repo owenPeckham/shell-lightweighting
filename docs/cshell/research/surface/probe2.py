@@ -1,5 +1,5 @@
 import sys,time,numpy as np, igl
-d=np.load('continuous/research/surface/cant_tess.npz');V,T,F=d['V'],d['T'],d['F']
+d=np.load('docs/cshell/research/surface/cant_tess.npz');V,T,F=d['V'],d['T'],d['F']
 import pymeshlab as pm
 def run(**kw):
     ms=pm.MeshSet(); ms.add_mesh(pm.Mesh(V,T))

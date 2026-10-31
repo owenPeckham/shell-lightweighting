@@ -6,5 +6,5 @@
 #SBATCH --time=01:30:00
 #SBATCH --output=logs/%x_%j.out
 set -euo pipefail
-source continuous/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
-python continuous/research/validate/v3b_run.py voxel continuous/research/validate/v3b_voxel${V3B_TAG:-}.json ${@:-0.8 0.4 0.2}
+source cshell/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
+python docs/cshell/research/validate/v3b_run.py voxel docs/cshell/research/validate/v3b_voxel${V3B_TAG:-}.json ${@:-0.8 0.4 0.2}

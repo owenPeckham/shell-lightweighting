@@ -1,5 +1,5 @@
 # cshell environment (aarch64 / GH200, Isambard-AI). THEORY §10.4.
-# Create: mamba env create -p $PROJECTDIR/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell -f continuous/environment.yml
+# Create: mamba env create -p $PROJECTDIR/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell -f docs/cshell/environment.yml
 name: cshell
 channels: [conda-forge]
 dependencies:

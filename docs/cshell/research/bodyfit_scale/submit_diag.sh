@@ -10,6 +10,6 @@ for p in $PARTS; do
   d="$REPO/runs_cshell/FULL/$p"; [ "$p" = B2 ] && d="$REPO/runs_cshell/VF_B2"
   for w in $WHICH; do
     sbatch --parsable --time=03:00:00 --mem=110G --job-name=bfs_${p}_$w \
-      continuous/research/bodyfit_scale/gpu_py.sh continuous/research/bodyfit_scale/diag.py "$d" $w $VARS
+      docs/cshell/research/bodyfit_scale/gpu_py.sh docs/cshell/research/bodyfit_scale/diag.py "$d" $w $VARS
   done
 done

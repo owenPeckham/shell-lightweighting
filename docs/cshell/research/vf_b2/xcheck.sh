@@ -5,5 +5,5 @@
 #SBATCH --time=00:40:00
 #SBATCH --output=logs/%x_%j.out
 set -euo pipefail
-source continuous/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
-python continuous/research/vf_b2/xcheck.py runs_cshell/VF_B2/best_candidate.stl 0.5 72
+source cshell/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
+python docs/cshell/research/vf_b2/xcheck.py runs_cshell/VF_B2/best_candidate.stl 0.5 72

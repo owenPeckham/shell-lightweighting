@@ -1,12 +1,14 @@
-# PLAN: cshell modules built in parallel with the FE engine (agreed plan: continuous/STATUS.md §2.3)
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
 
-Repo `/home/b6bl/owenpeckham.b6bl/shell-lightweighting`, branch `cshell` (already checked out; **do not commit, do not switch branch, do not push** — the orchestrator commits). Spec: `continuous/THEORY_continuous.md` (cite § in docstrings). Owen's decision D1 (STATUS.md §4): the inset lower bound is a ≥ (t_min − d)⁺ smoothed; it affects `design.py`, not these modules.
+# PLAN: cshell modules built in parallel with the FE engine (agreed plan: docs/cshell/STATUS.md §2.3)
+
+Repo `/home/b6bl/owenpeckham.b6bl/shell-lightweighting`, branch `cshell` (already checked out; **do not commit, do not switch branch, do not push** — the orchestrator commits). Spec: `docs/cshell/THEORY_continuous.md` (cite § in docstrings). Owen's decision D1 (STATUS.md §4): the inset lower bound is a ≥ (t_min − d)⁺ smoothed; it affects `design.py`, not these modules.
 
 Common rules
-- Env: `source continuous/cluster/env.sh` (conda env at `/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell`: numpy, scipy, numba-cuda, cupy, warp-lang, libigl, trimesh, scikit-image, mmapy, build123d/OCP, pytest, pyvista, gmsh). Packages must be aarch64; if one is missing, `pip install` it into that env and add it to `continuous/environment.yml`.
-- Login node: edit only. Run tests via `sbatch continuous/cluster/cpu_test.sh <pytest args>` or `sbatch continuous/cluster/gpu_test.sh pytest <args>` / `gpu_test.sh script.py`. Logs go to `logs/`. Respect your slot budget.
+- Env: `source cshell/cluster/env.sh` (conda env at `/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/envs/cshell`: numpy, scipy, numba-cuda, cupy, warp-lang, libigl, trimesh, scikit-image, mmapy, build123d/OCP, pytest, pyvista, gmsh). Packages must be aarch64; if one is missing, `pip install` it into that env and add it to `docs/cshell/environment.yml`.
+- Login node: edit only. Run tests via `sbatch cshell/cluster/cpu_test.sh <pytest args>` or `sbatch cshell/cluster/gpu_test.sh pytest <args>` / `gpu_test.sh script.py`. Logs go to `logs/`. Respect your slot budget.
 - Units mm, N, MPa. Type hints; docstrings give the equation and §. Float64 for reductions. Match the style of `cshell/fea.py`.
-- Reuse vshell (`vshell/geometry.py`: `load_step`, `face_table`, `select_faces`, `tessellate` → (V, T, TF); `vshell/segment.py` for mount detection; `vshell/field.py` for SDF ideas). Do not change vshell; if you must, run `python tests/test_basic.py`.
+- Reuse vshell (`dshell/geometry.py`: `load_step`, `face_table`, `select_faces`, `tessellate` → (V, T, TF); `dshell/segment.py` for mount detection; `dshell/field.py` for SDF ideas). Do not change vshell; if you must, run `python tests/dshell/test_basic.py`.
 - Tests in `tests/cshell/test_<module>.py`, CPU by default, GPU tests `@pytest.mark.gpu` (fixtures in `tests/cshell/conftest.py`). Only touch the files listed for your task.
 
 ## Task A: `cshell/surface.py` (§3.4, §3.5)
@@ -16,7 +18,7 @@ Common rules
 - `medial_depth(...)`: r_MA per vertex by marching inward in h_g/2 steps with **exact** point-to-mesh distance (igl, or warp `mesh_query_point`) until D(t) < t − δ (δ = 1e-3), then bisection to 0.01 mm (§3.5). Ray-chord upper bound as a sanity check (report violations). Tests V1-b: cylinder r = 5 (and a 10 × 20 box: inradius 5) within ±0.1 h_g, h_g = 0.1.
 - `outward_clearance(...)`: r_out = g/2 from a ray along +n hitting the mesh (∞ if none). `keepout_distance(...)` from keep-out SDFs (primitives sphere/box/cylinder + STL), bound by first point with φ_K < c_K. Tests on two parallel cylinders and a slab with a sphere keep-out.
 - `passive_vertices(...)`: mount zone = within `dilate_mm` of mount/BC faces (analytic faces per `vshell.segment` logic + support/load faces + extra faces; reuse vshell's code paths, keep only the mount part); and thin zone a^{hi} ≤ a^{lo} + v_min/2 — expose the thin rule as a function of given arrays so design.py can apply the D1 variant.
-- Performance target: cantilever (`examples/step/Solid Cantilever.step`, ≈ 6·10⁴ vertices) end to end < 5 min on one CPU node; report timings.
+- Performance target: cantilever (`examples/parts/Solid Cantilever.step`, ≈ 6·10⁴ vertices) end to end < 5 min on one CPU node; report timings.
 
 ## Task B: `cshell/mma.py` (§7.1, §7.2) and B4
 - Wrapper around `mmapy` (`mmasub`; GCMMA optional) with state object (xold1, xold2, low, upp, iteration), move limit, asyinit/asyincr/asydecr 0.5/1.2/0.7, a0=1, a_i=0, c_i=1e3, d_i=1, constraint scaling, and `reset_asymptotes()`; state serialisable to/from a dict of numpy arrays (checkpoints, §7.6), bit-exact resume.
@@ -30,7 +32,7 @@ Common rules
 - `Band.extend(D_new)` (§3.5 D_comp doubling): add the new shell cells, keep existing ones.
 - Cache to `.npz` keyed by STEP SHA-256 + grid parameters (h_g, D_comp, tessellation tol) in `$CSHELL_CACHE` (default `.cache_cshell/`, a symlink to projects storage — create `/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/.cache_cshell` and symlink it if absent).
 - Volume helper V = h_g³ Σ χ over band (+ interior not in band) in float64; V₀ of the solid with the quintic Heaviside H_ε, ε = h_g (§3.7, §3.10).
-- Tests (CPU, small): φ against analytic sphere/cylinder/box SDF (|err| < 1e-4 mm); V1-a volumes of a solid cylinder and a tube via ψ to < 2e-3 at h_g = 0.1 (use primitives meshed finely; tube ψ = max(φ − t_out, −φ − a) style per §3.2 is fine with constant fields); P rows sum to 1 and reproduce a linear field exactly. GPU test: Warp result equals igl on a sample. Benchmark (GPU job): band build for the cantilever at h_g = 0.2 and 0.1 (cells, time, memory); write the numbers into `continuous/research/band_bench.md`.
+- Tests (CPU, small): φ against analytic sphere/cylinder/box SDF (|err| < 1e-4 mm); V1-a volumes of a solid cylinder and a tube via ψ to < 2e-3 at h_g = 0.1 (use primitives meshed finely; tube ψ = max(φ − t_out, −φ − a) style per §3.2 is fine with constant fields); P rows sum to 1 and reproduce a linear field exactly. GPU test: Warp result equals igl on a sample. Benchmark (GPU job): band build for the cantilever at h_g = 0.2 and 0.1 (cells, time, memory); write the numbers into `docs/cshell/research/band_bench.md`.
 
 ## Return (each task, under 250 words)
 Files written; test results with job ids; measured timings; deviations from the spec and why; open issues.

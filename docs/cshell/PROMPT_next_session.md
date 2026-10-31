@@ -1,9 +1,11 @@
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
+
 Continue building the continuous constant-mass shelling optimiser `cshell` (Isambard-AI).
 
 Work in the worktree `/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2` on branch
 `cshell-stage2` (enter it with EnterWorktree using that path; don't create a new one). Read first:
-`continuous/HANDOVER.md` (state, my decisions, rules, remaining work), then `continuous/STATUS.md`, `continuous/VALIDATION.md`,
-`continuous/BENCHMARKS.md`, `continuous/plans/PLAN_twogrid.md`, `continuous/plans/PLAN_validation_fixes.md` and the two
+`docs/cshell/HANDOVER.md` (state, my decisions, rules, remaining work), then `docs/cshell/STATUS.md`, `docs/cshell/VALIDATION.md`,
+`docs/cshell/BENCHMARKS.md`, `docs/cshell/plans/PLAN_twogrid.md`, `docs/cshell/plans/PLAN_validation_fixes.md` and the two
 status notes they point to. The last commit is a WIP commit with two unfinished developer tasks; review it before
 building on it, and check the logs of the jobs listed in the hand-over.
 

@@ -1,7 +1,9 @@
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
+
 # PLAN: collect re-scoring, export, memory, determinism (agreed with Owen 2026-10-30)
 
 Status: AGREED (Owen, 2026-10-30) (diagnosis by the collect_mem analyst, 2026-10-30). Evidence: jobs 7862848 (diag),
-7862907 / 7864025 / 7864331 (memory profiles); scripts and logs in continuous/research/collect_mem/.
+7862907 / 7864025 / 7864331 (memory profiles); scripts and logs in docs/cshell/research/collect_mem/.
 
 ## Findings (evidence)
 
@@ -89,7 +91,7 @@ P5. Host memory <= 60 GiB outside the export (collect.py, optimise.py read-only 
     d. Clear export._G after each Exporter.run (owner: export agent). Run the export in a subprocess, or before the
        PhaseModel is built, so its 120-150 GiB peak does not stack on collect's state.
     Acceptance (MBB smoke, h_g 0.1): peak cgroup anon outside the export <= 60 GiB, measured with
-    continuous/research/collect_mem/memprof.py --skip-export. Full collect fits --mem=180G (export-bound). Scores
+    docs/cshell/research/collect_mem/memprof.py --skip-export. Full collect fits --mem=180G (export-bound). Scores
     unchanged against the CPU path to 1e-10 in J.
 
 ## Open questions

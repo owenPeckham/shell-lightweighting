@@ -1,3 +1,5 @@
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
+
 # Prompt for Claude Code: build `cshell`, the continuous constant-mass shelling optimiser
 
 You are working in the `shell-lightweighting` repository. Your job is to design, implement, verify and document **`cshell`**, a headless Python toolchain that:
@@ -11,10 +13,10 @@ It is the continuous successor to `vshell/`, which is already in the repo, worki
 
 ## 1. Read first, in this order
 
-1. **`continuous/THEORY_continuous.md` is the specification.** It covers the full theory, equations, sensitivities, optimiser, outputs, software layout, test plan with pass criteria, staged roadmap with gates, risks, and Owen's decisions (§14). Follow it. Where you deviate, say why in `continuous/STATUS.md` and update the spec in the same change.
-2. `continuous/reference/README.md`, then `continuous/reference/vshell_theory_and_operation.md` and `continuous/reference/feasibility_study.md`.
-3. **The manuscript, `continuous/reference/main.pdf`** (about 24 MB; read it by page ranges). Focus on Study 1 (Tables 2–5), Study 2 and Sections 6.1–6.2.
-4. **The reference GPU FE stack:** `continuous/reference/gpu_analysis.py` and `continuous/reference/analysis.py`. These are large files, so read selectively:
+1. **`docs/cshell/THEORY_continuous.md` is the specification.** It covers the full theory, equations, sensitivities, optimiser, outputs, software layout, test plan with pass criteria, staged roadmap with gates, risks, and Owen's decisions (§14). Follow it. Where you deviate, say why in `docs/cshell/STATUS.md` and update the spec in the same change.
+2. `docs/cshell/reference/README.md`, then `docs/cshell/reference/vshell_theory_and_operation.md` and `docs/cshell/reference/feasibility_study.md`.
+3. **The manuscript, `docs/cshell/reference/main.pdf`** (about 24 MB; read it by page ranges). Focus on Study 1 (Tables 2–5), Study 2 and Sections 6.1–6.2.
+4. **The reference GPU FE stack:** `docs/cshell/reference/gpu_analysis.py` and `docs/cshell/reference/analysis.py`. These are large files, so read selectively:
    - the module docstrings;
    - `ConjugateGradient`: `__init__`, `_volume_mesh`, `run_analysis`, `run_buckling`;
    - `matrix_free_pcg`;
@@ -24,7 +26,7 @@ It is the continuous successor to `vshell/`, which is already in the repo, worki
 5. **The existing code:**
    - `vshell/`, especially `geometry.py`, `field.py`, `segment.py`, `report.py`, `util.py` and `config.py`;
    - `tests/`;
-   - `examples/*.json`, `examples/step/*.step` and `examples/runs/*/summary.txt`.
+   - `examples/*.json`, `examples/parts/*.step` and `examples/dshell/runs/*/summary.txt`.
 
 ## 2. Non-negotiable requirements (spec §1.3 and §14)
 
@@ -40,13 +42,13 @@ It is the continuous successor to `vshell/`, which is already in the repo, worki
   - only a single load case is required.
 - **Objective weights.** w_K and w_P are user-tunable hyper-parameters (config and `--set`), equal by default, and recorded in every summary and report.
 - **R6, verified gradients.** Every gradient passes the finite-difference and directional tests of §6.6 before it is used in an optimisation.
-- **R7, report and provenance.** Every run writes `report.pdf` and full provenance (§9), following `vshell/report.py`.
+- **R7, report and provenance.** Every run writes `report.pdf` and full provenance (§9), following `dshell/report.py`.
 - **R8, headless and testable.** It runs headless on GH200 GPUs, and the test suite runs CPU-only at small sizes (the reference code's `cpu_direct` engine works without CUDA).
 - **Runs survive the 24 h SLURM limit.** Runs must be resumable across allocations: provide `--resume` and `--max-hours` (§7.6).
 
 ## 3. Use the reference FE stack, don't reinvent it
 
-- **Import, don't edit.** Import `analysis` and `gpu_analysis` from `continuous/reference/` via `sys.path` in `cshell/fea.py`. **Do not modify or copy those files.** `interfaces.py` there is a stub: the original wasn't supplied.
+- **Import, don't edit.** Import `analysis` and `gpu_analysis` from `docs/cshell/reference/` via `sys.path` in `cshell/fea.py`. **Do not modify or copy those files.** `interfaces.py` there is a stub: the original wasn't supplied.
 - **Adapter.** Build `ShellCG(analysis.ConjugateGradient)` with node-level boundary conditions, exactly as specified in §4.3. Mind:
   - the dtypes, including the per-DOF int32 `fixed_mask`;
   - the element-shaped `csg_domain_data` it still needs;
@@ -55,9 +57,9 @@ It is the continuous successor to `vshell/`, which is already in the repo, worki
 - **Known issue to fix inside cshell (§6.4).** For `q1_im`, the sensitivity returned by `run_buckling` uses the Gauss solid stiffness in Term A and in the adjoint term. That gives a 5.8 % directional bias; the same code is exact to 1e-4 for `q1`.
   1. Correct it in a cshell subclass or wrapper, using E_s·Khat.
   2. Prove the fix with the directional test.
-  3. Write it up for Owen in `continuous/OPEN_QUESTIONS.md`, with the reproducer.
+  3. Write it up for Owen in `docs/cshell/OPEN_QUESTIONS.md`, with the reproducer.
 - **Stress adjoint.** Call `matrix_free_pcg` with exactly the primal's operator: `element_type="q1_im"`, `nu`, `"gmg"`, `tol=0` and a `rel_tol` (§6.3). Its defaults differ from `ConjugateGradient`'s.
-- **Memory.** Check memory with `gpu_analysis.elastic_memory` and `gpu_analysis.buckling_memory` before every phase, and whenever the outward computational extent grows (§3.5, §4.2). Dense 0.4 mm elastic solves need about 42 GB for the cantilever. Dense 0.4 mm buckling does not fit, so run buckling on the 0.8 mm grid and chain the sensitivity back. Measure rather than assume, and record the numbers in `continuous/BENCHMARKS.md`.
+- **Memory.** Check memory with `gpu_analysis.elastic_memory` and `gpu_analysis.buckling_memory` before every phase, and whenever the outward computational extent grows (§3.5, §4.2). Dense 0.4 mm elastic solves need about 42 GB for the cantilever. Dense 0.4 mm buckling does not fit, so run buckling on the 0.8 mm grid and chain the sensitivity back. Measure rather than assume, and record the numbers in `docs/cshell/BENCHMARKS.md`.
 
 ## 4. Stages and gates (spec §12)
 
@@ -101,24 +103,24 @@ Work through the stages in order, and don't start a stage until the previous gat
 
 ## 5. How to approach the work
 
-- **Plan before coding.** Read the material, then write `continuous/STATUS.md` with your plan, the risks you see and any disagreement with the spec.
+- **Plan before coding.** Read the material, then write `docs/cshell/STATUS.md` with your plan, the risks you see and any disagreement with the spec.
 - **Small, tested increments.** Every module has unit tests: pytest, CPU by default, with `@pytest.mark.gpu` for GPU tests. No gradient is used before it passes §6.6.
 - **No silent fallbacks.** Every engine, resolution or solver fallback is logged and shown in the report. A non-converged PCG or eigen-solve is never accepted silently.
-- **Questions.** Owen's decisions are in spec §14. For anything still open, implement the stated default, record the question in `continuous/OPEN_QUESTIONS.md` and carry on. Stop and ask only for decisions that would waste days of GPU time or can't be undone.
+- **Questions.** Owen's decisions are in spec §14. For anything still open, implement the stated default, record the question in `docs/cshell/OPEN_QUESTIONS.md` and carry on. Stop and ask only for decisions that would waste days of GPU time or can't be undone.
 - **Report honestly.** If the continuous optimiser doesn't beat vshell or the solid on a part, that is a valid result: report it with the mechanism, don't tune it away. The linear model is expected to miss the MBB's ductile capacity gain (§4.5); say so.
-- **Keep vshell working.** `cshell` imports from it and must not change its behaviour. After any edit to `vshell/`, run `python tests/test_basic.py`.
+- **Keep vshell working.** `cshell` imports from it and must not change its behaviour. After any edit to `vshell/`, run `python tests/dshell/test_basic.py`.
 
 ## 6. Definition of done (Stages 0–2)
 
 1. **End-to-end runs.** `python -m cshell run examples/cshell/<part>.json` runs end to end for the Cantilever, L-bracket and MBB: every start, phase, export, validation and report. Runs resume correctly across 24 h allocations, and the outputs are as listed in spec §10.5.
-2. **Validation.** All tests in spec §11 pass, and the results are tabulated with their numbers in `continuous/VALIDATION.md`.
-3. **Status summary.** `continuous/STATUS.md` summarises each part:
+2. **Validation.** All tests in spec §11 pass, and the results are tabulated with their numbers in `docs/cshell/VALIDATION.md`.
+3. **Status summary.** `docs/cshell/STATUS.md` summarises each part:
    - decision, J, K/K₀, P/P₀ and governing mode;
    - wall range, mass error, and run time / GPU-hours;
    - the comparison of solid, uniform shell, vshell best and cshell;
    - whether the predicted sign of change agrees with the manuscript's measurements.
-4. **Open questions.** `continuous/OPEN_QUESTIONS.md` lists every assumption and every issue found in the reference code.
-5. **README.** `README_cshell.md` covers install, commands, config keys and outputs, in the style of `README_vshell.md`.
+4. **Open questions.** `docs/cshell/OPEN_QUESTIONS.md` lists every assumption and every issue found in the reference code.
+5. **README.** `cshell/README.md` covers install, commands, config keys and outputs, in the style of `dshell/README.md`.
 6. **Spec kept current.** The spec is updated wherever the implementation deviated.
 
 Begin with section 1: read the spec in full.

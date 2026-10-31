@@ -2,13 +2,13 @@
 import json, resource, sys, time
 from pathlib import Path
 import numpy as np
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 from cshell import band as B
 import warp as wp
 
 h = float(sys.argv[1]); D = float(sys.argv[2]) if len(sys.argv) > 2 and not sys.argv[2].startswith("--") else 4.0
 ext = float(sys.argv[sys.argv.index("--extend") + 1]) if "--extend" in sys.argv else None
-step = Path(__file__).resolve().parents[3] / "examples" / "step" / "Solid Cantilever.step"
+step = Path(__file__).resolve().parents[4] / "examples" / "parts" / "Solid Cantilever.step"
 wp.init(); dev = wp.get_device()
 out = dict(h_g=h, D_comp=D, device=str(dev), gpu=dev.name if dev.is_cuda else None)
 rss = lambda: resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024.0     # MiB

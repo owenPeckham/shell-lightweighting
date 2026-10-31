@@ -4,7 +4,7 @@
 #SBATCH --gpus=1
 #SBATCH --mem=200G
 #SBATCH --time=02:30:00
-#SBATCH --output=continuous/research/collect_mem/%x_%j.out
+#SBATCH --output=docs/cshell/research/collect_mem/%x_%j.out
 set -euo pipefail
-source continuous/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
-/usr/bin/time -v python continuous/research/collect_mem/memprof.py runs_cshell/CM_mem/MBB
+source cshell/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
+/usr/bin/time -v python docs/cshell/research/collect_mem/memprof.py runs_cshell/CM_mem/MBB

@@ -1,4 +1,6 @@
-# continuous/: hand-over pack for `cshell` (continuous variable-thickness shelling)
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
+
+# docs/cshell/ (was continuous/): hand-over pack for `cshell` (continuous variable-thickness shelling)
 
 | File | Purpose |
 | --- | --- |

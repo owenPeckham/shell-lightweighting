@@ -5,8 +5,8 @@
 #SBATCH --array=0-2%3
 #SBATCH --output=logs/%x_%A_%a.out
 set -euo pipefail
-source continuous/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
+source cshell/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
 PARTS=(cantilever l_bracket mbb)
 P=${PARTS[$SLURM_ARRAY_TASK_ID]}
 nvidia-smi --query-gpu=name,memory.total --format=csv,noheader
-python continuous/research/stage0/bench_solid.py examples/$P.json continuous/research/stage0/bench_${P}${TAG:-}.json ${HS:-0.8 0.4}
+python docs/cshell/research/stage0/bench_solid.py examples/$P.json docs/cshell/research/stage0/bench_${P}${TAG:-}.json ${HS:-0.8 0.4}

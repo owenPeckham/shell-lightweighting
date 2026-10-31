@@ -8,7 +8,7 @@ from pathlib import Path
 
 import numpy as np
 
-ROOT = Path(__file__).resolve().parents[3]
+ROOT = Path(__file__).resolve().parents[4]
 sys.path.insert(0, str(ROOT))
 from vshell import config as vcfg, field, geometry  # noqa: E402
 from cshell import fea  # noqa: E402

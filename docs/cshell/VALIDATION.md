@@ -1,7 +1,9 @@
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
+
 # cshell: verification and validation results (THEORY §6.6, §11)
 
 Status per test ID. Engine: active-set q1_im + cuDSS (`cshell/fe_sparse.py`) unless stated. Job ids in parentheses;
-logs in `logs/`, scripts in `continuous/research/` and `tests/cshell/`.
+logs in `logs/`, scripts in `docs/cshell/research/` and `tests/cshell/`.
 
 ## V1 geometry
 
@@ -94,26 +96,26 @@ in the opt-in `fe.twogrid.deterministic = "full"` mode (+150 % FE time); the geo
 
 ## V6 Study 1 parts, full pipeline (§11.1) — 2026-10-31
 
-Runs `runs_cshell/FULL` (3 starts each, agree ≤ 0.1 % in J), collect 7888538–40 (watertight export, mass-matched;
+Runs `runs_cshell/FULL` (committed results: `examples/cshell/runs/<part>/`) (3 starts each, agree ≤ 0.1 % in J), collect 7888538–40 (watertight export, mass-matched;
 body-fitted check not run on these parts: model exceeds solver capacity, decision on the voxel criteria per Owen
 2026-10-31). Rescored best design, minimum over the optimisation / shifted / coarse grids:
 
-| Part | Solid | Uniform shell (mounts solid) J, K/K0, P/P0 | vshell best J, K/K0, P/P0 | **cshell** J, K/K0, P/P0 (governing) | Decision |
+| Part | Solid | Uniform shell (mounts solid) J, K/K0, P/P0 | dshell best J, K/K0, P/P0 | **cshell** J, K/K0, P/P0 (governing) | Decision |
 | --- | --- | --- | --- | --- | --- |
 | Cantilever | 0 | +0.242, 0.931, 1.744 | +0.479, 0.992, 2.626 | **+0.490, 0.982, 2.711** | accepted |
 | L-bracket | 0 | −0.441, 0.957, 0.432 | +0.004, 1.068, 0.944 | **+0.129, 1.161, 1.115** | accepted |
 | MBB | 0 | −0.076, 0.775, 1.109 | +0.0003, 1.000, 1.000 | **+0.481, 1.096, 2.390** (buckling) | accepted |
 
 Against the manuscript's measured changes (hollow vs solid, Study 1, n = 5; `research/manuscript_numbers.md`). The
-cshell designs are not the tested designs, so this compares predicted trends, as the vshell table does:
+cshell designs are not the tested designs, so this compares predicted trends, as the dshell table does:
 
-| Part | K change cshell / vshell / measured | Pcap change cshell / vshell / measured | Pcap sign (cshell) | K sign (cshell) |
+| Part | K change cshell / dshell / measured | Pcap change cshell / dshell / measured | Pcap sign (cshell) | K sign (cshell) |
 | --- | --- | --- | --- | --- |
 | Cantilever | −1.8 / +1.2 / +3.5 (n.s.) % | +171 / +148 / +61.1 % | agrees (2.8×) | disagrees (measured n.s.) |
 | L-bracket | +16.1 / +6.9 / −7.0 (n.s.) % | +11.5 / −5.6 / −11.2 % | **disagrees** | disagrees (measured n.s.) |
 | MBB | +9.6 / −6.0 / −14.9 (n.s.) % | +139 / −11.1 / +14.8 % | agrees (9×) | disagrees (measured n.s.) |
 
-Reading (§11.1): the cantilever behaves as expected (J ≥ vshell's +0.48; compression struts hollowed, capacity from
+Reading (§11.1): the cantilever behaves as expected (J ≥ dshell's +0.48; compression struts hollowed, capacity from
 Euler-buckling relief). The MBB is **not** kept solid by the linear model, contrary to the §11.1 expectation: cshell
 finds a thickness distribution whose linear buckling capacity is 2.4× the solid's; the measured +14.8 % (ductile
 redistribution, §4.5) is far smaller, so the magnitude is over-predicted as for the cantilever (linear eigen-buckling

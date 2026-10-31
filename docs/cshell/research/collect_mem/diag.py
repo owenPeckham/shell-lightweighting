@@ -1,6 +1,6 @@
 """Collect re-scoring diagnosis on the SMOKE_mbb run (diagnosis only; no cshell/ edits).
 
-Usage (GPU job, from the repo root):  python continuous/research/collect_mem/diag.py <run_dir> <out_dir> [--shift]
+Usage (GPU job, from the repo root):  python docs/cshell/research/collect_mem/diag.py <run_dir> <out_dir> [--shift]
   1. Build the last-phase PhaseModel on the optimisation grid with geometry_device cpu (collect's choice) and gpu.
      For the run's best xi and the uniform-start xi: nominal V/V0-1, as-built rho, C, lam1, sigma_q on each chain;
      max |rho_cpu - rho_gpu|.

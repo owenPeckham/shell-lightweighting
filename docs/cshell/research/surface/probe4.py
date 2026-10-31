@@ -1,5 +1,5 @@
 import sys,time,numpy as np, igl
-d=np.load('continuous/research/surface/cant_tess.npz');V,T,F=d['V'],d['T'],d['F']
+d=np.load('docs/cshell/research/surface/cant_tess.npz');V,T,F=d['V'],d['T'],d['F']
 import pymeshlab as pm
 from scipy.sparse import coo_matrix
 def dev(V2,T2):

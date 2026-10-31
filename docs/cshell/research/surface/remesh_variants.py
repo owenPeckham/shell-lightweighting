@@ -2,7 +2,7 @@ import sys, time, numpy as np
 sys.path.insert(0, '.')
 from vshell import geometry as g
 from cshell import surface as S
-V, T, TF = g.tessellate(g.load_step('examples/step/Solid Cantilever.step'), 0.02, 0.2)
+V, T, TF = g.tessellate(g.load_step('examples/parts/Solid Cantilever.step'), 0.02, 0.2)
 for kw in [dict(), dict(tol=0.03)]:
     t = time.time()
     V1, T1, info = S.remesh_isotropic(V, T, ell=0.75, max_growth=2.2, **kw)

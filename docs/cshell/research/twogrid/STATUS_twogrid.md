@@ -30,7 +30,7 @@
 - Acceptance 3 still needs the direct runs (`PART=mbb|cantilever ENG=direct`, `--mem=240G`) and `cantilever ENG=auto`, then a comparison of history J to 1e-6.
 - Full CPU and GPU test suites, including end-to-end, must be re-run on the final code.
 - The CPU hang must be found and fixed.
-- `continuous/BENCHMARKS.md` and `notes.md` are not written.
+- `docs/cshell/BENCHMARKS.md` and `notes.md` are not written.
 
 **Next steps**
 1. Read 7809124, 7809224 and 7809226.

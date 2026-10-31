@@ -6,9 +6,9 @@
 #SBATCH --time=00:20:00
 #SBATCH --output=logs/%x_%j.out
 set -euo pipefail
-source continuous/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
+source cshell/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
 export CUDA_VISIBLE_DEVICES=""
 B=runs_cshell/TG_bench
 for p in mbb cant; do for ph in 0 1; do
-  echo "== $p phase $ph"; python continuous/research/twogrid/bench_design.py --compare $B/${p}_directM_ph$ph.npz $B/${p}_tgG_ph$ph.npz
+  echo "== $p phase $ph"; python docs/cshell/research/twogrid/bench_design.py --compare $B/${p}_directM_ph$ph.npz $B/${p}_tgG_ph$ph.npz
 done; done

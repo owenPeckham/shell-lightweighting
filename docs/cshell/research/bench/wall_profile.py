@@ -1,7 +1,7 @@
 """Wall and offset profile along x for a rod benchmark: python wall_profile.py <cfg> <xi.npy> <phase> [D_comp]"""
 import json, sys
 from pathlib import Path
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 import numpy as np
 from cshell import config
 from cshell.optimise import Context, PhaseModel

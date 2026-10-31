@@ -1,5 +1,5 @@
 """Stage 0 gate on the sparse engine: V2-b (Study 2 tubes vs Abaqus), V2-c (1.7 mm-wall tube convergence 0.8 → 0.2 mm),
-V3-a (clamped-free Euler rod). Same 3-point-bending set-up as tests/validate_tubes.py (line supports, line load,
+V3-a (clamped-free Euler rod). Same 3-point-bending set-up as tests/dshell/validate_tubes.py (line supports, line load,
 span 288, length 345.6, E 1760, ν 0.42). Tubes use the quarter model (symmetry x = 0 and y = 0), checked against the
 full model at 0.8 mm. Usage: python tubes.py out.json [h ...]"""
 import json
@@ -9,7 +9,7 @@ from pathlib import Path
 
 import numpy as np
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[3]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 from cshell.fe_sparse import ActiveGrid, SparseFE, buckling  # noqa: E402
 
 E, NU = 1760.0, 0.42

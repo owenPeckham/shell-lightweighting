@@ -1,6 +1,6 @@
 # Two-grid engine: acceptance notes (PLAN_twogrid.md), 2026-10-30
 
-Numbers and job ids: `continuous/BENCHMARKS.md` "Two-grid engine". Development log: `STATUS_twogrid.md`.
+Numbers and job ids: `docs/cshell/BENCHMARKS.md` "Two-grid engine". Development log: `STATUS_twogrid.md`.
 
 ## Acceptance
 1. **Tests.** CPU (7859087: test_objective, test_buckling, test_fe_twogrid, test_fe_sparse) 22 passed, 17 GPU-only

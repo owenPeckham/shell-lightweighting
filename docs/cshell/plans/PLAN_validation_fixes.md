@@ -1,12 +1,14 @@
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
+
 # PLAN: body-fitted validation fixes (agreed with Owen 2026-10-29)
 
 Worktree `/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2` (= REPO), branch
-`cshell-stage2`. Do not commit, switch branch or push. Common rules as in `continuous/plans/PLAN_parallel_modules.md`;
-env `source continuous/cluster/env.sh` (submit from REPO; absolute test paths). **Nothing runs on the login node**
+`cshell-stage2`. Do not commit, switch branch or push. Common rules as in `docs/cshell/plans/PLAN_parallel_modules.md`;
+env `source cshell/cluster/env.sh` (submit from REPO; absolute test paths). **Nothing runs on the login node**
 (no tests, imports or `python -c`); everything via sbatch. Minimum GPU **and host** memory per job, sized from a small
 timed run; report peak GPU and host RSS. Runs under `runs_cshell/VF_*`.
 
-Background: `continuous/research/b2_bodyfit/diagnosis.md` (read first), draft diffs `export.diff`, `validate.diff`,
+Background: `docs/cshell/research/b2_bodyfit/diagnosis.md` (read first), draft diffs `export.diff`, `validate.diff`,
 `collect.diff` (untested), GPU body-fitted prototype `bf_gpu.py`, mesh repair `mesh2.py` (if present) and the job logs
 there. The B2 run dir `runs_cshell/C_bench/B2_slender` is the test case.
 
@@ -37,7 +39,7 @@ with defaults).
 Acceptance: tests pass (CPU and GPU jobs); GPU body-fitted vs ccx on one B2 deck to ≤ 1e-5; re-run `collect` on
 `runs_cshell/C_bench/B2_slender` (copy it to `runs_cshell/VF_B2` first) with the new chain: voxel vs body-fitted table
 (C, λ_b with and without the exclusion, σ_q, ratios), mesh-gate numbers, time per model, decision. Update
-`continuous/THEORY_continuous.md` §8.3, §8.6 (relative tolerance, GPU engine, K_σ exclusion, quality gate) and
-`continuous/VALIDATION.md` (B2 body-fitted row).
+`docs/cshell/THEORY_continuous.md` §8.3, §8.6 (relative tolerance, GPU engine, K_σ exclusion, quality gate) and
+`docs/cshell/VALIDATION.md` (B2 body-fitted row).
 
 Slots: 3 (check `squeue -u $USER -h | wc -l` < 8 before each submission). Return under 250 words.

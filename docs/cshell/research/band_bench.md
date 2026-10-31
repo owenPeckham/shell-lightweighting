@@ -1,8 +1,10 @@
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
+
 # Band build benchmark (cshell/band.py, THEORY §3.1, §4.2)
 
-Part: `examples/step/Solid Cantilever.step`, tessellated at 0.02 mm (66,764 vertices, 133,540 triangles). Band: whole interior
+Part: `examples/parts/Solid Cantilever.step`, tessellated at 0.02 mm (66,764 vertices, 133,540 triangles). Band: whole interior
 plus outer shell D_comp = 4 mm (+ h_g). Backend: Warp `mesh_query_point_sign_winding_number` on one GH200 (95 GiB), 1 task per job.
-Script `continuous/research/band/bench.py`, raw JSON `continuous/research/band/bench_h*_D4.json`, logs `band_gpu_<jobid>.out`.
+Script `docs/cshell/research/band/bench.py`, raw JSON `docs/cshell/research/band/bench_h*_D4.json`, logs `band_gpu_<jobid>.out`.
 
 | h_g (mm) | job | band cells | dense box cells | band size | build (s) | peak host RSS | peak GPU pool | V0 / 60,942 - 1 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |

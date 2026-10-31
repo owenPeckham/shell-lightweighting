@@ -5,6 +5,6 @@
 #SBATCH --time=00:30:00
 #SBATCH --output=logs/%x_%j.out
 set -euo pipefail
-source continuous/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
+source cshell/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
 export CSHELL_EIG_VERBOSE=1
-python continuous/research/stage0/bench_solid.py examples/cantilever.json continuous/research/stage0/eig_cantilever.json 0.8
+python docs/cshell/research/stage0/bench_solid.py examples/dshell/cantilever.json docs/cshell/research/stage0/eig_cantilever.json 0.8

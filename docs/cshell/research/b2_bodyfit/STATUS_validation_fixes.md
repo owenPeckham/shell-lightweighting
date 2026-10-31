@@ -15,12 +15,12 @@ Tests added in tests/cshell/test_validate.py (gate, remesh, GPU vs ccx 1e-5, col
 
 ## Unfinished
 - test_export/test_collect results not yet read; VF_B2 collect result unread (the solid remesh may still trip a gate; hole-extent logic untested on B2).
-- Not done: xcheck GPU vs ccx on a B2 deck (continuous/research/vf_b2/xcheck.sh, needs VF_B2 best_candidate.stl); THEORY_continuous.md 8.3/8.6 and VALIDATION.md B2 row; no collect-level unit test; peak GPU/host memory not measured (collect requested --mem=80G).
+- Not done: xcheck GPU vs ccx on a B2 deck (docs/cshell/research/vf_b2/xcheck.sh, needs VF_B2 best_candidate.stl); THEORY_continuous.md 8.3/8.6 and VALIDATION.md B2 row; no collect-level unit test; peak GPU/host memory not measured (collect requested --mem=80G).
 - Login-node violation: one `py_compile` of bodyfit_gpu.py early on, plus `patch`/edits.
 
 ## Next steps
 1. Read logs/cshell_cpu_test_7808904.out and logs/vf_b2_collect_7809370.out; fix failures.
-2. sbatch continuous/research/vf_b2/xcheck.sh after VF_B2 exists; need rel diff <=1e-5.
+2. sbatch docs/cshell/research/vf_b2/xcheck.sh after VF_B2 exists; need rel diff <=1e-5.
 3. Rerun test_export (B2 films test reads runs_cshell/VF_B2).
 4. Fill the B2 table (C, lambda with/without exclusion, sigma_q, ratios, gate, times) into docs; update THEORY/VALIDATION.
 

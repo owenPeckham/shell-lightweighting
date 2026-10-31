@@ -3,8 +3,8 @@
 - Engine under test: `cshell/fe_sparse.py` at branch `cshell-stage2` (imported read-only; never edited). Prototypes
   live here: `gpumem.py` (memory/precision/eigensolver/hybrid phases), `twogrid.py` (two-grid PCG, matrix-free
   operator), `int64_test.py`, `job.sh` (sbatch wrapper: `sbatch [--export=ALL,SCRIPT=twogrid.py] job.sh <part> <tag> <h> [args]`).
-- Parts: `examples/cantilever.json`, `examples/mbb.json` (Study 1 solids, same geometry/BC/load path as
-  `continuous/research/stage0/bench_solid.py`: vshell PartGrid at h/2 with k_fe=2, `fea.build_bcs`).
+- Parts: `examples/dshell/cantilever.json`, `examples/dshell/mbb.json` (Study 1 solids, same geometry/BC/load path as
+  `docs/cshell/research/stage0/bench_solid.py`: vshell PartGrid at h/2 with k_fe=2, `fea.build_bcs`).
   Material and loads from those configs (E in MPa, forces in N, lengths in mm, compliance in N mm).
 - rho_hat = 1e-6 + (1 - 1e-6) * volume fraction (solid design, fraction-weighted boundary voxels), as in Stage 0.
 - "Hollow" proxy (`--hollow k`): the solid's active mask minus its k-fold binary erosion (a skin k voxels thick;

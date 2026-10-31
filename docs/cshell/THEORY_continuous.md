@@ -1,6 +1,8 @@
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
+
 # cshell: continuous variable-thickness shelling at constant mass
 
-## Theory and operation (implementation specification, v1.2, 28 October 2026; v1.1 adds Owen's decisions of §14; v1.2 records the implementation deviations D1, D2, D3, D6–D7 of §14 — see `continuous/STATUS.md` §4)
+## Theory and operation (implementation specification, v1.2, 28 October 2026; v1.1 adds Owen's decisions of §14; v1.2 records the implementation deviations D1, D2, D3, D6–D7 of §14 — see `docs/cshell/STATUS.md` §4)
 
 Author: Owen Peckham (DMF Lab, University of Bristol), drafted with Claude. Audience: the Claude Code instance that will implement `cshell` on the GPU cluster, and anyone who later maintains it.
 
@@ -18,14 +20,14 @@ It is self-contained, but it assumes you have read these files in the repository
 
 | File | Why |
 | --- | --- |
-| `continuous/reference/main.pdf` | The manuscript (Peckham, Hicks, Goudswaard, *Hollow Promises?*): the physical evidence this tool must respect. Tables 2–5 and Sections 6.1–6.2 matter most. |
-| `continuous/reference/vshell_theory_and_operation.md` | Theory of the discrete predecessor `vshell` (per-region solid/hollow, one wall offset). Its signed-distance machinery, FE validation and report are reused. |
-| `continuous/reference/feasibility_study.md` | Why the implicit-field approach was chosen over B-rep offsets (OpenCascade offsets failed on all three generative-design parts). |
-| `continuous/reference/gpu_analysis.py`, `analysis.py` | Owen's GPU finite-element stack: matrix-free PCG with geometric multigrid, linear buckling with adjoint sensitivities. `cshell` must use it for all field analyses (Section 4, Appendix A). |
-| `continuous/reference/interfaces.py` | Minimal stub so `analysis.py` imports. The original module was not supplied. |
-| `continuous/reference/baseline_optimiser.py` | Owen's report-writing conventions (PDF post-processing), which `vshell/report.py` already follows. |
+| `docs/cshell/reference/main.pdf` | The manuscript (Peckham, Hicks, Goudswaard, *Hollow Promises?*): the physical evidence this tool must respect. Tables 2–5 and Sections 6.1–6.2 matter most. |
+| `docs/cshell/reference/vshell_theory_and_operation.md` | Theory of the discrete predecessor `vshell` (per-region solid/hollow, one wall offset). Its signed-distance machinery, FE validation and report are reused. |
+| `docs/cshell/reference/feasibility_study.md` | Why the implicit-field approach was chosen over B-rep offsets (OpenCascade offsets failed on all three generative-design parts). |
+| `docs/cshell/reference/gpu_analysis.py`, `analysis.py` | Owen's GPU finite-element stack: matrix-free PCG with geometric multigrid, linear buckling with adjoint sensitivities. `cshell` must use it for all field analyses (Section 4, Appendix A). |
+| `docs/cshell/reference/interfaces.py` | Minimal stub so `analysis.py` imports. The original module was not supplied. |
+| `docs/cshell/reference/baseline_optimiser.py` | Owen's report-writing conventions (PDF post-processing), which `dshell/report.py` already follows. |
 | `vshell/` (repository root) | Working discrete toolchain: STEP import, face selectors, SDF grid, mounts, voxel FE, report. Reuse, don't rewrite. |
-| `examples/*.json`, `examples/step/*.step`, `examples/runs/*/` | The three Study 1 parts, their configs, and the vshell results to compare against. |
+| `examples/*.json`, `examples/parts/*.step`, `examples/dshell/runs/*/` | The three Study 1 parts, their configs, and the vshell results to compare against. |
 
 Conventions: **must** marks a requirement and **should** a strong recommendation. Section numbers (§) are stable, so code docstrings should cite them (e.g. `# THEORY §6.3`).
 
@@ -316,7 +318,7 @@ The second term is zero when the band covers the interior. Sum in float64. V₀ 
 > sensitivity (item 2 below) are no longer used. Dropping the void elements changes K by O(ρ_min) and no design
 > derivative (∂χ/∂ψ = 0 away from the surface); the active set is rebuilt whenever the design puts material outside it.
 > The reference `ConjugateGradient` (via `cshell.fea.ShellCG`) remains the test reference. Measured costs:
-> `continuous/BENCHMARKS.md`. A single fp64 factor holds ≈ 7 M DOF on a 96 GB GH200 (≈ 9 kB/DOF), so 0.2 mm runs
+> `docs/cshell/BENCHMARKS.md`. A single fp64 factor holds ≈ 7 M DOF on a 96 GB GH200 (≈ 9 kB/DOF), so 0.2 mm runs
 > need cuDSS hybrid memory or an iterative solver (STATUS K12).
 
 ### 4.2 Resolution, problem size and memory
@@ -346,9 +348,9 @@ Consequences:
 3. **Stage 3 builds a narrow-band block-sparse FE grid** (active 8³-element bricks only), to reach h_e = 0.2 mm (and 0.1 mm for validation). That is a 20–60× DOF saving. See Liu et al. 2018 (SPGrid narrow-band TO, about 10⁹ voxels on one workstation) and Aage et al. 2017 (giga-voxel). Coarse levels can be built by brick agglomeration, keeping the matrix-free element kernels.
 4. **Crop the box** to {φ < d^{hi} + h_e} in every case, and never let the optimiser touch elements outside it.
 
-Measure the cost per iteration (one primal solve per load case, one stress adjoint per load case, buckling) early in Stage 0 and record it in `continuous/BENCHMARKS.md`. Estimate run times from that, not from guesses.
+Measure the cost per iteration (one primal solve per load case, one stress adjoint per load case, buckling) early in Stage 0 and record it in `docs/cshell/BENCHMARKS.md`. Estimate run times from that, not from guesses.
 
-**As built (2026-10-30; supersedes items 1–3 for the FE).** The FE runs on the **active set** only (elements within `active_margin_mm` of material), not the dense box, at h_e = 0.8 mm (phase A) and 0.4 mm (phase B): 0.9–1.3 M DOF and 6.1–8.7 M DOF for the hollow designs. Default engine `fe.engine = "twogrid"` (`cshell/fe_twogrid.py`) in every phase, on one GPU: matrix-free q1_im K at h_e (no assembled fine matrix), Galerkin coarse operator at 2h_e factorised by cuDSS (fp32), Chebyshev–Jacobi smoothing, fp64 block PCG to 10⁻¹⁰ relative residual; buckling (§4.4) by block-Krylov on K⁻¹G with the same PCG as K⁻¹, so buckling runs at h_e = 0.4 mm on the design grid, without the 0.8 mm averaging of item 2. Measured on MBB phase B (8.4 M DOF): 25–50 s per iteration, 26 GiB GPU, ≈ 34 GB host; agreement with the direct cuDSS fp64 engine (`fe.engine = "direct"`, kept for validation): dJ ≤ 5·10⁻¹⁰ without buckling, J ≤ 6·10⁻⁸ over run histories; the full dJ differs by ~10⁻⁴ through eigenvector truncation at eig_tol = 10⁻³ in either engine. Numbers: `continuous/BENCHMARKS.md` "Two-grid engine".
+**As built (2026-10-30; supersedes items 1–3 for the FE).** The FE runs on the **active set** only (elements within `active_margin_mm` of material), not the dense box, at h_e = 0.8 mm (phase A) and 0.4 mm (phase B): 0.9–1.3 M DOF and 6.1–8.7 M DOF for the hollow designs. Default engine `fe.engine = "twogrid"` (`cshell/fe_twogrid.py`) in every phase, on one GPU: matrix-free q1_im K at h_e (no assembled fine matrix), Galerkin coarse operator at 2h_e factorised by cuDSS (fp32), Chebyshev–Jacobi smoothing, fp64 block PCG to 10⁻¹⁰ relative residual; buckling (§4.4) by block-Krylov on K⁻¹G with the same PCG as K⁻¹, so buckling runs at h_e = 0.4 mm on the design grid, without the 0.8 mm averaging of item 2. Measured on MBB phase B (8.4 M DOF): 25–50 s per iteration, 26 GiB GPU, ≈ 34 GB host; agreement with the direct cuDSS fp64 engine (`fe.engine = "direct"`, kept for validation): dJ ≤ 5·10⁻¹⁰ without buckling, J ≤ 6·10⁻⁸ over run histories; the full dJ differs by ~10⁻⁴ through eigenvector truncation at eig_tol = 10⁻³ in either engine. Numbers: `docs/cshell/BENCHMARKS.md` "Two-grid engine".
 
 ### 4.3 Boundary conditions, loads and the analysis adapter
 
@@ -619,7 +621,7 @@ Element-wise finite differences with steps of 10⁻³–10⁻² are too noisy to
 
 `cshell` must therefore correct the two terms for q1_im **inside cshell**. Subclass or wrap the buckling engine, replacing the Gauss solid stiffness with E_s·Khat, E_s = 2μ_s(1 + ν), wherever ∂K/∂ρ̂ appears: Term A and the explicit adjoint term. The geometric-stiffness terms built from compatible-B stresses are consistent as they stand. Do not edit the reference file.
 
-Then the directional test above must reach < 10⁻³ for q1_im, as it does for q1. (v1.2: done — `cshell.fea.ShellCG.run_buckling` applies the fix, directional error 5.3·10⁻² → 1.2·10⁻⁴; the production engine `fe_sparse.buckling` uses K⁰_e = E·K̂ throughout and passes the same test at 3.4·10⁻⁵.) Record the issue, with this reproducer, in `continuous/OPEN_QUESTIONS.md` for Owen. Until the fix passes, buckling gradients are approximate (about 6 % bias, correct direction). MMA tolerates that, but only accept a step if the evaluated J, not the predicted one, improves (GCMMA-style conservativeness).
+Then the directional test above must reach < 10⁻³ for q1_im, as it does for q1. (v1.2: done — `cshell.fea.ShellCG.run_buckling` applies the fix, directional error 5.3·10⁻² → 1.2·10⁻⁴; the production engine `fe_sparse.buckling` uses K⁰_e = E·K̂ throughout and passes the same test at 3.4·10⁻⁵.) Record the issue, with this reproducer, in `docs/cshell/OPEN_QUESTIONS.md` for Owen. Until the fix passes, buckling gradients are approximate (about 6 % bias, correct direction). MMA tolerates that, but only accept a step if the evaluated J, not the predicted one, improves (GCMMA-style conservativeness).
 
 Test buckling sensitivities with **directional derivatives along smooth perturbations** of size about 10⁻² in ρ̂ (signal far above eigen-solver noise), using `engine="classic"` or a tight `lobpcg_tol`.
 
@@ -782,7 +784,7 @@ Find δ by Brent so that V = V₀ on the export grid, applying d_i ← clip(d_i 
 
 ## 9. Report (`report.pdf`)
 
-The report follows `vshell/report.py`, which itself follows `baseline_optimiser.py`'s post-processing:
+The report follows `dshell/report.py`, which itself follows `baseline_optimiser.py`'s post-processing:
 
 - text summary pages first, then one figure per page;
 - each figure built in its own `try/except`, with failures listed in `plots/report_log.txt`;
@@ -841,7 +843,7 @@ continuous/        this document, the prompt, reference/, environment.yml,
                    STATUS.md (stage log), BENCHMARKS.md (measured costs), OPEN_QUESTIONS.md
 ```
 
-- **Import the reference stack** from `continuous/reference/` through `cshell/fea.py`, which puts that folder on `sys.path`. Do not copy or edit those files, so Owen's later fixes propagate. A genuine bug in them goes in `continuous/OPEN_QUESTIONS.md` with a minimal reproducer, worked around in `cshell`.
+- **Import the reference stack** from `docs/cshell/reference/` through `cshell/fea.py`, which puts that folder on `sys.path`. Do not copy or edit those files, so Owen's later fixes propagate. A genuine bug in them goes in `docs/cshell/OPEN_QUESTIONS.md` with a minimal reproducer, worked around in `cshell`.
 - **Reuse vshell:** `geometry.py` (STEP, face table, selectors, tessellation), the mount detection part of `segment.py`, `field.PartGrid` ideas for SDF and volume, `util.py` (provenance, CSV/JSON), and `report.py` helpers. vshell keeps working unchanged; `cshell` imports from it.
 
 ### 10.2 Configuration (JSON; every key defaulted except `step_file`, `supports`, `loads`)
@@ -880,7 +882,7 @@ Phase-indexed lists (`stress_p`, `softmin_beta`, `radius_mm`, `max_iter`, `slive
 ### 10.3 Command line
 
 ```bash
-python -m cshell faces "examples/step/Solid L-bracket.step" --png faces.png     # same as vshell
+python -m cshell faces "examples/parts/Solid L-bracket.step" --png faces.png     # same as vshell
 python -m cshell init  "part.step"                                               # template config
 python -m cshell setup examples/cshell/cantilever.json                           # geometry, band, P, caches; prints DOF + memory plan
 python -m cshell run   examples/cshell/cantilever.json [--start uniform] [--phase B] [--set key=value ...]
@@ -898,7 +900,7 @@ python -m cshell bench   [B1|B2|B3|all]                                         
 - **Scheduler.** SLURM with a 24 h wall-time limit, which is why `--max-hours` and `--resume` exist (§7.6).
 - **Working practice.** How to work on the cluster (jobs, nodes, scratch, version control) is governed by Owen's own instructions for Claude Code. This spec does not repeat them.
 
-**Dependencies.** Listed in `continuous/environment.yml`:
+**Dependencies.** Listed in `docs/cshell/environment.yml`:
 
 - Python ≥ 3.10, numpy, scipy, numba (CUDA), cupy;
 - build123d (OCP), libigl, trimesh, scikit-image, gpytoolbox or pymeshlab;
@@ -929,7 +931,7 @@ Optional: jax[cuda], nvmath-python (cuDSS), scikit-sparse, pyvista, tetgen, gmsh
 - Deterministic seeds. GPU reductions may be non-deterministic, so state the tolerance.
 - Every public function has a unit test or is covered by an integration test.
 - Commit at each passing gate with a message stating which tests passed.
-- Keep `continuous/STATUS.md` current: done, next, blockers, measured numbers.
+- Keep `docs/cshell/STATUS.md` current: done, next, blockers, measured numbers.
 
 ---
 
@@ -942,7 +944,7 @@ Optional: jax[cuda], nvmath-python (cuDSS), scikit-sparse, pyvista, tetgen, gmsh
 | V1-c | All-solid via fields against ψ = φ (§3.8) | V within 5·10⁻⁴; C within 0.5 % |
 | V1-d | Filter: maximum principle, M-symmetry, adjoint dot test | exact to round-off |
 | V2-a | Solid baselines of the three parts against vshell (h_e = 0.8, same BCs) | K₀ within 2 % |
-| V2-b | Study 2 PA11 tubes A–E in 3-point bending against Abaqus (`tests/validate_tubes.py` targets 0.0086, 0.0104, 0.0158, 0.0245, 0.0351 kN/mm) at h_e = 0.8 and 0.4 | within 4 % |
+| V2-b | Study 2 PA11 tubes A–E in 3-point bending against Abaqus (`tests/dshell/validate_tubes.py` targets 0.0086, 0.0104, 0.0158, 0.0245, 0.0351 kN/mm) at h_e = 0.8 and 0.4 | within 4 % |
 | V2-c | Thin-wall convergence, 1.7 mm-wall tube, h_e = 0.8 → 0.2 | monotone; 0.4 within 3 % of 0.2 |
 | V3-a | Euler: clamped–free solid rod r = 5, L = 100 mm, P_cr = π²EI/(4L²) = 213 N | within 5 % at h_e = 0.4 |
 | V3-b | Local shell buckling: tube R_m = 10, t = 1.5, L = 60, axial, against ccx `*BUCKLE` on C3D10 | within 10 % at h_e = 0.2–0.4 |
@@ -974,7 +976,7 @@ In every case, tabulate the predicted K/K₀ and P/P₀ against the manuscript's
 | **2. Capacity, robustness, manufacture, decision** | Stress p-norm and adjoint, buckling and chain, as-built, soft-min J, sliver penalty, S2 start, export (clean-up, holes, mass correction), two-resolution decision, body-fitted validation, full report. | V2-c, V3, V4 (4, 5), V5-B3, V6, V7 pass. Reports for all three parts. |
 | **3. Scale and extensions** (prioritise with Owen) | (a) Narrow-band sparse FE to 0.2/0.1 mm. (b) Multi-GPU. (c) Escape holes in the loop. (d) Global/local mode classification with separate knock-downs. (e) Plastic limit-load capacity (fixes the MBB miss). (f) Maximum-stiffness (kinematic washer) BC bound and worst case. (g) Interior topology freedom: ribs or lattice inside voids (coating/infill TO, Clausen et al. 2015; Wu et al. 2018). (h) Fusion round-trip of the mesh. | Per item. |
 
-At each gate: tests green, commit, `STATUS.md` updated, and a short summary for Owen in `continuous/STATUS.md`.
+At each gate: tests green, commit, `STATUS.md` updated, and a short summary for Owen in `docs/cshell/STATUS.md`.
 
 ---
 
@@ -1011,7 +1013,7 @@ At each gate: tests green, commit, `STATUS.md` updated, and a short summary for 
 | D6 | Inset lower bound (v1.2) | a ≥ a^{lo}(d) = smoothed (t_min − d)⁺ instead of a ≥ t_min, so walls can lie wholly outside Γ₀. | §3.4, §6.1 |
 | D7 | FE engine (v1.2) | Research and build the fast FE first; production engine = active-set q1_im + cuDSS Cholesky, buckling on the same factor at 0.4 mm. | §4.1–4.2, §6.3–6.4 |
 
-**Still open.** Implement the default, record the question in `continuous/OPEN_QUESTIONS.md`, and do not block:
+**Still open.** Implement the default, record the question in `docs/cshell/OPEN_QUESTIONS.md`, and do not block:
 
 1. **Buckling knock-down.** Default κ_b = 0.85.
 2. **Escape holes.** Diameter 3 mm and 2 per void (vshell defaults).
@@ -1098,7 +1100,7 @@ The stiffness crossover is at L/D ≈ 0.77. A plain round rod loses stiffness to
 
 ## Appendix C. References
 
-- Peckham O., Hicks B., Goudswaard M. *Hollow Promises?* Manuscript, 23 October 2026 (`continuous/reference/main.pdf`).
+- Peckham O., Hicks B., Goudswaard M. *Hollow Promises?* Manuscript, 23 October 2026 (`docs/cshell/reference/main.pdf`).
 - Allaire G., Jouve F., Toader A.-M. Structural optimization using sensitivity analysis and a level-set method. *J. Comput. Phys.* 194 (2004) 363–393.
 - Allaire G., Jouve F., Michailidis G. Thickness control in structural optimization via a level set method. *Struct. Multidisc. Optim.* 53 (2016) 1349–1382.
 - Lazarov B.S., Sigmund O. Filters in topology optimization based on Helmholtz-type differential equations. *Int. J. Numer. Meth. Eng.* 86 (2011) 765–781.

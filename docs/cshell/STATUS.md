@@ -1,3 +1,5 @@
+> Renamed 2026-10-31: vshell → dshell (discrete optimiser, `dshell/`), continuous/ → docs/cshell/, shell_lightweighting/ → ushell/.
+
 # cshell: status, plan and risks
 
 Stage log for `cshell` (THEORY_continuous.md §12). Newest entries at the top of §0.
@@ -13,12 +15,12 @@ Stage log for `cshell` (THEORY_continuous.md §12). Newest entries at the top of
 | 2026-10-28 | 2 | **Owen's decisions:** skip the Stage 1 compliance-only part runs and go to full Stage 2 runs; investigate the V2-b tube E miss briefly; build in parallel; work continues on branch `cshell-stage2` (worktree; branched from `cshell`). **Profiling** of the cantilever timing run (`runs_cshell/timing/Cantilever`, job 7796594, compliance only): phase B iteration ≈ 68 s, of which FE (GPU) 10.7 s, and the NumPy geometry chain over 220 M band cells 57 s (restoration 37, pull-backs/MMA 14.5, forward 5.8). Phase A 1.3–5 s. Parallel tasks started (`plans/PLAN_stage2.md`): G geometry chain on GPU, C collect/decision/vshell start/CLI, R report, tube E + V2-c 0.2 mm study. |
 | 2026-10-28 | 1–2 | Committed since the 0.3–0.4 entry: outward-extent extension §3.5 (B1, B2 pass); export.py (12 tests); B3 passes (λ_b/λ_b0 2.63 vs best uniform tube 2.25); validate.py (gmsh C3D10 + ccx, skfem fallback; V3-b passes 0.2–0.4 mm); fp32-factor-preconditioned fp64 CG when the fp64 factor does not fit; active-set margin 1.0 → 0.5 mm. See VALIDATION.md. |
 | 2026-10-28 | 0.3–0.4 | **Sparse engine built and validated** (`cshell/fe_sparse.py`): active-set q1_im + cuDSS fp64 Cholesky; buckling on the same factor with q1_im-consistent sensitivity (block-Krylov eigensolver, both spectrum ends kept in the restart, dual-norm residual). Tests pass CPU and GPU: matches dense `ShellCG` (full set 2e-6, partial set 1e-5), compliance gradient FD, buckling eigenvalues = reference model, directional ∂μ̃ 3.4e-5 (reference code: 5.8 % bias), stress adjoint < 1e-3, J gradient with buckling < 1e-3. **V2-a passes** at 0.8 mm (K₀ vs vshell: +0.4 %, +0.6 %, +0.1 %). Per-solve costs in `BENCHMARKS.md`: at 0.4 mm refactor 2.4–7.8 s, solve 0.03–0.06 s, 39–77 GiB. Dense reference at 0.8 mm reads 2–7 % stiffer than both vshell and the direct solve (float32 PCG stopped on residual; OPEN_QUESTIONS B5). Also built in parallel (agents): `mma.py` (V5-B4, V4-7 pass), `band.py` (Warp band, P, cache; tests pass; cantilever h_g = 0.1 band 220 M cells in 26 s), `design.py` (D1 chain; V4-1 directional < 1e-6 + Taylor, V1-c volume), `objective.py`. Manuscript numbers in `research/manuscript_numbers.md` (discrepancies → OPEN_QUESTIONS Q4–Q9). |
-| 2026-10-28 | 0.2 | FE-engine research done (`continuous/research/fe_engine/REPORT.md`). Measured on one GH200, thin-wall Q1 hex, fp64 cuDSS Cholesky: 3.3 M DOF factor 1.8 s, solve 0.024 s, 33 GiB; 7.6 M DOF factor 5.5 s, 75 GiB; 13.6 M DOF does not fit (≈ 9 kB/DOF). Symbolic `plan()` 13–32 s on CPU, only when the sparsity pattern changes. nvmath-python/cuDSS available (pip aarch64, and the `sa-gpu` container). Recommendation put to Owen: material-only active-set grid + assembled q1_im + cuDSS (§2.2, 0.3). `ShellCG` adapter and its tests written (`cshell/fea.py`, `tests/cshell/`); env `cshell` building. |
+| 2026-10-28 | 0.2 | FE-engine research done (`docs/cshell/research/fe_engine/REPORT.md`). Measured on one GH200, thin-wall Q1 hex, fp64 cuDSS Cholesky: 3.3 M DOF factor 1.8 s, solve 0.024 s, 33 GiB; 7.6 M DOF factor 5.5 s, 75 GiB; 13.6 M DOF does not fit (≈ 9 kB/DOF). Symbolic `plan()` 13–32 s on CPU, only when the sparsity pattern changes. nvmath-python/cuDSS available (pip aarch64, and the `sa-gpu` container). Recommendation put to Owen: material-only active-set grid + assembled q1_im + cuDSS (§2.2, 0.3). `ShellCG` adapter and its tests written (`cshell/fea.py`, `tests/cshell/`); env `cshell` building. |
 | 2026-10-28 | pre-0 | Owen: D1 adopted (a ≥ (t_min − d)⁺); plan re-ordered so fast/sparse FE is researched and built first (§2.2); MMA vs L-BFGS-B comparison added to Stage 1. |
 | 2026-10-28 | pre-0 | Spec read in full. Reference code checked selectively (ElementData, stress kernel, memory models located). Environment survey done. Plan, risks and disagreements written (this file). No code yet. |
 
 **Done:** env; `ShellCG`; sparse cuDSS engine with buckling; all modules except collect/report; V1-a/b/d, V2-a, V3, V4 1–7, V5-B1–B4.
-**Next:** tasks G, C, R of `plans/PLAN_stage2.md`; then full runs 3 parts × 3 starts, collect, V6, V7, README_cshell.md. Stage 1 compliance-only part runs skipped (Owen).
+**Next:** tasks G, C, R of `plans/PLAN_stage2.md`; then full runs 3 parts × 3 starts, collect, V6, V7, cshell/README.md. Stage 1 compliance-only part runs skipped (Owen).
 **Blockers:** none. Watch: MBB at 0.4 mm uses 94 GiB of 95.6 with buckling (K11).
 
 ---
@@ -49,14 +51,14 @@ New conda env `cshell` (Python 3.12) in the projects area. Survey of aarch64 ava
 | calculix (`ccx`) | conda-forge listing found; aarch64 to confirm | Fallback: build `ccx` from source, or scikit-fem P2 for compliance as §8.6 allows. |
 | tetgen / gmsh / pyvista | to confirm | Needed only for §8.6. |
 
-Write `continuous/environment.yml` and `continuous/cluster/` (sbatch templates: `cpu_test.sh`, `gpu_test.sh`, `run.sh` with `--max-hours 23.5` and automatic `--resume` resubmission via `--dependency=afterany`).
+Write `docs/cshell/environment.yml` and `cshell/cluster/` (sbatch templates: `cpu_test.sh`, `gpu_test.sh`, `run.sh` with `--max-hours 23.5` and automatic `--resume` resubmission via `--dependency=afterany`).
 
 ### 2.2 Stage 0: fast, accurate FE first (re-ordered by Owen, 2026-10-28)
 
 Owen's instruction: research and settle the FE engine **before** everything else, so no later test or run is slowed by the dense-box solver. This brings spec Stage 3a (narrow-band sparse FE) forward into Stage 0, with Owen's go-ahead. The spec (§4.2, §12) is updated when the engine is chosen.
 
 **0.1 Reference baseline (what has to be beaten).**
-1. Env; import `analysis`, `gpu_analysis` from `continuous/reference/` in `cshell/fea.py`; on a GPU node run `probe()`, `verify_host_kernel_consistency()`, record HBM size.
+1. Env; import `analysis`, `gpu_analysis` from `docs/cshell/reference/` in `cshell/fea.py`; on a GPU node run `probe()`, `verify_host_kernel_consistency()`, record HBM size.
 2. `ShellCG(analysis.ConjugateGradient)` with node-level BCs (§4.3), mm↔SI layer, tests on `cpu_direct` and GPU (Voigt order, energy normalisation, 40×4×4 beam). It stays the **reference model**: every faster engine must reproduce its answers.
 3. Measure dense cost on the three parts: elastic solve at 0.8 / 0.4 mm, buckling at 0.8 mm (time, PCG/LOBPCG iterations, peak memory vs `elastic_memory` / `buckling_memory`). Into `BENCHMARKS.md`.
 
@@ -146,7 +148,7 @@ Each will be resolved by updating THEORY_continuous.md in the same change as the
 GPU), collect 7888538–40 (30–47 min, 40–80 GiB host, ≤ 57 GiB GPU; watertight export, mass-matched), best design
 re-scored at the optimisation grid / ½h_e-shifted grid / h_e 0.5 (J = w_K ln K/K0 + w_P ln P/P0, constant mass).
 Body-fitted check not run on these parts (model exceeds one-GPU solver capacity, 7–12 M DOF at the coarse level);
-decision on the voxel criteria (Owen, 2026-10-31). Comparison with solid / uniform shell / vshell and the manuscript:
+decision on the voxel criteria (Owen, 2026-10-31). Comparison with solid / uniform shell / dshell and the manuscript:
 VALIDATION.md V6.
 
 | Part | J opt / shift / coarse | K/K0 | P/P0 | Walls (mm) | Decision |
@@ -156,6 +158,6 @@ VALIDATION.md V6.
 | L-bracket | +0.129 / +0.131 / +0.138 | 1.16 | 1.12 | 1.51–6.50 | **accepted** (120 it) |
 
 Gains are dominated by capacity (P/P0, buckling/strength soft-min); stiffness is about unchanged (K/K0 0.98–1.16).
-Uniform-shell baseline (mounts solid, D1) and vshell rows: `runs_cshell/FULL/<part>/summary.json`.
+Uniform-shell baseline (mounts solid, D1) and dshell rows: `examples/cshell/runs/<part>/summary.json` (committed copy of `runs_cshell/FULL/<part>/`; see `examples/cshell/runs/README.md`).
 
-Template for the gate: decision, J, K/K₀, P/P₀, governing mode, wall range, mass error, run time / GPU-hours, comparison of solid / uniform shell / vshell best / cshell, sign agreement with the manuscript.
+Template for the gate: decision, J, K/K₀, P/P₀, governing mode, wall range, mass error, run time / GPU-hours, comparison of solid / uniform shell / dshell best / cshell, sign agreement with the manuscript.
