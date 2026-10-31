@@ -6,7 +6,8 @@ set -euo pipefail
 CFG=$1; shift
 STARTS=(); while [ $# -gt 0 ] && [ "$1" != "--" ]; do STARTS+=("$1"); shift; done; [ "${1:-}" = "--" ] && shift
 if [ ${#STARTS[@]} -eq 0 ]; then
-  STARTS=($(python -c "import sys; from cshell import config; print(' '.join(config.load(sys.argv[1])['optimiser']['starts']))" "$CFG"))
+  STARTS=(uniform vshell neutral)      # the default optimiser.starts; nothing runs on the login node (no python here)
+  echo "[launch_part] starts: ${STARTS[*]} (name them explicitly if the config differs)"
 fi
 mkdir -p logs
 for S in "${STARTS[@]}"; do

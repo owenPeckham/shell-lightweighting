@@ -295,6 +295,10 @@ class _ValidationFailed(Exception):
     pass
 
 
+class _ScaleLimited(Exception):
+    """Body-fitted model beyond solver capacity: the decision uses the voxel criteria (Owen, 2026-10-31)."""
+
+
 def _release(model) -> None:
     if hasattr(model, "release"):
         model.release()
@@ -1101,7 +1105,9 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
             kw = dict(h=h_val, h_bc=res_list[0]["h_e"], n_modes=4, nproc=int(_get(cfg, "validation.nproc", min(
                 32, len(os.sched_getaffinity(0))))), want_stress=True, E=cfg["material"]["E_MPa"], nu=cfg["material"]["nu"],
                 fallback=None, timeout=_get(cfg, "validation.timeout_s", None))
-            bf, dec, errs, used = {}, {}, {}, {}
+            bf, dec, errs, used, scale = {}, {}, {}, {}, {}
+            from . import bodyfit_gpu as cbf
+            cbf.MAX_DOF = float(_get(cfg, "validation.max_bodyfit_dof", 4e6))
             VE, TE, _ = load_mesh(stl["best"])
             # Same mesher for solid and design (ratios cancel mesher bias), quality gate, GPU C3D10 solve (cuDSS). Two
             # levels (h, h/sqrt(2)) give the mesh-convergence estimate; the finer level is compared. No tetgen fallback:
@@ -1156,7 +1162,7 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
                                     f"Hausdorff {dv['hausdorff']:.3f} mm, 99.9 % {dv['from_ref']['q999']:.3f} (from "
                                     f"STL) / {dv['to_ref']['q999']:.3f} (to STL) mm, mean {dv['from_ref']['mean']:.4f} mm")
                         except Exception as e:
-                            if fine:
+                            if fine or isinstance(e, cbf.ScaleLimit):
                                 raise
                             errs[f"{nm}/coarse_level"] = repr(e)[:600]
                             log(f"[collect] WARNING body-fitted {nm}: coarse level h = {hh:.3f} failed ({e!r:.300}); "
@@ -1175,10 +1181,15 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
                     if dec[nm]["converged_C"] is False:
                         errs[f"{nm}/convergence"] = f"compliance changes {dec[nm]['level_change']['C']:+.2%} between levels"
                         log(f"[collect] WARNING {nm}: {errs[f'{nm}/convergence']} (> 2 %)")
+                except cbf.ScaleLimit as e:                   # beyond solver capacity: voxel decision (not blocking)
+                    scale[nm] = str(e)
+                    log(f"[collect] body-fitted {nm} not run: {e}")
                 except Exception as e:                        # recorded; a failed check blocks acceptance below
                     errs[f"{nm}/mesh_or_solve"] = repr(e)[:600]
                     log(f"[collect] body-fitted {nm} FAILED: {e!r}")
             del VE, TE
+            if scale and not errs:
+                raise _ScaleLimited(scale)
             if len(bf) < 2:
                 raise _ValidationFailed(errs)
             d_opt = raws["opt"][0]
@@ -1201,6 +1212,12 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
                        seconds_ccx={k: v.seconds_ccx for k, v in bf.items()})
             tim["validation"] = time.time() - t0
             log(f"[collect] body-fitted: {val}")
+        except _ScaleLimited as e:
+            val = dict(ran=False, scale_limited=True, blocking_miss=False, scale=e.args[0],
+                       why="body-fitted check not run: model exceeds solver capacity; decision on the voxel criteria "
+                           "at all three resolutions (Owen, 2026-10-31)")
+            tim["validation"] = time.time() - t0
+            log(f"[collect] {val['why']}: {e.args[0]}")
         except _ValidationFailed as e:
             val_failed = True
             val = dict(ran=False, why="body-fitted check failed (mesher/solver)", errors=e.args[0], blocking_miss=True)
@@ -1213,6 +1230,8 @@ def collect(run_dir: str, allow_incomplete: bool = False, validate: bool | None 
     extra += [f"{r['res']}: FE of the best export failed ({r['error']})" for r in res_rows
               if r["design"] == "best" and r.get("error")]
     acc, reason, checks = decide(checks, crit, export_ok, blocking, extra, export_why=export_why)
+    if val.get("scale_limited"):
+        reason += " [body-fitted check not run: model exceeds solver capacity; voxel criteria only]"
     final = os.path.join(run_dir, "final_design.stl")
     shutil.copyfile(os.path.join(run_dir, "best_candidate.stl" if acc else "original.stl"), final)
     files["final_design.stl"] = "final_design.stl"

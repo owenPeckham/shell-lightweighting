@@ -276,8 +276,20 @@ def weighted_quantile(x, w, q):
     return float(x[i][np.searchsorted(c, q)])
 
 
+class ScaleLimit(RuntimeError):
+    """The body-fitted model exceeds the solver's capacity (`MAX_DOF`); raised before assembly."""
+
+
+# Capacity of the one-GPU direct solve (set by collect from `validation.max_bodyfit_dof`; None = no limit). B2 at
+# h/√2 (3.2 M DOF) needs a 51 GiB fp64 factor; production parts (19–42 M DOF) need 0.15–1.5 TB and the GPU stiffness
+# assembly runs out of device memory at 3.5–4.5 M tets (research/bodyfit_scale/notes.md).
+MAX_DOF = None
+
+
 def solve(*a, **k):
     """_solve, then release the cuDSS factor and the CuPy pool (two B2 levels in one process ran out of device memory)."""
+    if MAX_DOF and 3 * len(a[0]) > MAX_DOF:
+        raise ScaleLimit(f"{3 * len(a[0])} DOF > validation.max_bodyfit_dof = {MAX_DOF:.3g}")
     import gc
     import cupy as cp
     try:

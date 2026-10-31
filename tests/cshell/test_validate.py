@@ -383,3 +383,13 @@ def test_validate_design_gpu_default_chain(tmp_path):
     C_tim = P * P * (L ** 3 / (3 * E * I) + L / (k * G * A))
     assert abs(out.compliance / C_tim - 1) < 0.03, (out.compliance, C_tim)
     assert np.isfinite(out.lambda_b) and "lam_unexcl" in out.info and out.sigma_q > 0
+
+
+def test_bodyfit_scale_limit_raises_before_assembly(monkeypatch):
+    """Owen 2026-10-31: a body-fitted model beyond `validation.max_bodyfit_dof` raises ScaleLimit (collect then decides
+    on the voxel criteria) before any assembly or GPU work."""
+    import numpy as np
+    from cshell import bodyfit_gpu as cbf
+    monkeypatch.setattr(cbf, "MAX_DOF", 10.0)
+    with pytest.raises(cbf.ScaleLimit):
+        cbf.solve(np.zeros((4, 3)), np.zeros((1, 10), int), None, None, None, 1.0, 0.3)

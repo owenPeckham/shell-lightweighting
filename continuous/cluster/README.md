@@ -15,5 +15,9 @@ Full part, e.g. the cantilever with three starts (3 slots, then 1 for collect):
 
     continuous/cluster/launch_part.sh examples/cshell/cantilever.json
 
-Environment knobs: `CSHELL_TIME` (launch, default 24:00:00), `CSHELL_MARGIN_H` (0.4), `CSHELL_CHAIN_MAX` (8
+Measured resources (2026-10-31, h_e 0.4 / h_g 0.1): a start runs 25–50 s per phase-B iteration, 34–44 min in all,
+≤ 26 GiB GPU and ≤ 35 GB host — submit with `SBATCH_MEM_PER_NODE=64G CSHELL_TIME=04:00:00`; collect needs 64–80 GiB
+host and ≤ 57 GiB GPU, 30–40 min — `CSHELL_COLLECT_MEM=180G` (run.sh passes it to the collect it submits).
+
+Environment knobs: `CSHELL_COLLECT_MEM` (collect's --mem; default the socket's), `CSHELL_TIME` (launch, default 24:00:00), `CSHELL_MARGIN_H` (0.4), `CSHELL_CHAIN_MAX` (8
 allocations per start), `CSHELL_AUTO_COLLECT` (1).
