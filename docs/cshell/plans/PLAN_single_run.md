@@ -87,3 +87,54 @@ A cell is excluded within r_ex of any constrained or loaded face, with r_ex = ma
 - Unit tests: F² adjoint (finite-difference check), solid-start gradient non-zero, closure projection, the streaming exporter (watertight output, volume matching ψ), report smoke test.
 - Validation: 3 parts × 1 solid start, full phases (3 GPU jobs). Compare J with Stage 2 (MBB 0.481, Cantilever 0.490, L-bracket 0.129), and measure the dimple RMS with the diagnosis script.
 - Then update `examples/cshell/runs`, the docs (README, STATUS) and a PR.
+
+## 7. Work split and contracts (three parallel developers)
+Base branch: `worktree-cshell-solid-pockmarks`. Each developer has its own branch: `sr-core`, `sr-export` or `sr-report`.
+
+**File ownership.** Edit only the files you own; anything else needs a request through the orchestrator.
+
+| Developer | Owns |
+|---|---|
+| core | design.py, surface.py, objective.py, optimise.py, fea.py, fe_*.py, mma.py, band.py, config.py, tests/cshell/test_{design,objective,optimise,surface,shear_flexure,growth}*.py |
+| export | export.py, collect.py, a new finalise.py, cli.py, cshell/cluster/*.sh, tests/cshell/test_{export,finalise,collect}*.py |
+| report | report.py, tests/cshell/test_report*.py |
+
+**C1. Config keys** (core adds them to `config.DEFAULTS`; other branches read them with `.get(..., default)`):
+- `objective`: `{"type": "compliance", "constraints": ["buckling", "strength"]}`
+- `optimiser.starts`: `["solid"]`
+- `growth`: `{"tol": 1e-3, "quantiles": [0.1, 0.2, ..., 1.0], "iters_per_step": 8}`
+- `capacity.exclude_bc_mm`: as now, with r_ex = max(exclude_bc_mm, 2 r_MA)
+- `export`: `{"h_mm": 0.2, "device": "gpu"}`
+
+**C2. Core API** (export calls it):
+- `optimise.evaluate(ctx, xi, phase: int, shift: tuple | None = None, D_comp=None) -> dict`
+  - Returns: J, K_K0, lamB_ratio (= λ_B/λ_B0), sig_ratio (= σ_PN/σ_PN0), mass_err, feasible (bool), governing.
+  - Uses the same model as the optimiser's final phase; `shift` offsets the FE grid as `collect.grid_shift` does.
+- `optimise.Run(cfg, "solid", out_dir).run(ctx)` writes:
+  - `xi_solid_phase{k}.npy`;
+  - `history.csv` with columns it, phase, growth_step, R_k, J, K_K0, lamB_ratio, sig_ratio, mass_err, closed_frac, hollow_allowed_frac;
+  - `fields.vtp` point data: d, a, w, r_MA, R, closed, hollow_allowed;
+  - `bc_faces.npz` (as now, with keys support_faces, load_faces, force_N).
+
+**C3. Finalise** (export): `finalise.finalise(run_dir, ctx=None) -> dict`
+- Run as the last step of `cli run`; `cshell export <run_dir>` re-runs it.
+- Writes:
+  - `final_design.stl` (0.2 mm, GPU, streamed);
+  - `summary.json`;
+  - `summary.txt`;
+  - `escape_holes.csv`;
+  - `wall_thickness.csv`;
+  - then calls `report.write_report(run_dir)`.
+- `summary.json` keys used by the report:
+  - name, decision {accepted, reason};
+  - mass {target_g, final_g};
+  - opt {J, K_K0, lamB_ratio, sig_ratio};
+  - shift {J, K_K0, lamB_ratio, sig_ratio, feasible};
+  - export {h_mm, faces, watertight, volume_mm3, holes, voids, wall {min, p05, median, max}};
+  - closed_area_frac, hollow_area_frac;
+  - timing {phase_s: [...], finalise_s, export_s};
+  - peak {gpu_gib, host_gib}.
+
+**C4. Report** (report): `report.write_report(run_dir) -> path`
+- Reads only the C2/C3 artefacts plus config_used.json.
+- Must also work on the Stage 2 outputs in `examples/cshell/runs/*` through an adapter, which tolerates missing keys and writes a placeholder page for each.
