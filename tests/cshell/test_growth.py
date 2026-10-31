@@ -24,7 +24,9 @@ def _cfg(extra):
 @pytest.fixture(scope="module")
 def grown(tmp_path_factory):
     from cshell.optimise import Context, Run
-    cfg = _cfg({"growth": {"quantiles": [0.3, 0.6, 1.0], "iters_per_step": 2, "tol": -1e9}})
+    # step_tol ≫ any ΔJ: each step ends at min_iters_per_step = 2 (exercises the in-step convergence rule)
+    cfg = _cfg({"growth": {"quantiles": [0.3, 0.6, 1.0], "max_iters_per_step": 25, "min_iters_per_step": 2,
+                           "step_tol": 1.0, "tol": -1e9}})
     ctx = Context(cfg)
     out = tmp_path_factory.mktemp("grow")
     run = Run(cfg, "solid", str(out))
@@ -94,13 +96,35 @@ def test_evaluate_matches_run(grown):
     assert np.isfinite(rs["J"]) and isinstance(rs["feasible"], bool) and rs["origin"] != r["origin"]
 
 
-def test_growth_stops_on_small_gain(tmp_path):
-    """tol larger than any gain: growth stops at the first boundary after step 0."""
+def test_growth_stops_after_patience(tmp_path):
+    """sr-fix 1: tol larger than any gain and patience 2: growth stops at boundary 2 (two low-gain steps in a row),
+    not at boundary 1, and the design is the best boundary design."""
     from cshell.optimise import Context, Run
-    cfg = _cfg({"growth": {"quantiles": [0.5, 1.0], "iters_per_step": 1, "tol": 10.0}})
+    cfg = _cfg({"growth": {"quantiles": [0.3, 0.6, 1.0], "max_iters_per_step": 1, "min_iters_per_step": 1,
+                           "tol": 10.0, "patience": 2}})
     ctx = Context(cfg)
     res = Run(cfg, "solid", str(tmp_path)).run(ctx)
     g = res["phase_0"]["growth"]
-    assert len(g["J_b"]) == 2 and g["steps"] == 1
+    assert len(g["J_b"]) == 3 and g["steps"] == 2 and g["iters"] == [1, 1]
+    assert g["best_J"] == pytest.approx(max(g["J_b"])) and g["J_b"][g["best_boundary"]] == pytest.approx(g["best_J"])
     log = (tmp_path / "run_log.txt").read_text()
-    assert "growth stops at boundary 1" in log
+    assert "growth stops at boundary 2: 2 consecutive steps" in log
+
+
+def test_export_volume_matches_optimiser(grown, tmp_path):
+    """sr-fix 2: the exported volume before the mass correction δ equals the optimiser's volume within 0.3 % (same
+    closure at ξ̃ᵃ ≥ export.closed_thr; open voids at least void_min across)."""
+    from cshell import export as cex
+    from cshell.design import vertex_fields_final
+    from cshell.optimise import evaluate, load_design
+    ctx, cfg, out, res, hist = grown
+    dsg = load_design(str(out))
+    r = evaluate(ctx, dsg["xi"], 0, hollow=dsg["hollow"], D_comp=dsg["D_comp"])
+    h_g = float(cfg["grid"]["phases"][-1]["h_g"])
+    f = vertex_fields_final(ctx, dsg["xi"], h_g, dsg["D_comp"], dsg["hollow"])
+    assert np.all(f["closed"][f["xt_a"] >= cfg["export"]["closed_thr"]])
+    ex = cex.export_design_gpu(ctx, dsg["xi"], str(tmp_path), dsg["D_comp"], name="t", h_g=h_g, fields=f,
+                               closed_thr=cfg["export"]["closed_thr"], h_x=0.2)
+    V_ex = ex["mass_correction"]["V_before_mm3"]
+    print("V optimiser", r["V"], "V export before δ", V_ex, "rel", V_ex / r["V"] - 1)
+    assert abs(V_ex / r["V"] - 1) < 3e-3

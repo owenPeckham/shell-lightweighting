@@ -28,7 +28,9 @@ DEFAULTS = {
                "inset_soft_mm": 0.1,                             # D1: width of the smoothed (t_min − d)⁺ bound
                "closure_xi": 0.9,           # ξ̃ᵃ ≥ closure_xi is closed (C¹ projection; PLAN_single_run §4); null = linear
                "r_ma_smooth_mm": 1.0,       # Helmholtz radius smoothing r_MA before a^hi and closure (§2); 0 = off
-               "closed_raw_depth": True,    # closed vertices (ξ̂ᵃ → 1) blend to a = max(a^hi, raw r_MA + γh_g)
+               "closed_raw_depth": True,    # closed vertices (ξ̃ᵃ ≥ closed_thr) have a = max(a^hi, raw r_MA + γh_g)
+               "void_min_open": True,       # open voids ≥ void_min across: a ≤ r_MA − void_min/2 off the closure band
+               "closure_band": 0.05,        # a blends open → closed over ξ̃ᵃ ∈ [closed_thr − band, closed_thr]
                "taper": True},              # d → 0 (and a → closed) towards passive regions over r_f (§2); False = hard
     "grid": {"phases": [{"h_e": 0.8, "h_g": 0.2}, {"h_e": 0.4, "h_g": 0.1}], "export_h_mm": 0.05,
              "rho_min": 1e-6, "tessellation_mm": 0.02, "active_margin_mm": 0.5,    # FE active-set dilation
@@ -60,9 +62,12 @@ DEFAULTS = {
                "passes": 2},                # ξ̃ = clip(Fⁿ ξ) (§2: n = 2 removes one-vertex cones)
     "growth": {"enabled": True,             # solid start: hollow-allowed set H = {R_v ≤ R_k} grows (§4)
                "phase": 0,                  # continuation phase that grows H; later phases keep it frozen
-               "tol": 1e-3,                 # stop when a step raises J by less than tol
+               "tol": 1e-3,                 # a step whose J gain is below tol counts towards patience
+               "patience": 2,               # stop after this many consecutive low-gain steps (then the best boundary)
                "quantiles": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
-               "iters_per_step": 8,
+               "step_tol": 1e-4,            # a step ends when |ΔJ| between iterations < step_tol ...
+               "max_iters_per_step": 25,    # ... or after this many MMA iterations
+               "min_iters_per_step": 2,
                "samples": 16},              # through-thickness quadrature points of R_v
     "export": {"h_mm": 0.2, "device": "gpu",
                "closed_thr": 0.9},          # export closes vertices with ξ̃ᵃ ≥ closed_thr (= design.closure_xi)

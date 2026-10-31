@@ -61,7 +61,8 @@ def test_config_defaults_c1():
     D = config.DEFAULTS
     assert D["objective"]["type"] == "compliance" and D["objective"]["constraints"] == ["buckling", "strength"]
     assert D["optimiser"]["starts"] == ["solid"]
-    assert D["growth"]["tol"] == 1e-3 and D["growth"]["iters_per_step"] == 8
+    assert D["growth"]["tol"] == 1e-3 and D["growth"]["patience"] == 2
+    assert D["growth"]["step_tol"] == 1e-4 and D["growth"]["max_iters_per_step"] == 25
     assert D["growth"]["quantiles"] == [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     assert D["capacity"]["exclude_bc_mm"] == 2.0 and D["export"] == {"h_mm": 0.2, "device": "gpu", "closed_thr": 0.9}
     assert D["filter"]["passes"] == 2 and D["design"]["closure_xi"] == 0.9

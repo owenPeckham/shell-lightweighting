@@ -380,10 +380,20 @@ def finalise(run_dir: str, ctx=None, *, out_dir: str | None = None, rescore: boo
 
         # 2. shifted-grid re-score ------------------------------------------------------------------------------
         shift = None
+        peak_rescore = dict(gpu_gib=None, host_gib=None)
         if rescore:
+            # sr-fix 3: the optimiser's FE engine, band and cached CuPy/cuDSS blocks are released before the re-score,
+            # which builds one PhaseModel with the optimiser's engine and settings (optimise.evaluate)
+            _free_device()
+            hwm_reset()
+            pkr = _peak_gpu()
             shift = rescore_shift(ctx, xi, last, D_comp, evaluate, log, hollow)
+            peak_rescore = dict(gpu_gib=pkr.stop() if pkr is not None else None, host_gib=hwm_gib())
+            shift["peak"] = peak_rescore
             tim["rescore_s"] = shift["seconds"]
             _free_device()
+            log(f"[finalise] shifted-grid re-score peak: GPU {peak_rescore['gpu_gib']} GiB, host "
+                f"{peak_rescore['host_gib']} GiB")
         sens = None
         if do_sensitivity:
             t0 = time.time()
@@ -457,7 +467,12 @@ def finalise(run_dir: str, ctx=None, *, out_dir: str | None = None, rescore: boo
             timing=dict(phase_s=phase_seconds(hist, best["start"], n_ph), **tim),
             peak=dict(gpu_gib=max(gpu_hist + ([peak_fin] if np.isfinite(peak_fin) else [])) if (
                 gpu_hist or np.isfinite(peak_fin)) else None, host_gib=host),
-            peak_export=peak_export, sensitivity=sens, validation=val, report=None, files=files)
+            peak_export=peak_export, peak_rescore=peak_rescore,
+            peak_optimiser=dict(gpu_gib=max(gpu_hist) if gpu_hist else None,
+                                host_gib=max([x for x in (col._f(r.get("host_peak_GiB")) for r in hist
+                                                          if r.get("start") == best["start"]) if np.isfinite(x)],
+                                             default=None)),
+            sensitivity=sens, validation=val, report=None, files=files)
         S["files"].update({"summary.json": "summary.json", "summary.txt": "summary.txt",
                            "finalise_log.txt": "finalise_log.txt"})
 

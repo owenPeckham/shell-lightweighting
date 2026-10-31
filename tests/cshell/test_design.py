@@ -158,6 +158,7 @@ def _tapered_space(closure=0.9):
     ds.taper_a = taper_weight(surface_distance(V, T, ds.passive | ~H), 1.5)
     ds.closure_xi = closure
     ds.a_cl = ds.a_hi + 0.3 * (1 + np.sin(V[:, 0]))               # closed inset above a^hi (raw-depth blend)
+    ds.a_top = ds.r_ma - 0.5 * ds.v_min                            # open voids ≥ v_min across (sr-fix 2)
     return ds, disc, V, T, H
 
 
@@ -177,7 +178,8 @@ def test_directional_with_taper_and_projection(as_built):
         return np.array([dm.volume(st), float(gE @ dm.rho_hat(st))]), st
 
     f0, st = fun(xd, xa)
-    assert np.any((st.xh_a > ds.a_cl_from) & (st.xh_a < 1))       # the raw-depth blend is exercised
+    xc, w = ds.closure_xi, ds.closure_band                        # the closure band is exercised
+    assert np.any((st.xit_a > xc - w) & (st.xit_a < xc))
     gv, gr = dm.volume_grad(st), dm.pull_rho_hat(st, gE)
     pred = np.array([gv[0] @ dd + gv[1] @ da, gr[0] @ dd + gr[1] @ da])
     h = 1e-6
@@ -220,6 +222,27 @@ def test_closure_projection():
     assert np.all(xt_a >= 0.9) and np.all(a >= ds.r_ma)                 # closure reachable at ξ̃ᵃ ≥ 0.9
 
 
+def test_inset_map_matches_export_closure():
+    """sr-fix 2: ξ̃ᵃ ≥ ξ_c (export.closed_thr) gives a = a_cl exactly (closed as in the export); below the band
+    (ξ̃ᵃ ≤ ξ_c − w) the void is at least v_min across (a ≤ r_MA − v_min/2); a is monotone in ξ̃ᵃ."""
+    from cshell.design import closure_projection, inset_map, softplus
+    ds, disc, V, T, H = _tapered_space()
+    nv = len(V)
+    a_lo = softplus(np, ds.t_min - np.zeros(nv), ds.soft_w)[0]
+    prev = None
+    for x in np.linspace(0, 1, 201):
+        xt = np.full(nv, x)
+        xh, dxh = closure_projection(np, xt, ds.closure_xi)
+        a = inset_map(np, ds, xt, xh, dxh, a_lo)[0]
+        if x >= ds.closure_xi:
+            assert np.allclose(a, ds.a_cl)
+        if x <= ds.closure_xi - ds.closure_band:
+            assert np.all(2 * (ds.r_ma - a) >= ds.v_min - 1e-9)
+        if prev is not None:
+            assert np.all(a >= prev - 1e-12)
+        prev = a
+
+
 def test_solid_start_gradient_nonzero():
     """§1: the solid start (ξᵈ = 0, a = r_MA) is solid to < 1e-3 in volume and has ∂V/∂ξᵃ ≠ 0; the old closed start
     (ξᵃ = 1, a = a^hi) has ∂V/∂ξᵃ = 0."""
@@ -231,6 +254,11 @@ def test_solid_start_gradient_nonzero():
     xa = solid_start_xi_a(ds)
     _, _, _, a, _, _ = dm.vertex_fields(np.zeros(nv), xa)
     assert np.allclose(a, ds.r_ma, atol=1e-6)
+    ds2, _, _, _, _ = _tapered_space()                             # with the sr-fix closure band: a = r_MA too
+    ds2.taper_a = ds2.taper_d = None
+    ds2.passive = np.zeros(nv, bool)
+    a2 = DesignMap(ds2, disc).vertex_fields(np.zeros(nv), solid_start_xi_a(ds2))[3]
+    assert np.abs(a2 - ds2.r_ma).max() < 0.05                     # F² ξ ≈ target (projected Richardson)
     st = dm.forward(np.zeros(nv), xa, as_built=False)
     chi0, _ = heaviside(np, -disc.phi, disc.eps)
     V0 = float(chi0.sum()) * disc.h_g ** 3

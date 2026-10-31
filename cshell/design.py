@@ -78,9 +78,9 @@ class DesignSpace:
     taper_d: Any = None          # τ_d per vertex (None: ξ̃ᵈ = 0 on passive, hard)
     taper_a: Any = None          # τ_a per vertex (None: ξ̃ᵃ = 1 on passive, hard)
     closure_xi: float | None = None   # ξ_c of the closure projection (None: linear, ξ̂ = ξ̃)
-    a_cl: Any = None             # closed inset ≥ a_hi (None: a_hi): a += (a_cl − a_hi) B(ξ̂), B = S((ξ̂ − ξ_b)/(1 − ξ_b))
-    a_cl_from: float = 0.97      # ξ_b: the blend acts only on nearly closed vertices (above the solid start's ξ̂ᵃ ≈ 0.9-0.95
-                                 # for r_MA ≲ 6 mm), so open void surfaces and the a = r_MA start stay smooth
+    a_cl: Any = None             # closed inset ≥ a_hi (None: a_hi); reached exactly for ξ̃ᵃ ≥ closure_xi (inset_map)
+    a_top: Any = None            # top of the open branch, r_MA − v_min/2 (None: a_hi; inset_map)
+    closure_band: float = 0.05   # w: a blends from the open branch to a_cl over ξ̃ᵃ ∈ [ξ_c − w, ξ_c]
 
     def tau_d(self, xp=np):
         return xp.asarray(self.taper_d) if self.taper_d is not None else (~xp.asarray(self.passive)).astype(float)
@@ -126,7 +126,8 @@ class State:
     dev: Any = None              # DeviceDesignMap: (d, a_used) on the device; cell fields are recomputed, not stored
     xh_a: Any = None             # ξ̂ᵃ (projected); None: = xit_a
     dxh_a: Any = None            # dξ̂ᵃ/dξ̃ᵃ; None: 1
-    dadxh: Any = None            # ∂a/∂ξ̂ᵃ at fixed d; None: a_hi − a_lo
+    dadlo: Any = None            # ∂a/∂a_lo; None: 1 − ξ̂ᵃ
+    dadxt: Any = None            # ∂a/∂ξ̃ᵃ at fixed d; None: (a_hi − a_lo) dξ̂ᵃ/dξ̃ᵃ
 
 
 def closure_projection(xp, xt, xi_c):
@@ -161,22 +162,44 @@ def design_vertex_fields(xp, ds: "DesignSpace", xi_d, xi_a) -> dict:
     xh_a, dxh = closure_projection(xp, xt_a, ds.closure_xi)
     d = ds.d_hi * xt_d
     a_lo, da_lo = softplus(xp, ds.t_min - d, ds.soft_w)          # D1; da_lo/dd = −σ
-    a = a_lo + (ds.a_hi - a_lo) * xh_a
-    dadxh = ds.a_hi - a_lo
-    if ds.a_cl is not None:                                       # closed vertices reach the raw local depth
-        B, dB = smoothstep(xp, (xh_a - ds.a_cl_from) / (1.0 - ds.a_cl_from))
-        a = a + (ds.a_cl - ds.a_hi) * B
-        dadxh = dadxh + (ds.a_cl - ds.a_hi) * dB / (1.0 - ds.a_cl_from)
-    return dict(xt_d=xt_d, xt_a=xt_a, xh_a=xh_a, dxh_a=dxh, d=d, a=a, a_lo=a_lo, da_lo=-da_lo, dadxh=dadxh)
+    a, dadlo, dadxt = inset_map(xp, ds, xt_a, xh_a, dxh, a_lo)
+    return dict(xt_d=xt_d, xt_a=xt_a, xh_a=xh_a, dxh_a=dxh, d=d, a=a, a_lo=a_lo, da_lo=-da_lo, dadlo=dadlo,
+                dadxt=dadxt)
+
+
+def inset_map(xp, ds: "DesignSpace", xt_a, xh_a, dxh, a_lo):
+    """a(ξ̃ᵃ, a_lo) and its partials (∂a/∂a_lo, ∂a/∂ξ̃ᵃ).
+    Stage 2 / linear (a_top and a_cl None): a = a_lo + (a^hi − a_lo) ξ̂ᵃ.
+    sr-fix (Owen 2026-10-31, mass consistency with the export's void_min opening and closure): an open branch whose
+    void is at least v_min across, a_open = a_lo + Δ ξ̂ᵃ with Δ = softplus(a_top − a_lo), a_top = r_MA − v_min/2,
+    blended to the closed inset a_cl over the band ξ̃ᵃ ∈ [ξ_c − w, ξ_c]: a = (1 − B) a_open + B a_cl,
+    B = S((ξ̃ᵃ − ξ_c + w)/w). For ξ̃ᵃ ≥ ξ_c (= export.closed_thr) a = a_cl exactly, as in the export; sub-v_min
+    (sliver) voids exist only inside the band."""
+    if ds.a_top is None and ds.a_cl is None:
+        return a_lo + (ds.a_hi - a_lo) * xh_a, 1.0 - xh_a, (ds.a_hi - a_lo) * dxh
+    a_top = ds.a_hi if ds.a_top is None else ds.a_top
+    a_cl = ds.a_hi if ds.a_cl is None else ds.a_cl
+    span, sg = softplus(xp, a_top - a_lo, ds.soft_w)
+    a_open = a_lo + span * xh_a
+    xc = 1.0 if ds.closure_xi is None else float(ds.closure_xi)
+    w = float(ds.closure_band)
+    B, dB = smoothstep(xp, (xt_a - (xc - w)) / w)
+    a = a_open + (a_cl - a_open) * B
+    return a, (1.0 - B) * (1.0 - sg * xh_a), (1.0 - B) * span * dxh + (a_cl - a_open) * dB / w
 
 
 def solid_start_xi_a(ds: "DesignSpace", passes: int = 30) -> np.ndarray:
     """Raw ξᵃ whose design has a = r_MA at d = 0 (PLAN_single_run §1: geometrically solid, with a zero-thickness void
-    surface on the medial axis so ∂/∂ξᵃ ≠ 0): ξ̂ᵃ target (r_MA − a_lo(0))/(a^hi − a_lo(0)), inverted through the
-    projection, then raw ξ ∈ [0, 1] with F ξ ≈ target by projected Richardson iteration (F⁻¹ amplifies roughness)."""
+    surface on the medial axis so ∂/∂ξᵃ ≠ 0): the filtered target ξ̃ᵃ solving a(ξ̃ᵃ) = r_MA (bisection; a is monotone in
+    ξ̃ᵃ), then raw ξ ∈ [0, 1] with F ξ ≈ target by projected Richardson iteration (F⁻¹ amplifies roughness)."""
     a_lo = softplus(np, ds.t_min - np.zeros_like(ds.r_ma), ds.soft_w)[0]
-    xh = np.clip((ds.r_ma - a_lo) / np.maximum(ds.a_hi - a_lo, 1e-12), 0.0, 1.0)
-    t = closure_projection_inverse(xh, ds.closure_xi)
+    lo, hi = np.zeros_like(ds.r_ma), np.ones_like(ds.r_ma)
+    for _ in range(60):
+        mid = 0.5 * (lo + hi)
+        xh, dxh = closure_projection(np, mid, ds.closure_xi)
+        below = inset_map(np, ds, mid, xh, dxh, a_lo)[0] < ds.r_ma
+        lo, hi = np.where(below, mid, lo), np.where(below, hi, mid)
+    t = 0.5 * (lo + hi)
     x = t.copy()
     for _ in range(passes):
         x = np.clip(x + (t - ds.filt.apply(x)), 0.0, 1.0)
@@ -217,7 +240,7 @@ class DesignMap:
         else:
             a_used, dab, b_o = a, xp.ones_like(a), 0.0
         st = State(xt_d, xt_a, d, a, a_used, a_lo, da_lo, dab, None, None, None, None, as_built, b_o,
-                   xh_a=f["xh_a"], dxh_a=f["dxh_a"], dadxh=f["dadxh"])
+                   xh_a=f["xh_a"], dxh_a=f["dxh_a"], dadlo=f["dadlo"], dadxt=f["dadxt"])
         return self._cells(st)
 
     def _cells(self, st: State) -> State:
@@ -285,11 +308,15 @@ class DesignMap:
         xp, ds = self.xp, self.ds
         xh = st.xit_a if st.xh_a is None else st.xh_a
         g_a = g_aused * st.dab_da
-        g_d = g_d + g_a * st.da_lo * (1.0 - xh)                       # a = a_lo(d)(1 − ξ̂ᵃ) + a_hi ξ̂ᵃ
+        dadlo = (1.0 - xh) if st.dadlo is None else st.dadlo          # ∂a/∂a_lo (inset_map)
+        g_d = g_d + g_a * st.da_lo * dadlo
         g_xt_d = g_d * ds.d_hi * ds.tau_d(xp)                         # ξ̃ᵈ = τ_d clip(Fξᵈ)
-        g_xt_a = g_a * (ds.a_hi - st.a_lo if st.dadxh is None else st.dadxh)
-        if st.dxh_a is not None:
-            g_xt_a = g_xt_a * st.dxh_a
+        if st.dadxt is not None:
+            g_xt_a = g_a * st.dadxt                                   # ∂a/∂ξ̃ᵃ through ξ̂ᵃ and the closure band
+        else:
+            g_xt_a = g_a * (ds.a_hi - st.a_lo)
+            if st.dxh_a is not None:
+                g_xt_a = g_xt_a * st.dxh_a
         g_xt_a = g_xt_a * ds.tau_a(xp)                                # ξ̃ᵃ = 1 − τ_a(1 − clip(Fξᵃ))
         return ds.filt.adjoint(g_xt_d), ds.filt.adjoint(g_xt_a)
 

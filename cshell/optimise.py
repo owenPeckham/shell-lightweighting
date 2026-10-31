@@ -449,15 +449,27 @@ def design_space(ctx: Context, phase: int, D_comp: float, hollow=None, h_g: floa
     ds = DesignSpace(r_ma=ctx.r_ma, a_hi=a_hi, d_hi=d_hi, area=ctx.surf.A, passive=passive,
                      filt=ctx.surf.filter(r_f, int(cfg["filter"].get("passes", 1))), t_min=m["t_min_mm"],
                      v_min=m["void_min_mm"], b_v=m["wall_bias_mm"], b_o=m["outer_bias_mm"],
-                     soft_w=d["inset_soft_mm"], closure_xi=d.get("closure_xi"))
+                     soft_w=d["inset_soft_mm"], closure_xi=closure_xi(cfg),
+                     closure_band=float(d.get("closure_band", 0.05)))
     if d.get("closed_raw_depth", True) and getattr(ctx, "r_ma_raw", None) is not None:
         # smoothed r_MA under-reaches the local depth (MBB: closed design 1.4 % short of V0, job 7903139): closed
         # vertices blend to the raw depth; open void surfaces keep the smooth a^hi
         ds.a_cl = np.maximum(a_hi, ctx.r_ma_raw + d["closure_gamma"] * h_g)
+    if d.get("void_min_open", True):
+        # sr-fix 2: open voids are at least void_min across (a ≤ r_MA − v_min/2), as the export's opening keeps them;
+        # thinner voids exist only in the closure band, so the optimiser never counts mass the export fills back
+        ds.a_top = np.minimum(ctx.r_ma - 0.5 * m["void_min_mm"], a_hi)
     ds.taper_d = taper_weight(dist_p, r_f) if taper else None
     ds.taper_a = taper_a(ctx, passive, H, r_f, dist_p)
     return ds, dict(d_hi_by_comp=d_hi >= D_comp - 1e-9, passive_parts=dict(mount=int(ctx.mount.sum()),
                     thin=int(thin.sum())), r_f=r_f, dist_passive=dist_p, hollow=H)
+
+
+def closure_xi(cfg: dict) -> float | None:
+    """ξ̃ᵃ at and above which a vertex is closed, in the optimiser and the export alike: export.closed_thr (falls back to
+    design.closure_xi)."""
+    v = (cfg.get("export") or {}).get("closed_thr", cfg["design"].get("closure_xi"))
+    return None if v is None else float(v)
 
 
 def taper_a(ctx: Context, passive, hollow, r_f: float, dist_passive=None):
@@ -620,7 +632,18 @@ class RunState:
     D_comp: float
     hours_used: float
     hollow: np.ndarray | None = None      # hollow-allowed set H (None: everywhere)
-    growth: dict | None = None            # {step, R_k, J_b, done, prev_xi, prev_H} of the growth phase
+    growth: dict | None = None            # growth-phase state (new_growth)
+
+
+GROWTH_ARRAYS = ("best_xi", "best_H")
+GROWTH_SCALARS = ("step", "R_k", "done", "in_step", "J_prev_it", "low", "best_J", "best_k")
+
+
+def new_growth() -> dict:
+    """Growth state: next boundary `step`, R_k, J at each boundary J_b, MMA iterations of each step n_it, iterations in
+    the current step, J of the previous iteration, consecutive low-gain steps, best boundary (J, ξ, H, k), done."""
+    return dict(step=0, R_k=np.nan, J_b=[], n_it=[], done=False, in_step=0, J_prev_it=None, low=0, best_J=None,
+                best_xi=None, best_H=None, best_k=-1)
 
 
 class Run:
@@ -676,10 +699,10 @@ class Run:
                  s_J=np.nan if rs.s_J is None else rs.s_J, D_comp=rs.D_comp, hours_used=rs.hours_used,
                  rng=np.random.default_rng(self.cfg["optimiser"]["seed"]).bit_generator.state["state"]["state"],
                  hollow=none if rs.hollow is None else rs.hollow, has_growth=bool(rs.growth),
-                 g_step=gr.get("step", 0), g_Rk=gr.get("R_k", np.nan), g_J=np.asarray(gr.get("J_b", []), float),
-                 g_done=bool(gr.get("done", False)),
-                 g_prev_xi=none if gr.get("prev_xi") is None else gr["prev_xi"],
-                 g_prev_H=none if gr.get("prev_H") is None else gr["prev_H"], **flat)
+                 g_J=np.asarray(gr.get("J_b", []), float), g_n_it=np.asarray(gr.get("n_it", []), np.int64),
+                 **{f"g_{k}": np.asarray(np.nan if gr.get(k) is None else gr.get(k), float) for k in GROWTH_SCALARS
+                    if gr},
+                 **{f"g_{k}": none if gr.get(k) is None else gr[k] for k in GROWTH_ARRAYS if gr}, **flat)
         files = sorted(glob.glob(os.path.join(self.out, "checkpoints", f"{self.start}_*.npz")))
         for f in files[:-3]:
             os.remove(f)
@@ -696,10 +719,17 @@ class Run:
         hollow = growth = None
         if "hollow" in z.files and z["hollow"].size:
             hollow = z["hollow"].astype(bool)
-        if "has_growth" in z.files and bool(z["has_growth"]):
-            growth = dict(step=int(z["g_step"]), R_k=float(z["g_Rk"]), J_b=list(z["g_J"]), done=bool(z["g_done"]),
-                          prev_xi=z["g_prev_xi"] if z["g_prev_xi"].size else None,
-                          prev_H=z["g_prev_H"].astype(bool) if z["g_prev_H"].size else None)
+        if "has_growth" in z.files and bool(z["has_growth"]) and "g_in_step" in z.files:
+            growth = new_growth()
+            for k in GROWTH_SCALARS:
+                v = float(z[f"g_{k}"])
+                growth[k] = None if np.isnan(v) and k in ("J_prev_it", "best_J") else v
+            for k in ("step", "in_step", "low", "best_k"):
+                growth[k] = int(growth[k])
+            growth["done"] = bool(growth["done"])
+            growth["J_b"], growth["n_it"] = [float(j) for j in z["g_J"]], [int(n) for n in z["g_n_it"]]
+            growth["best_xi"] = z["g_best_xi"] if z["g_best_xi"].size else None
+            growth["best_H"] = z["g_best_H"].astype(bool) if z["g_best_H"].size else None
         return RunState(self.start, int(z["phase"]), int(z["it"]), z["xi"], float(z["c_norm"]),
                         None if np.isnan(sJ) else sJ, opt or None, float(z["D_comp"]), float(z["hours_used"]),
                         hollow, growth)
@@ -762,14 +792,18 @@ class Run:
         result = {}
         solid_init = not (fresh and self.start == "solid")
         quant = [float(q) for q in gcfg.get("quantiles", [1.0])]
-        ips = int(gcfg.get("iters_per_step", 8))
+        max_ips = int(gcfg.get("max_iters_per_step", gcfg.get("iters_per_step", 25)))
+        min_ips = min(int(gcfg.get("min_iters_per_step", 2)), max_ips)
+        step_tol = float(gcfg.get("step_tol", 1e-4))
+        g_tol = float(gcfg.get("tol", 1e-3))
+        patience = int(gcfg.get("patience", 2))
         A = ctx.surf.A
         for ph in phases:
             if ph < rs.phase:
                 continue
             grow = self._grows(ph)
             if grow and rs.growth is None:
-                rs.growth = dict(step=0, R_k=np.nan, J_b=[], done=False, prev_xi=None, prev_H=None)
+                rs.growth = new_growth()
                 rs.hollow = np.zeros(nv, bool)
             pending_d = None
             last = None
@@ -828,7 +862,7 @@ class Run:
                     else:                                        # active set changed since the checkpoint
                         self.log("[cshell] optimiser state does not match the active set; asymptotes reset")
                 it0 = rs.it if ph == rs.phase else 0
-                max_it = len(quant) * ips + 1 if grow else ccfg.phase_value(opt["max_iter"], ph)
+                max_it = len(quant) * max_ips + 1 if grow else ccfg.phase_value(opt["max_iter"], ph)
                 s_J = rs.s_J if ph == rs.phase else None
                 tau = 5e-4
                 calm, J_prev, prev_modes = 0, None, None
@@ -841,30 +875,43 @@ class Run:
                     last = (fe, xi.copy())
                     t_R = 0.0
                     gr = rs.growth if grow else None
-                    if gr is not None and not gr["done"] and it == gr["step"] * ips:
-                        # ---- growth boundary k (PLAN_single_run §4) ------------------------------------------------
+                    step_done = False
+                    if gr is not None and not gr["done"]:
+                        n_in, Jp = gr["in_step"], gr["J_prev_it"]
+                        step_done = (gr["step"] == 0 and n_in == 0) or n_in >= max_ips or (
+                            n_in >= min_ips and Jp is not None and abs(fe["J"] - Jp) < step_tol)
+                    if step_done:
+                        # ---- growth boundary k (sr-fix 1: steps run to in-step convergence; patience; best) -------
                         t0 = time.time()
                         k = gr["step"]
                         gr["J_b"].append(float(fe["J"]))
+                        gr["n_it"].append(int(gr["in_step"]))
                         stop, why = k >= len(quant), "all quantiles used"
                         if k >= 1:
                             gain = gr["J_b"][k] - gr["J_b"][k - 1]
-                            if gain < float(gcfg.get("tol", 1e-3)):
-                                stop, why = True, f"step {k - 1} raised J by {gain:+.2e} < tol"
-                                if gain < 0 and gr["prev_xi"] is not None:
-                                    xi, rs.hollow = gr["prev_xi"].copy(), gr["prev_H"].copy()
-                                    model.set_hollow(rs.hollow)
-                                    last = None                  # self.last_R was computed at this design
-                                    why += "; reverted to the design before it"
+                            gr["low"] = gr["low"] + 1 if gain < g_tol else 0
+                            self.log(f"[cshell] growth step {k - 1} done after {gr['in_step']} iterations: ΔJ "
+                                     f"{gain:+.2e} (low-gain steps in a row {gr['low']}/{patience})")
+                            if gr["low"] >= patience:
+                                stop, why = True, f"{patience} consecutive steps raised J by < tol {g_tol:g}"
+                        if gr["best_J"] is None or fe["J"] > gr["best_J"]:
+                            gr["best_J"], gr["best_xi"], gr["best_H"], gr["best_k"] = (
+                                float(fe["J"]), xi.copy(), rs.hollow.copy(), k)
                         if stop:
                             gr["done"] = True
+                            if gr["best_k"] != k:                # revert to the best boundary design
+                                xi, rs.hollow = gr["best_xi"].copy(), gr["best_H"].copy()
+                                model.set_hollow(rs.hollow)
+                                fe, sab = self._eval(model, xi, st, base, c_norm, None)
+                                last = (fe, xi.copy())
+                                why += f"; reverted to boundary {gr['best_k']} (J {gr['best_J']:+.5f})"
                             self.log(f"[cshell] growth stops at boundary {k}: {why}; J by boundary "
-                                     f"{[round(j, 5) for j in gr['J_b']]}")
+                                     f"{[round(j, 5) for j in gr['J_b']]}, iterations per step {gr['n_it'][1:]}")
                             rs = RunState(self.start, ph, it, xi, c_norm, s_J, None, rs.D_comp, rs.hours_used,
                                           rs.hollow, gr)
                             self.save(rs)
                             break
-                        gr["prev_xi"], gr["prev_H"] = xi.copy(), rs.hollow.copy()
+                        gr["in_step"], gr["J_prev_it"] = 0, None
                         R = model.shear_flexure(fe, xi, int(gcfg.get("samples", 16)))
                         self.last_R = R
                         pool = ~model.ds.passive
@@ -965,6 +1012,9 @@ class Run:
                              f"it {row['t_iter']:.1f}s")
                     if abs(mass_err) > opt["mass_tol"] * 1.0001:
                         raise RuntimeError(f"R1 violated after restoration: V/V0 - 1 = {mass_err:.2e}")
+                    if gr is not None and not gr["done"]:
+                        gr["in_step"] += 1
+                        gr["J_prev_it"] = float(fe["J"])
                     rs = RunState(self.start, ph, it + 1, xi, c_norm, s_J,
                                   optimiser.state_dict() if hasattr(optimiser, "state_dict") else None, rs.D_comp,
                                   hours, rs.hollow, gr if gr is not None else rs.growth)
@@ -1006,7 +1056,9 @@ class Run:
                     self.log(f"[cshell] R_v / surface stress for fields.vtp failed: {e}")
             last = None
             stats["growth"] = None if rs.growth is None else dict(
-                steps=int(rs.growth["step"]), R_k=float(rs.growth["R_k"]), J_b=[float(j) for j in rs.growth["J_b"]])
+                steps=int(rs.growth["step"]), R_k=float(rs.growth["R_k"]), J_b=[float(j) for j in rs.growth["J_b"]],
+                iters=[int(n) for n in rs.growth["n_it"][1:]], best_boundary=int(rs.growth["best_k"]),
+                best_J=rs.growth["best_J"])
             self.log(f"[cshell] phase {ph} design: " + json.dumps(stats))
             result[f"phase_{ph}"] = dict(J=J_prev, xi=xi, **stats)
             np.save(os.path.join(self.out, f"xi_{self.start}_phase{ph}.npy"), xi)
