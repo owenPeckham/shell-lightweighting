@@ -59,10 +59,41 @@ def test_weighted_quantile():
 def test_config_defaults_c1():
     from cshell import config
     D = config.DEFAULTS
-    assert D["objective"]["type"] == "compliance" and D["objective"]["constraints"] == ["buckling", "strength"]
+    O = D["objective"]                                     # §8: weighted default, floors as MMA constraints
+    assert O["type"] == "weighted" and O["constraints"] == [] and O["floors_as_constraints"]
+    assert O["floor_stiffness"] == 0.85 and O["floor_capacity"] == 0.85 and O["w_stiffness"] == O["w_capacity"] == 0.5
     assert D["optimiser"]["starts"] == ["solid"]
-    assert D["growth"]["tol"] == 1e-3 and D["growth"]["patience"] == 2
+    assert D["growth"]["tol"] == 1e-3 and D["growth"]["patience"] is None          # every quantile runs
     assert D["growth"]["step_tol"] == 1e-4 and D["growth"]["max_iters_per_step"] == 25
     assert D["growth"]["quantiles"] == [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
-    assert D["capacity"]["exclude_bc_mm"] == 2.0 and D["export"] == {"h_mm": 0.2, "device": "gpu", "closed_thr": 0.9}
-    assert D["filter"]["passes"] == 2 and D["design"]["closure_xi"] == 0.9
+    assert D["capacity"]["exclude_bc_mm"] == 2.0
+    assert D["export"] == {"h_mm": 0.2, "device": "gpu", "closed_thr": 0.9, "escape_holes": False}
+    assert D["filter"]["passes"] == 2 and D["design"]["closure_xi"] == 0.9 and D["design"]["closure_band"] == 0.1
+
+
+def test_void_min_eff():
+    """§8 item 5: holes off → void_min_mm; holes on → max(void_min_mm, hole_d + clearance) (3 + 0.5 = 3.5 mm)."""
+    import copy
+    from cshell import config
+    c = copy.deepcopy(config.DEFAULTS)
+    assert config.void_min_eff(c) == 3.0
+    c["export"]["escape_holes"] = True
+    assert config.void_min_eff(c) == 3.5
+    c["manufacturing"]["void_min_mm"] = 4.0
+    assert config.void_min_eff(c) == 4.0
+
+
+def test_settings_floor_constraints():
+    """floors_as_constraints is read: weighted runs carry floor_K and floor_P as MMA constraints, compliance runs
+    keep their own list."""
+    from types import SimpleNamespace
+    from cshell import config
+    from cshell.optimise import PhaseModel
+    import copy
+    for typ, fl, want in (("weighted", True, ("floor_K", "floor_P")), ("weighted", False, ()),
+                          ("compliance", True, ())):
+        c = copy.deepcopy(config.DEFAULTS)
+        c["objective"].update(type=typ, floors_as_constraints=fl)
+        m = SimpleNamespace(ctx=SimpleNamespace(cfg=c), phase=0)
+        st = PhaseModel.settings(m, 0.0)
+        assert st.objective == typ and st.constraints == want, (typ, fl, st.constraints)

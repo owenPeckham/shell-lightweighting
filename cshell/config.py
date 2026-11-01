@@ -21,16 +21,18 @@ DEFAULTS = {
     "loads": [],                       # [{"faces": selector, "force_N": [fx, fy, fz]}]; summed as one case (D3)
     "material": {"E_MPa": 1760.0, "nu": 0.42, "density_g_cm3": 1.04, "strength_MPa": 36.6},
     "manufacturing": {"t_min_mm": 1.5, "wall_bias_mm": 0.2, "outer_bias_mm": 0.0, "void_min_mm": 3.0,
-                      "void_min_mm3": 30.0, "escape_holes_per_void": 2, "escape_hole_diameter_mm": 3.0},
+                      "void_min_mm3": 30.0, "escape_holes_per_void": 2, "escape_hole_diameter_mm": 3.0,
+                      "hole_clearance_mm": 0.5},   # with export.escape_holes: void width ≥ max(void_min, hole_d + clearance)
     "mounts": {"auto_analytic": True, "extra_faces": [], "min_blob_fraction": 0.01, "dilate_mm": 1.5},
     "design": {"allow_outward": True, "outward_extent_initial_mm": 4.0, "gap_mm": 1.0, "keep_out": [],
                "keep_out_clearance_mm": 0.5, "surface_edge_mm": 0.75, "closure_gamma": 0.75,
                "inset_soft_mm": 0.1,                             # D1: width of the smoothed (t_min − d)⁺ bound
                "closure_xi": 0.9,           # ξ̃ᵃ ≥ closure_xi is closed (C¹ projection; PLAN_single_run §4); null = linear
                "r_ma_smooth_mm": 1.0,       # Helmholtz radius smoothing r_MA before a^hi and closure (§2); 0 = off
-               "closed_raw_depth": True,    # closed vertices (ξ̃ᵃ ≥ closed_thr) have a = max(a^hi, raw r_MA + γh_g)
+               "closed_raw_depth": True,    # closed vertices (ξ̃ᵃ ≥ closed_thr): a = true section depth + γh_g (§8)
+               "section_radius_mm": 3.0,    # section depth = max raw r_MA within this radius, smoothed (Context)
                "void_min_open": True,       # open voids ≥ void_min across: a ≤ r_MA − void_min/2 off the closure band
-               "closure_band": 0.05,        # a blends open → closed over ξ̃ᵃ ∈ [closed_thr − band, closed_thr]
+               "closure_band": 0.1,         # a blends open → closed over ξ̃ᵃ ∈ [closed_thr − band, closed_thr] (§8: 0.8-0.9)
                "taper": True},              # d → 0 (and a → closed) towards passive regions over r_f (§2); False = hard
     "grid": {"phases": [{"h_e": 0.8, "h_g": 0.2}, {"h_e": 0.4, "h_g": 0.1}], "export_h_mm": 0.05,
              "rho_min": 1e-6, "tessellation_mm": 0.02, "active_margin_mm": 0.5,    # FE active-set dilation
@@ -51,26 +53,29 @@ DEFAULTS = {
                  "exclude_rma_factor": 2.0,  # exclusion r_ex = max(exclude_bc_mm, factor·r_MA at the face) (§4)
                  "include_mounts": False, "buckling": True, "buckling_modes": 6, "buckling_p": 8,
                  "knockdown": 0.85, "softmin_beta": [8, 12, 16], "eig_tol": 1e-3, "min_density_geometric": 0.1},
-    "objective": {"type": "compliance",                     # PLAN_single_run §4: J = ln K/K0 at constant mass
-                  "constraints": ["buckling", "strength"],  # ln(λ_B0/λ_B) ≤ 0, ln(σ_PN/σ_PN0) ≤ 0 (MMA)
+    "objective": {"type": "weighted",       # PLAN_single_run §8 (Owen 2026-11-01): J = w_K ln K/K0 + w_P ln P/P0, P the
+                                            # capacity soft-min of strength and global buckling, at constant mass;
+                                            # "compliance" (§4): J = ln K/K0 with `constraints` relative to the solid
+                  "constraints": [],                        # compliance type only: "buckling", "strength"
                   "constraint_scale": 0.01,                 # MMA sees g/scale (1 unit = 1 % violation)
                   "feasibility_tol": 1e-3,                  # evaluate(): feasible if every g ≤ tol
-                  # type "weighted" (Stage 2): J = w_K ln(C0/C) + w_P ln(λ/λ0) with the capacity soft-min
                   "w_stiffness": 0.5, "w_capacity": 0.5, "min_gain": 0.02, "floor_stiffness": 0.85,
-                  "floor_capacity": 0.85, "floors_as_constraints": False},
+                  "floor_capacity": 0.85,
+                  "floors_as_constraints": True},           # weighted: K/K0 ≥ floor_stiffness, P/P0 ≥ floor_capacity (MMA)
     "filter": {"radius_mm": [4.0, 3.0, 2.5],
                "passes": 2},                # ξ̃ = clip(Fⁿ ξ) (§2: n = 2 removes one-vertex cones)
     "growth": {"enabled": True,             # solid start: hollow-allowed set H = {R_v ≤ R_k} grows (§4)
                "phase": 0,                  # continuation phase that grows H; later phases keep it frozen
                "tol": 1e-3,                 # a step whose J gain is below tol counts towards patience
-               "patience": 2,               # stop after this many consecutive low-gain steps (then the best boundary)
+               "patience": None,            # consecutive low-gain steps that stop growth; None: every quantile runs (§8)
                "quantiles": [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
                "step_tol": 1e-4,            # a step ends when |ΔJ| between iterations < step_tol ...
                "max_iters_per_step": 25,    # ... or after this many MMA iterations
                "min_iters_per_step": 2,
                "samples": 16},              # through-thickness quadrature points of R_v
     "export": {"h_mm": 0.2, "device": "gpu",
-               "closed_thr": 0.9},          # export closes vertices with ξ̃ᵃ ≥ closed_thr (= design.closure_xi)
+               "closed_thr": 0.9,           # export closes vertices with ξ̃ᵃ ≥ closed_thr (= design.closure_xi)
+               "escape_holes": False},      # §8/Owen 2026-11-01: escape holes optional; off: enclosed voids stay sealed
     "optimiser": {"method": "mma", "starts": ["solid"], "max_iter": [60, 80, 40],
                   "move": 0.1, "tol_x": 0.005, "tol_f": 1e-4, "mass_tol": 1e-4,
                   "sliver_weight": [0.0, [0.0, 0.05], 0.1], "seed": 0},
@@ -195,6 +200,16 @@ def validate(cfg: dict) -> None:
         raise ValueError("fe.engine must be 'auto', 'direct' ('sparse') or 'twogrid'")
     if cfg["fe"]["element_type"] != "q1_im":
         print("config: warning: element_type != q1_im is not a production setting (THEORY §4.1)")
+
+
+def void_min_eff(cfg: dict) -> float:
+    """Minimum void width (mm) used by the optimiser and the export alike: manufacturing.void_min_mm, raised to
+    escape_hole_diameter_mm + hole_clearance_mm when export.escape_holes is on (a hole's inner end must fit)."""
+    m = cfg["manufacturing"]
+    v = float(m["void_min_mm"])
+    if (cfg.get("export") or {}).get("escape_holes", False):
+        v = max(v, float(m["escape_hole_diameter_mm"]) + float(m.get("hole_clearance_mm", 0.5)))
+    return v
 
 
 def copy_cfg(cfg: dict) -> dict:

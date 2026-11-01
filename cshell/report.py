@@ -608,14 +608,23 @@ def p_summary(R):
     for key, lab in (("opt", "optimiser grid"), ("shift", "shifted grid")):
         v = S.get(key)
         if isinstance(v, dict):
-            lines.append(f"{lab:15s} J {_fmt(v.get('J'))}  K/K0 {_fmt(v.get('K_K0'))}  lamB/lamB0 {_fmt(v.get('lamB_ratio'))}"
-                         f"  sigPN/sigPN0 {_fmt(v.get('sig_ratio'))}  feasible {v.get('feasible')}   (accept: J > ln 1.02 = {LN102:.4f},"
-                         " lamB ratio >= 1, sigma ratio <= 1)")
+            if v.get("objective") == "weighted":           # §8: the run's own objective, ln K/K0 kept separate
+                lines.append(f"{lab:15s} J {_fmt(v.get('J'))} (weighted)  ln K/K0 {_fmt(v.get('J_K'))}  K/K0 "
+                             f"{_fmt(v.get('K_K0'))}  P/P0 {_fmt(v.get('P_P0'))}  governing {v.get('governing')}  "
+                             f"feasible {v.get('feasible')}   (accept: J > ln 1.02 = {LN102:.4f}, K/K0 >= "
+                             f"{_fmt(v.get('floor_K'))}, P/P0 >= {_fmt(v.get('floor_P'))})")
+            else:
+                lines.append(f"{lab:15s} J {_fmt(v.get('J'))}  K/K0 {_fmt(v.get('K_K0'))}  lamB/lamB0 {_fmt(v.get('lamB_ratio'))}"
+                             f"  sigPN/sigPN0 {_fmt(v.get('sig_ratio'))}  feasible {v.get('feasible')}   (accept: J > ln 1.02 = {LN102:.4f},"
+                             " lamB ratio >= 1, sigma ratio <= 1)")
     ex = S.get("export")
     if isinstance(ex, dict):
         w = ex.get("wall") or {}
+        unv = _g(ex, "voids", "unvented")
         lines += ["", f"export    h {_fmt(ex.get('h_mm'))} mm  faces {_fmt(ex.get('faces'))}  watertight {ex.get('watertight')}"
-                  f"  volume {_fmt(ex.get('volume_mm3'))} mm3  voids {_fmt(_g(ex, 'voids', 'total'))}  escape holes {_fmt(ex.get('holes'))}",
+                  f"  volume {_fmt(ex.get('volume_mm3'))} mm3  material bodies {_fmt(ex.get('bodies'))}  shells "
+                  f"{_fmt(ex.get('shells'))}  enclosed voids {_fmt(_g(ex, 'voids', 'enclosed'))}  escape holes {_fmt(ex.get('holes'))}"
+                  + (f"  WARNING unvented voids {unv} (trapped powder)" if unv else ""),
                   f"wall [mm] min {_fmt(w.get('min'))}  p05 {_fmt(w.get('p05'))}  median {_fmt(w.get('median'))}  max {_fmt(w.get('max'))}"]
     for k in ("closed_area_frac", "hollow_area_frac"):
         if k in S:
@@ -820,8 +829,12 @@ def p_convergence(R):
     _need((bool(H), "history.csv"))
     col = lambda k: np.array([np.nan if _num(r.get(k)) is None else float(r[k]) for r in H])
     x = np.arange(len(H))
-    keys = [("J", "J = ln K/K0 (accept above ln 1.02)", LN102), ("K_K0", "K / K0", None), ("lamB_ratio", "lamB / lamB0 (>= 1)", 1.0),
-            ("sig_ratio", "sigPN / sigPN0 (<= 1)", 1.0), ("mass_err", "mass error V/V0 - 1", 0.0),
+    wtd = any(_num(r.get("P_P0")) is not None for r in H)     # §8 weighted run: J = w ln K/K0 + w ln P/P0
+    keys = [("J", ("J = weighted objective" if wtd else "J = ln K/K0") + " (accept above ln 1.02)", LN102),
+            ("K_K0", "K / K0" + (" (floor 0.85)" if wtd else ""), 0.85 if wtd else None),
+            (("P_P0", "P / P0 (floor 0.85)", 0.85) if wtd else ("lamB_ratio", "lamB / lamB0 (>= 1)", 1.0)),
+            ("sig_ratio", "sigPN / sigPN0" + ("" if wtd else " (<= 1)"), None if wtd else 1.0),
+            ("mass_err", "mass error V/V0 - 1", 0.0),
             ("R_k", "R_k (hollow allowed where R <= R_k)", None), ("closed_frac", "closed fraction", None),
             ("hollow_allowed_frac", "hollow-allowed fraction", None)]
     gs, ph = col("growth_step"), col("phase")
@@ -900,7 +913,11 @@ def p_resolution(R):
     rows = _opt_shift(R)
     _need((len(rows) >= 1, "summary.json: opt / shift"))
     fig = vr.new_figure(12, 6.5)
-    panels = [("J", "J", LN102), ("K_K0", "K / K0", None), ("lamB_ratio", "lamB / lamB0", 1.0), ("sig_ratio", "sigPN / sigPN0", 1.0)]
+    wtd = any(v.get("objective") == "weighted" for _, v in rows)
+    panels = ([("J", "J (weighted)", LN102), ("K_K0", "K / K0", 0.85), ("P_P0", "P / P0", 0.85),
+               ("lamB_ratio", "lamB / lamB0", None)] if wtd else
+              [("J", "J", LN102), ("K_K0", "K / K0", None), ("lamB_ratio", "lamB / lamB0", 1.0),
+               ("sig_ratio", "sigPN / sigPN0", 1.0)])
     for i, (k, lab, ref) in enumerate(panels):
         ax = fig.add_subplot(1, 4, i + 1)
         y = [np.nan if _num(v.get(k)) is None else float(v[k]) for _, v in rows]
