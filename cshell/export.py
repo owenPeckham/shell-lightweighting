@@ -92,6 +92,9 @@ class ExportConfig:
     trimesh_check_max_faces: int = 2_000_000
     # GPU export (GpuExporter, PLAN_single_run §2-§3)
     mc_halo: int = 16                 # lattice layers around a tile for the ambiguous-face rule (MBB: ≤ 9 iterations)
+    min_wall: bool = True             # GPU stage A: void kept ≥ t_min from the outer surface, material between voids
+                                      # thinner than t_min − b_v removed (sr-q2; `wall_cap` / `open_void` kernels)
+    fill_unholed: bool = True         # stage C: an enclosed void with no clean escape-hole site is filled (R5)
     mass_correct: bool = True
     mesh_vol_tol: float = 2.0e-4      # secant steps on δ until |V_mesh/V_target − 1| ≤ this (≤ 2 steps)
     target_volume: float | None = None   # V_target (mm³); None: exact volume of the Γ₀ tessellation
@@ -1163,8 +1166,36 @@ class Exporter:
                           s0=np.array(holes_s0), s1=np.array(holes_s1), r=np.full(len(holes_p), 0.5 * cfg.hole_d))
         self.holes_rows = rows
         self.voids = voids
+        # R5 (every enclosed void drains; solid always allowed instead): a void with no clean hole site is filled
+        # (code 1 → 0), as the sub-void_min_mm3 voids in stage B; stage D's δ restores the mass. Such voids are
+        # narrower than the hole's inner cap (2 (r + h) across): e.g. the v_min-wide tubes of SR_VAL2 Cantilever.
+        unholed = [c for c in enclosed_ids if voids[c].get("holes", 0) == 0]
+        filled_mm3 = 0.0
+        if cfg.fill_unholed and unholed:
+            fill = np.zeros(ncomp, bool)
+            fill[unholed] = True
+            jobs = []
+            for t in tids:
+                r_ = info[t]
+                if r_[1] and fill[comp[off[t]:off[t] + r_[1]]].any():
+                    jobs.append((t, 1, 0, fill[comp[off[t]:off[t] + r_[1]]]))
+            for tid, idx in _pmap(_apply_labels, jobs, self.workers):
+                if not isinstance(idx, int):
+                    arr = self.store.get(tid).copy()
+                    arr.reshape(-1)[idx] = 0
+                    self.store.set(tid, arr)
+            for c in unholed:
+                voids[c]["filled"] = True
+                filled_mm3 += voids[c]["volume_mm3"]
+            self.log(f"[export] {len(unholed)} enclosed void(s) without a clean escape-hole site filled "
+                     f"({filled_mm3:.1f} mm³; the mass correction restores the mass)")
+            n_without = 0
         self.summary["voids"].update(holes=len(holes_p), without_hole=n_without,
-                                     per_void=[dict(id=v["id"], volume_mm3=v["volume_mm3"], holes=v.get("holes", 0))
+                                     filled_no_hole=len(unholed) if cfg.fill_unholed else 0,
+                                     filled_no_hole_mm3=filled_mm3,
+                                     enclosed=int(sum(1 for v in voids if v["enclosed"] and not v.get("filled"))),
+                                     per_void=[dict(id=v["id"], volume_mm3=v["volume_mm3"], holes=v.get("holes", 0),
+                                                    filled=bool(v.get("filled", False)))
                                                for v in voids if v["enclosed"]])
         self._t("C_holes", t0)
 
@@ -1353,14 +1384,19 @@ class Exporter:
         rim = np.zeros(len(t), bool)
         H = getattr(self, "holes", None)
         if H is not None and len(H["p"]):
-            for p_, n_, s0_, s1_, r_ in zip(H["p"], H["n"], H["s0"], H["s1"], H["r"]):
-                d_ = w["P"] - p_
-                sax = d_ @ n_
-                rad = np.linalg.norm(d_ - sax[:, None] * n_, axis=1)
-                rim |= (sax > s0_ - 2 * h) & (sax < s1_ + 2 * h) & (rad < r_ + 2 * h)
+            # either end of the ray on the bore: a ray from the outer surface next to an oblique hole mouth exits
+            # through the bore (the mouth's lip, a wedge by construction: SR_VAL2 MBB and L-bracket, sr-q2)
+            for X_ in (w["P"], w["P"] - t[:, None] * w["N"]):
+                for p_, n_, s0_, s1_, r_ in zip(H["p"], H["n"], H["s0"], H["s1"], H["r"]):
+                    d_ = X_ - p_
+                    sax = d_ @ n_
+                    rad = np.linalg.norm(d_ - sax[:, None] * n_, axis=1)
+                    rim |= (sax > s0_ - 2 * h) & (sax < s1_ + 2 * h) & (rad < r_ + 2 * h)
         off = ~rim
         self.summary["wall_off_rims"] = dict(
             n_rim=int(rim.sum()), min_as_built=float(t_ab[off].min()) if off.any() else None,
+            min_nominal=float(t[off].min()) if off.any() else None,
+            n_nominal_below_t_min_minus_b_v=int((t[off] < cfg.t_min - cfg.b_v).sum()),
             n_below_t_min_minus_b_v=int((t_ab[off] < cfg.t_min - cfg.b_v).sum()),
             # walls sit at the t_min bound by design: count only those thinner than the export voxel resolution allows
             n_below_t_min_minus_b_v_disc=int((t_ab[off] < cfg.t_min - cfg.b_v - 2.5 * cfg.h_x).sum()))
@@ -1477,6 +1513,34 @@ __global__ void open_void(const float* s, int m1, int m2, int H, int n0, int n1,
         out[t] = fminf(sx, best);
     }
 }
+
+// Minimum wall to the outer surface (sr-q2). O = outer branch φ − P d on an m0×m1×m2 region, p = void ψ on the
+// n0×n1×n2 cells at offset H. Dout(x) = min over cells c with O(c) > 0 within the offsets of |x − c| − min(O(c), h)
+// (distance to the outer surface; O is distance-like outside, slope ≥ 1, so this never overestimates it):
+//   pout = min(p, Dout − t_min)   (void at least t_min from the outside; unchanged where no outside cell is in range)
+//   dm   = Dout − t_min           (1e30 where none)
+// D1 bounds a + d ≥ t_min along the Γ₀ normal only; where d varies steeply (the passive taper) the walls tilt and
+// their normal thickness drops to ≈ t_min / sqrt(1 + |∇d|²).
+__global__ void wall_cap(const float* O, const float* p, int m1, int m2, int H, int n0, int n1, int n2,
+        const int* off, const float* offd, int noff, float tmin, float h, float* pout, float* dm) {
+    long long N = (long long)n0 * n1 * n2;
+    for (long long t = blockIdx.x * (long long)blockDim.x + threadIdx.x; t < N;
+         t += (long long)gridDim.x * blockDim.x) {
+        int x = (int)(t / ((long long)n1 * n2)), y = (int)((t / n2) % n1), z = (int)(t % n2);
+        long long c = ((long long)(x + H) * m1 + (y + H)) * m2 + (z + H);
+        float best = 1.0e30f;
+        for (int k = 0; k < noff; k++) {
+            float dk = offd[k];
+            if (dk - h >= best) break;
+            long long q = c + ((long long)off[3 * k] * m1 + off[3 * k + 1]) * m2 + off[3 * k + 2];
+            float oq = O[q];
+            if (oq > 0.0f) { float v = dk - fminf(oq, h); if (v < best) best = v; }
+        }
+        float px = p[t];
+        if (best < 1.0e29f) { dm[t] = best - tmin; pout[t] = fminf(px, best - tmin); }
+        else { dm[t] = 1.0e30f; pout[t] = px; }
+    }
+}
 }
 """
 _GPU_MOD = None
@@ -1560,8 +1624,12 @@ class GpuExporter(Exporter):
        Kept per tile (host): uint8 codes (0 material, 1 void, 2 outside, 3 dead), the outer-shell table
        S = (idx, φ, Γ_h triangle, b1, b2) for |o| ≤ Δ + 2h (re-evaluated for the mass shift δ) and the void-wall table
        P = (idx, ψ_open) for |ψ_open| < 3h. Nothing else: device and host memory stay at a few GiB.
+       Minimum wall (cfg.min_wall, sr-q2): the opened void is kept ≥ t_min from the outer surface (`wall_cap`: D1
+       bounds a + d along the Γ₀ normal only, so walls tilted by a steep d, e.g. the passive taper, were thinner),
+       and material between voids thinner than t_min − b_v (closure-rule columns of wholly closed Γ_h triangles,
+       thin webs) is removed outside that t_min zone (material depth min(D_out, D_void) opened by `open_void`).
     B  enclosed voids < void_min_mm3 filled, material islands marked dead (`Exporter._fill_islands`, on the codes).
-    C  escape holes (`Exporter.stage_c`, unchanged).
+    C  escape holes (`Exporter.stage_c`); an enclosed void with no clean hole site is filled (cfg.fill_unholed, R5).
     D  δ by Brent on the linear-ramp volume of ψ against V_target (default: the exact volume of the Γ₀ tessellation,
        i.e. the solid's mass), then after meshing ≤ 2 secant steps on the mesh volume (dV/dδ from the ramp volume)
        until |V_mesh/V_target − 1| ≤ mesh_vol_tol.
@@ -1597,6 +1665,7 @@ class GpuExporter(Exporter):
         self._mh = mesh(dz.Vh, dz.Th, False) if dz.Vh is not None else None
         mod = _gpu_module()
         self._k_psi, self._k_open = mod.get_function("exp_psi"), mod.get_function("open_void")
+        self._k_wall = mod.get_function("wall_cap")
         if dz.Vh is not None:
             self._Th = cp.asarray(np.ascontiguousarray(dz.Th, np.int32))
             self._d = cp.asarray(np.clip(dz.d, 0.0, np.maximum(dz.d_hi, dz.d)), dtype=cp.float64)   # Design.d_at(δ=0)
@@ -1639,17 +1708,41 @@ class GpuExporter(Exporter):
         opening = bool(cfg.clean and dz.has_void)
         r = 0.5 * cfg.v_min
         R = opening_R(r, h) if opening else 0
-        Hw = -(-R // (b // 2)) * (b // 2)                     # ≥ R, and (n + 2 Hw) a multiple of the block
+        # minimum wall (sr-q2): the void ψ is computed on the core plus a margin M (= the material-opening radius
+        # R_m), capped there by the distance to the outside (search radius R_w), then the material is opened with
+        # balls of diameter t_min − b_v on the core. Halo Hw ≥ max(R + M, M + R_w).
+        mw = bool(cfg.min_wall and opening)
+        r_m = 0.5 * (cfg.t_min - cfg.b_v)
+        M = opening_R(r_m, h) if mw else 0
+        R_w = int(math.ceil((cfg.t_min + h) / h)) + 2 if mw else 0          # Dout search radius (+ lattice slack)
+        R_v = int(math.ceil((r_m + 2.0 * h) / h)) + 2 if mw else 0          # Dvoid search radius (≥ the cap)
+        E1 = M + R_v                                                       # margin of the void ψ box
+        Hw = max(R + E1, E1 + R_w)
+        Hw = -(-Hw // (b // 2)) * (b // 2)                    # ≥ R + E1, and (n + 2 Hw) a multiple of the block
         m = n + 2 * Hw
         nb = m // b
-        rng_ = np.arange(-R, R + 1)
-        D = np.stack(np.meshgrid(rng_, rng_, rng_, indexing="ij"), -1).reshape(-1, 3)
-        q2 = (D * D).sum(1)
-        sel = q2 <= R * R
-        order = np.argsort(q2[sel], kind="stable")
-        off = cp.asarray(np.ascontiguousarray(D[sel][order], np.int32))
-        offd = cp.asarray((np.sqrt(q2[sel][order]) * h).astype(np.float32))
+
+        def ball(Rc):
+            rng_ = np.arange(-Rc, Rc + 1)
+            D_ = np.stack(np.meshgrid(rng_, rng_, rng_, indexing="ij"), -1).reshape(-1, 3)
+            q2 = (D_ * D_).sum(1)
+            sel = q2 <= Rc * Rc
+            order = np.argsort(q2[sel], kind="stable")
+            return (cp.asarray(np.ascontiguousarray(D_[sel][order], np.int32)),
+                    cp.asarray((np.sqrt(q2[sel][order]) * h).astype(np.float32)))
+        off, offd = ball(R)
+        if mw:
+            off_w, offd_w = ball(R_w)
+            off_m, offd_m = ball(M)
+            off_v, offd_v = ball(R_v)
         cap, floor_ = r + 2.0 * h, -2.0 * h   # −2h: 1-Lipschitz next to unchanged cells
+        ne = n + 2 * E1                        # void ψ box: core + margin E1, at offset Hw − E1 in the region
+        n2 = n + 2 * M                         # material-depth box: core + M, at offset R_v in the void ψ box
+        core_e = (slice(Hw - E1, Hw + n + E1),) * 3
+        cM = (slice(E1, E1 + n),) * 3          # core in the void ψ box
+        b2 = (slice(R_v, R_v + n2),) * 3       # material-depth box in the void ψ box
+        o2 = (slice(Hw - M, Hw + n + M),) * 3  # material-depth box in the region
+        wall_added, fins_removed = 0, 0
         ext = dz.V0.max(0) - dz.V0.min(0)
         band_out = dz.d_out_max + delta_shell + 3.0 * h       # beyond: o > Δ + 2h for every δ in the bracket
         maxd = max(band_out + h, 0.5 * float(ext.min()) + 2.0 * h)   # interior points lie within ½ min extent of Γ₀
@@ -1697,16 +1790,52 @@ class GpuExporter(Exporter):
             O, I = O.reshape(m, m, m), I.reshape(m, m, m)
             Ic = I[core]
             void_raw += int((Ic > 0).sum())
-            if opening and bool((Ic > -2.0 * h).any()):
-                P = cp.empty(n ** 3, cp.float32)
-                self._k_open(*_launch(n ** 3), (
-                    I, np.int32(m), np.int32(m), np.int32(Hw), np.int32(n), np.int32(n), np.int32(n), off, offd,
-                    np.int32(len(offd)), np.float32(r), np.float32(cap), np.float32(h), np.float32(floor_), P))
-                P = P.reshape(n, n, n)
+            if opening and bool((I[core_e] > -2.0 * h).any()):
+                Pe = cp.empty(ne ** 3, cp.float32)
+                self._k_open(*_launch(ne ** 3), (
+                    I, np.int32(m), np.int32(m), np.int32(Hw - E1), np.int32(ne), np.int32(ne), np.int32(ne), off,
+                    offd, np.int32(len(offd)), np.float32(r), np.float32(cap), np.float32(h), np.float32(floor_), Pe))
+                Pe = Pe.reshape(ne, ne, ne)
                 n_open_tiles += 1
+                void_open += int((Pe[cM] > 0).sum())
+                if mw:
+                    # (i) void ≥ t_min from the outside: Pc = min(Pe, Dout − t_min); Dm = Dout − t_min
+                    Pc, Dm = cp.empty(ne ** 3, cp.float32), cp.empty(ne ** 3, cp.float32)
+                    self._k_wall(*_launch(ne ** 3), (
+                        O, Pe, np.int32(m), np.int32(m), np.int32(Hw - E1), np.int32(ne), np.int32(ne), np.int32(ne),
+                        off_w, offd_w, np.int32(len(offd_w)), np.float32(cfg.t_min), np.float32(h), Pc, Dm))
+                    Pc, Dm = Pc.reshape(ne, ne, ne), Dm.reshape(ne, ne, ne)
+                    wall_added += int(((Pe[cM] > 0) & (Pc[cM] <= 0)).sum())
+                    # (ii) material between voids thinner than t_min − b_v (closure-rule fins, thin webs): the
+                    # material depth s = min(Dout, Dvoid) (distances, not ψ: the closure rule sets ψ_in = −φ − 1e4 in
+                    # wholly closed cells, which made the closure-rule columns look deep) is opened by balls of radius
+                    # r_m; outside the t_min zone of the outer surface (Dm < 0, protected) the unopened material
+                    # becomes void (ψ = −s_open, smooth)
+                    Dv, big = cp.empty(n2 ** 3, cp.float32), cp.full(n2 ** 3, 1.0e30, cp.float32)
+                    self._k_wall(*_launch(n2 ** 3), (                  # Dvoid: tmin = 0, p = +∞ (pout = dm = Dvoid)
+                        Pc, big, np.int32(ne), np.int32(ne), np.int32(R_v), np.int32(n2), np.int32(n2), np.int32(n2),
+                        off_v, offd_v, np.int32(len(offd_v)), np.float32(0.0), np.float32(h), big, Dv))
+                    Dv = Dv.reshape(n2, n2, n2)
+                    del big
+                    P2, O2 = Pc[b2], O[o2]
+                    Sm = cp.ascontiguousarray(cp.where(P2 > 0, -P2, cp.where(O2 > 0, -O2, cp.minimum(
+                        Dm[b2] + np.float32(cfg.t_min), Dv))))
+                    del Dv, P2, O2
+                    Mo = cp.empty(n ** 3, cp.float32)
+                    self._k_open(*_launch(n ** 3), (
+                        Sm, np.int32(n2), np.int32(n2), np.int32(M), np.int32(n), np.int32(n), np.int32(n), off_m,
+                        offd_m, np.int32(len(offd_m)), np.float32(r_m), np.float32(r_m + 2.0 * h), np.float32(h),
+                        np.float32(floor_), Mo))
+                    Mo = Mo.reshape(n, n, n)
+                    P = cp.maximum(Pc[cM], cp.minimum(-Mo, Dm[cM]))
+                    fins_removed += int(((Pc[cM] <= 0) & (O[core] <= 0) & (P > 0)).sum())
+                    del Pc, Dm, Sm, Mo
+                else:
+                    P = cp.ascontiguousarray(Pe[cM])
+                del Pe
             else:
                 P = cp.ascontiguousarray(Ic)
-            void_open += int((P > 0).sum())
+                void_open += int((P > 0).sum())
             code = cp.where(O[core] > 0, 2, cp.where(P > 0, 1, 0)).astype(cp.uint8)
             near = cp.flatnonzero((cp.abs(P) < Q).ravel())
             if near.size:
@@ -1720,8 +1849,15 @@ class GpuExporter(Exporter):
         self.summary.update(V0_mm3=self.V0, V0_ramp_mm3=self.V0_ramp, V0_ramp_rel=self.V0_ramp / self.V0 - 1.0,
                             n_tiles=len(g.tile_ids()), n_cell_queries=nq, opening_halo=Hw, opening_R_cells=R,
                             n_opened_tiles=n_open_tiles,
+                            min_wall=dict(on=mw, t_min_outer=cfg.t_min if mw else None,
+                                          t_min_between_voids=2 * r_m if mw else None, R_w=R_w, R_m=M,
+                                          void_to_material_mm3=wall_added * h ** 3,
+                                          fins_removed_mm3=fins_removed * h ** 3),
                             n_shell_cells=int(sum(len(s[0]) for s in self.S_out.values())),
                             n_void_wall_cells=int(sum(len(p[0]) for p in self.P_in.values())))
+        if mw:
+            self.log(f"[export] min wall: void → material {wall_added * h ** 3:.2f} mm³ (≥ {cfg.t_min} mm from the "
+                     f"outside), fins removed {fins_removed * h ** 3:.2f} mm³ (< {2 * r_m:.2f} mm between voids)")
         self._t("A_geometry_gpu", t0)
 
     # -- stage B ---------------------------------------------------------------------------------------------------
