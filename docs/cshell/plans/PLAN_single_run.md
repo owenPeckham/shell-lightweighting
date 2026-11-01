@@ -158,3 +158,10 @@ Evidence: docs/cshell/research/investigation/FINDINGS.md.
    - Count bodies (material components) and shells separately.
    - Report unvented voids as a manufacturing warning (trapped MJF powder). This does not change the decision.
 5. **Validation:** re-run the 3 parts into runs_cshell/SR_VAL3. Compare with SR_VAL2, INV/weighted_* and dshell, and measure dimples as in SR_Q2.
+6. **Escape holes are optional and off by default** (Owen, 2026-11-01). This supersedes the venting parts of item 4.
+   - The export handles multi-shell and multi-body STLs: 1 outer shell plus 1 shell per enclosed void.
+   - Volume, mass correction, the checks and the report work per shell.
+   - The summary reports bodies, shells, enclosed voids and holes separately.
+   - When holes are enabled:
+     - the effective minimum void width is max(void_min_mm, hole_d + clearance);
+     - unvented voids are reported.
