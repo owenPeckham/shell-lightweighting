@@ -17,7 +17,7 @@ Full part, e.g. the cantilever (1 slot):
 
 Re-export a finished run into another directory (the run directory is left untouched):
 
-    sbatch cshell/cluster/export.sh runs_cshell/FULL/MBB --out runs_cshell/MBB_reexport
+    sbatch cshell/cluster/export.sh runs_cshell/SR_VAL4/MBB --out runs_cshell/MBB_reexport
 
 Finalise outputs (contract C3): `final_design.stl`, `final_design_export.json`, `escape_holes.csv`,
 `wall_thickness.csv`, `summary.json`, `summary.txt`, `finalise_log.txt`, then the report (`report.write_report`; a

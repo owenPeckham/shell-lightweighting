@@ -13,7 +13,7 @@ THE UNIVERSITY OF BRISTOL (UOB) PROVIDES THIS PROGRAM "AS IS" AND WITH ALL FAULT
 | --- | --- | --- | --- |
 | `ushell/` | **Uniform shell**: the Fusion 360 add-in (one wall thickness, constant mass) | Fusion 360 (Windows/macOS) | below |
 | `dshell/` | **Discrete-region shell** (was `vshell`): hollows chosen regions, sizes their walls, voxel FE | any PC, CPU, Python ≥ 3.10 | `dshell/README.md` |
-| `cshell/` | **Continuous shell**: per-vertex wall thickness/offset fields, MMA, GPU FE, buckling | GPU cluster (Isambard-AI, GH200) | `cshell/README.md` |
+| `cshell/` | **Continuous shell**: single run from the solid: per-vertex wall thickness/offset fields, weighted stiffness+capacity objective, MMA, GPU FE and export, buckling | GPU cluster (Isambard-AI, GH200) | `cshell/README.md` |
 
 Example parts (STEP) are in `examples/parts/`; configs and committed results per optimiser are in `examples/dshell/`
 and `examples/cshell/`. **`INDEX.md` maps every folder and where each result, report and document is.**

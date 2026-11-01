@@ -1,4 +1,4 @@
-# PLAN: single run from the solid, in-job finalise, smooth fields, solid regions, dshell-style report (DRAFT)
+# PLAN: single run from the solid, in-job finalise, smooth fields, solid regions, dshell-style report (IMPLEMENTED 2026-11-01; §1–§8 agreed by Owen; results in docs/cshell/STATUS.md §0 and §5)
 
 Branch `worktree-cshell-solid-pockmarks`. Evidence: `docs/cshell/research/pockmarks/FINDINGS.md`.
 Rules: nothing on the login node; optimiser and export use one GPU and minimum memory; slot cap 24.

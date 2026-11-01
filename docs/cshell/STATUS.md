@@ -8,6 +8,7 @@ Stage log for `cshell` (THEORY_continuous.md §12). Newest entries at the top of
 
 | Date | Stage | Entry |
 | --- | --- | --- |
+| 2026-11-01 | single-run | **Single-run rework implemented (PLAN_single_run §1–§8; round-4 validation `runs_cshell/SR_VAL4`, results in §5).** One start from the original solid; weighted objective J = 0.5 ln K/K0 + 0.5 ln P/P0 with floors 0.85; growth of the hollow-allowed region in order of the shear/flexure ratio R through all quantiles; smoothed fields (F² filter, smoothed r_MA, taper, closure skirt `design.closure_skirt_mm`); no collect stage (finalise runs in the same Slurm job: shifted-grid re-score, 0.2 mm GPU streaming export, report); escape holes optional, off by default; multi-shell STL. Investigations: `research/pockmarks/FINDINGS.md`, `research/investigation/FINDINGS.md`. Stage 2 (below) is superseded. |
 | 2026-10-31 | 2 | **Overnight:** collect fixed (PLAN_collect_fixes P1–P5, P7, D1–D3; host 41–80 GiB), deterministic two-grid modes opt-in (default fast), watertight export (ambiguous MC faces), body-fitted mesher by isosurface stuffing (gate passes on all 12 production meshes; B2 unchanged, accepted). Full test suite green (GPU 162, CPU 124 on 36f2b5a; later file-level suites green). Voxel re-scoring of the 3 parts consistent across grids (§5). **Blocker (Owen's decision):** body-fitted solves at production scale (19–42 M DOF C3D10) need a 0.15–1.5 TB direct factor; collect therefore keeps the original solid ("body-fitted check could not be run"). `cshell` not fast-forwarded (gate not passed). |
 | 2026-10-30 | 2 | **Full runs done** (`runs_cshell/FULL`, 9 starts, 34–44 min each on one GPU, 64G host, two-grid phase B): final phase-B J (opt grid) MBB 0.5031/0.5032/0.5032 (uniform/vshell/neutral), cantilever 0.5189/0.5193/0.5193, L-bracket 0.1664/0.1663/0.1664 (80-iteration cap, still creeping). Starts agree ≤ 0.1 %. **Collect blocked:** on MBB it needs 153 GiB host (CPU geometry chain at h_g 0.1) and its re-scoring disagrees with the run (best V/V0−1 +14.5 %, uniform shell K/K0 0.054, PCG non-convergence; smoke job 7860423) — under diagnosis (`research/collect_mem/`). |
 | 2026-10-30 | 2 | **Two-grid engine accepted** (`research/twogrid/notes.md`, BENCHMARKS.md): engine dJ ≤ 5e-10 vs direct with buckling off; full-objective dJ gap 6e-5–1.6e-3 is eigenvector truncation at eig_tol 1e-3; 3-iteration histories J ≤ 5.7e-8; MBB phase B 25–50 s / 26 GiB GPU / 34 GB host vs hybrid 51–137 s / 50 GiB / 161 GB. Tests: GPU 45 passed, CPU 22 passed (FE files). |
@@ -144,7 +145,28 @@ Each will be resolved by updating THEORY_continuous.md in the same change as the
 
 ## 5. Per-part results
 
-**Stage 2 results (2026-10-31).** Runs `runs_cshell/FULL` (3 starts each, agree ≤ 0.1 %; 34–44 min per start on one
+**Current results: round-4 validation (2026-11-01, single run from the solid).** Runs `runs_cshell/SR_VAL4/<part>`
+(one start, optimise + finalise in one Slurm job; committed copies in `examples/cshell/runs/<part>/`). J, K/K0, P/P0
+on the optimisation grid, constant mass (mass error ≤ 2·10⁻⁴), watertight export at 0.2 mm, all accepted:
+
+| Part | J opt | K/K0 | P/P0 (governing) | Walls min / median / max (mm) | Hollow (% surface) | Shells | Export fins (mm³) |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| MBB | +0.496 | 1.113 | 2.42 (buckling) | 1.49 / 2.49 / 27.0 | 75.5 | 3 | 53.8 |
+| Cantilever | +0.478 | 0.975 | 2.67 (buckling) | 1.50 / 1.95 / 40.2 | 64.6 | 2 | 92.9 |
+| L-bracket | +0.069 | 1.091 | 1.05 (strength) | 1.47 / 5.30 / 42.2 | 26.5 | 5 | 125.9 |
+
+Shifted-grid J and the mass check are in each `summary.txt`. dshell comparison (`examples/dshell/runs`): dshell kept
+MBB and L-bracket solid and accepted a hollow Cantilever at J +0.479 (cshell +0.478). Wall maxima are solid
+mount/load regions.
+
+**Known issues**
+- Residual export fins: the 0.2 mm export removes 54–126 mm³ (≈ 0.1 % of V) of thin fins (summary check "expected ≈ 0").
+- Body-fitted (C3D10) validation not run at this scale (19–42 M DOF needs a scalable solver); decisions rest on the
+  voxel criteria on the optimisation and shifted grids.
+- L-bracket gain is small (J +0.069, strength-governed); escape holes are off, so its 4 enclosed voids are sealed.
+- Runs differ at ~10⁻⁴–10⁻³ in J (GPU atomics amplified by MMA).
+
+**Superseded: Stage 2 results (2026-10-31).** Runs `runs_cshell/FULL` (3 starts each, agree ≤ 0.1 %; 34–44 min per start on one
 GPU), collect 7888538–40 (30–47 min, 40–80 GiB host, ≤ 57 GiB GPU; watertight export, mass-matched), best design
 re-scored at the optimisation grid / ½h_e-shifted grid / h_e 0.5 (J = w_K ln K/K0 + w_P ln P/P0, constant mass).
 Body-fitted check not run on these parts (model exceeds one-GPU solver capacity, 7–12 M DOF at the coarse level);
@@ -158,6 +180,6 @@ VALIDATION.md V6.
 | L-bracket | +0.129 / +0.131 / +0.138 | 1.16 | 1.12 | 1.51–6.50 | **accepted** (120 it) |
 
 Gains are dominated by capacity (P/P0, buckling/strength soft-min); stiffness is about unchanged (K/K0 0.98–1.16).
-Uniform-shell baseline (mounts solid, D1) and dshell rows: `examples/cshell/runs/<part>/summary.json` (committed copy of `runs_cshell/FULL/<part>/`; see `examples/cshell/runs/README.md`).
+Uniform-shell baseline (mounts solid, D1) and dshell rows: `runs_cshell/FULL/<part>/summary.json` (the Stage 2 committed copies were replaced by the round-4 runs).
 
 Template for the gate: decision, J, K/K₀, P/P₀, governing mode, wall range, mass error, run time / GPU-hours, comparison of solid / uniform shell / dshell best / cshell, sign agreement with the manuscript.
