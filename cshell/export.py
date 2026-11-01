@@ -26,6 +26,12 @@ Stages (`Exporter.run`)
 
 Volumes use the linear ramp f = clip(½ − ψ/h_x, 0, 1) (the C⁰ case of §3.7), which is volume-exact to O(h²κ) and
 agrees with the marching-cubes mesh volume. Units mm.
+
+`GpuExporter` / `export_design_gpu` (PLAN_single_run §2-§3, the default export of `cshell.finalise`, h_x = 0.2 mm):
+the same stages on one GPU with a few GiB of device and host memory. Warp BVH queries and the optimiser's fused
+interpolation (design.cell_psi) per tile, a smooth distance-based opening of the void instead of the lattice opening
+(no constant −h/2 cells), Warp marching cubes, δ against the exact solid volume with secant steps on the mesh volume.
+`Exporter` (CPU, forked workers) is kept for the legacy `collect` and its tests.
 """
 from __future__ import annotations
 
@@ -84,14 +90,25 @@ class ExportConfig:
     wall_max_faces: int = 4_000_000   # ray-cast mesh is extracted at stride ≥ 1 so that it stays below this
     write_stl: bool = True
     trimesh_check_max_faces: int = 2_000_000
+    # GPU export (GpuExporter, PLAN_single_run §2-§3)
+    mc_halo: int = 16                 # lattice layers around a tile for the ambiguous-face rule (MBB: ≤ 9 iterations)
+    min_wall: bool = True             # GPU stage A: void kept ≥ t_min from the outer surface, material between voids
+                                      # thinner than t_min − b_v removed (sr-q2; `wall_cap` / `open_void` kernels)
+    fill_unholed: bool = False        # stage C: fill an enclosed void with no clean hole site (sr-q2 R5; reverted by
+                                      # PLAN_single_run §8: enclosed voids stay hollow, unvented ones are reported)
+    mass_correct: bool = True
+    mesh_vol_tol: float = 2.0e-4      # secant steps on δ until |V_mesh/V_target − 1| ≤ this (≤ 2 steps)
+    target_volume: float | None = None   # V_target (mm³); None: exact volume of the Γ₀ tessellation
     log: object = print
 
     @classmethod
     def from_run_cfg(cls, cfg: dict, **kw) -> "ExportConfig":
+        from .config import void_min_eff
         m = cfg["manufacturing"]
-        base = dict(h_x=cfg["grid"]["export_h_mm"], v_min=m["void_min_mm"], void_min_mm3=m["void_min_mm3"],
+        base = dict(h_x=cfg["grid"]["export_h_mm"], v_min=void_min_eff(cfg), void_min_mm3=m["void_min_mm3"],
                     t_min=m["t_min_mm"], b_v=m["wall_bias_mm"], holes_per_void=m["escape_holes_per_void"],
-                    hole_d=m["escape_hole_diameter_mm"])
+                    hole_d=m["escape_hole_diameter_mm"],
+                    holes=bool((cfg.get("export") or {}).get("escape_holes", False)))   # §8: optional, off by default
         base.update(kw)
         return cls(**base)
 
@@ -673,17 +690,20 @@ def resolve_ambiguous_faces(psi: np.ndarray, value: float, max_iter: int = 64):
     ambiguous faces every cube face has 0 or 2 crossings and the triangulation is consistent. The rule matches the
     clean-up's 6-connectivity (`ndimage.label`): material that touches only diagonally is already two components.
     Removes at most one node per face (≤ h_x of material, sub-cell). In place; returns (nodes flipped, iterations)."""
+    xp = np
+    if type(psi).__module__.startswith("cupy"):          # same rule on the device (GPU export)
+        import cupy as xp
     flipped, it = 0, 0
     for it in range(1, max_iter + 1):
         mat = psi < 0
-        flip = np.zeros_like(mat)
+        flip = xp.zeros_like(mat)
         for ax in range(3):
             a, b = [x for x in range(3) if x != ax]
-            q = np.moveaxis(mat, (a, b), (0, 1))
+            q = xp.moveaxis(mat, (a, b), (0, 1))
             amb = (q[:-1, :-1] == q[1:, 1:]) & (q[1:, :-1] == q[:-1, 1:]) & (q[:-1, :-1] != q[1:, :-1])
             if not amb.any():
                 continue
-            fl = np.moveaxis(flip, (a, b), (0, 1))                     # view: writes go to `flip`
+            fl = xp.moveaxis(flip, (a, b), (0, 1))                     # view: writes go to `flip`
             fl[:-1, :-1] |= amb & q[:-1, :-1]
             fl[1:, 1:] |= amb & q[1:, 1:]
             fl[1:, :-1] |= amb & q[1:, :-1]
@@ -754,7 +774,9 @@ def mesh_checks(V: np.ndarray, F: np.ndarray) -> dict:
     """Closed, edge-manifold, consistently oriented surface? V (nv,3), F (nf,3) with shared (welded) vertex ids.
 
     Directed edges must be unique and each must have its reverse. Also: signed volume (float64), Euler number,
-    connected component count (bodies: material components and enclosed voids), degenerate faces.
+    connected component count, degenerate faces. §8 (multi-shell STL): `shells` = connected surface components;
+    each has a signed volume, positive for an outward-facing shell (`bodies`: material bodies, one outer shell each)
+    and negative for an inward-facing one (`void_shells`: enclosed voids, unvented). Total volume = Σ shell volumes.
     """
     F = np.asarray(F, np.int64)
     nf, nv = len(F), len(V)
@@ -767,19 +789,24 @@ def mesh_checks(V: np.ndarray, F: np.ndarray) -> dict:
     pos[pos >= len(d)] = len(d) - 1
     missing = int((d[pos] != r).sum())
     ne = len(np.unique(np.minimum(d // nv, d % nv) * nv + np.maximum(d // nv, d % nv))) if len(d) < 3e7 else -1
-    vol = 0.0
-    for s in range(0, nf, 2_000_000):
-        t = F[s:s + 2_000_000]
-        a, b, c = V[t[:, 0]].astype(np.float64), V[t[:, 1]].astype(np.float64), V[t[:, 2]].astype(np.float64)
-        vol += float(np.einsum("ij,ij->i", a, np.cross(b, c)).sum()) / 6.0
     used = np.unique(F)
     g = sparse.coo_matrix((np.ones(3 * nf), (np.concatenate([F[:, 0], F[:, 1], F[:, 2]]),
                                               np.concatenate([F[:, 1], F[:, 2], F[:, 0]]))), shape=(nv, nv))
     nc, lab = connected_components(g, directed=False)
-    bodies = len(np.unique(lab[used]))
+    fl = lab[F[:, 0]] if nf else np.zeros(0, np.int64)
+    cvol = np.zeros(nc)
+    for s in range(0, nf, 2_000_000):
+        t = F[s:s + 2_000_000]
+        a, b, c = V[t[:, 0]].astype(np.float64), V[t[:, 1]].astype(np.float64), V[t[:, 2]].astype(np.float64)
+        cvol += np.bincount(fl[s:s + 2_000_000], weights=np.einsum("ij,ij->i", a, np.cross(b, c)) / 6.0,
+                            minlength=nc)
+    present = np.unique(lab[used])
+    sv = cvol[present]
     return dict(faces=nf, vertices=int(len(used)), degenerate=deg, duplicate_directed_edges=dup,
                 missing_reverse_edges=missing, watertight_manifold=bool(dup == 0 and missing == 0 and deg == 0),
-                volume=vol, euler=(len(used) - ne + nf if ne >= 0 else None), bodies=bodies)
+                volume=float(cvol.sum()), euler=(len(used) - ne + nf if ne >= 0 else None),
+                shells=int(len(present)), bodies=int((sv > 0).sum()), void_shells=int((sv < 0).sum()),
+                shell_volumes_mm3=sorted((float(x) for x in sv), reverse=True)[:50])
 
 
 def drop_material_islands(V: np.ndarray, F: np.ndarray, V0: float, min_vol: float = 0.0, void_fill: float = 0.0,
@@ -940,6 +967,22 @@ class Exporter:
             n_removed += len(idx)
         rep["opening_removed_mm3"] = n_removed * h ** 3
         self._t("B1_opening", t0)
+        self._fill_islands(tids, rep)
+        if cfg.check_opening:
+            t0 = time.time()
+            self._setG()
+            res = _pmap(_open_tile, tids, min(self.workers, cfg.open_workers))
+            rep["reopen_changed_cells"] = int(sum(len(r[1]) for r in res if r[1] is not None))
+            rep["opening_rule_ok"] = rep["reopen_changed_cells"] <= 1
+            self._t("B3_opening_check", t0)
+        self.summary["cleanup"] = rep
+        self.log(f"[export] cleanup: {rep}")
+        return tids
+
+    def _fill_islands(self, tids, rep: dict) -> None:
+        """§8.2 steps 2-3 on the codes: enclosed voids < void_min_mm3 filled (code 1 → 0), every material component
+        but the largest marked dead (code 0 → 3)."""
+        cfg, h = self.cfg, self.cfg.h_x
         t0 = time.time()
         # fill enclosed voids below void_min_mm3
         self._setG()
@@ -982,16 +1025,6 @@ class Exporter:
             rep["islands_removed"], rep["islands_removed_mm3"] = 0, 0.0
         rep["void_clean_mm3"] = self.codes_count(1) * h ** 3
         self._t("B2_fill_islands", t0)
-        if cfg.check_opening:
-            t0 = time.time()
-            self._setG()
-            res = _pmap(_open_tile, tids, min(self.workers, cfg.open_workers))
-            rep["reopen_changed_cells"] = int(sum(len(r[1]) for r in res if r[1] is not None))
-            rep["opening_rule_ok"] = rep["reopen_changed_cells"] <= 1
-            self._t("B3_opening_check", t0)
-        self.summary["cleanup"] = rep
-        self.log(f"[export] cleanup: {rep}")
-        return tids
 
     def _codes_at(self, X):
         """Cell code (0 material, 1 void, 2 outside, 3 dead) at points X (k, 3); 255 outside the grid."""
@@ -1049,9 +1082,14 @@ class Exporter:
         self.summary["voids"] = dict(total=int(ncomp), enclosed=int((~ext).sum()) if ncomp else 0)
         rows = []
         self.holes_info = []
+        self.summary["voids"]["escape_holes"] = bool(cfg.holes)
         if dz.Vh is None or ncomp == 0 or not (~ext).any() or not cfg.holes:
+            # §8: holes off (default) → enclosed voids stay sealed (one inward shell each), counted, not a failure
             self.summary["voids"]["holes"] = 0
             self.summary["voids"]["without_hole"] = int((~ext).sum()) if ncomp else 0
+            self.summary["voids"]["unvented"] = (int((~ext).sum()) if ncomp else 0) if cfg.holes else None
+            self.summary["voids"]["per_void"] = [dict(id=v["id"], volume_mm3=v["volume_mm3"], holes=0, vented=False)
+                                                 for v in voids if v["enclosed"]]
             self._t("C_holes", t0)
             return
         Vh, Th = dz.Vh, dz.Th
@@ -1143,8 +1181,41 @@ class Exporter:
                           s0=np.array(holes_s0), s1=np.array(holes_s1), r=np.full(len(holes_p), 0.5 * cfg.hole_d))
         self.holes_rows = rows
         self.voids = voids
+        # R5 (every enclosed void drains; solid always allowed instead): a void with no clean hole site is filled
+        # (code 1 → 0), as the sub-void_min_mm3 voids in stage B; stage D's δ restores the mass. Such voids are
+        # narrower than the hole's inner cap (2 (r + h) across): e.g. the v_min-wide tubes of SR_VAL2 Cantilever.
+        unholed = [c for c in enclosed_ids if voids[c].get("holes", 0) == 0]
+        filled_mm3 = 0.0
+        if cfg.fill_unholed and unholed:
+            fill = np.zeros(ncomp, bool)
+            fill[unholed] = True
+            jobs = []
+            for t in tids:
+                r_ = info[t]
+                if r_[1] and fill[comp[off[t]:off[t] + r_[1]]].any():
+                    jobs.append((t, 1, 0, fill[comp[off[t]:off[t] + r_[1]]]))
+            for tid, idx in _pmap(_apply_labels, jobs, self.workers):
+                if not isinstance(idx, int):
+                    arr = self.store.get(tid).copy()
+                    arr.reshape(-1)[idx] = 0
+                    self.store.set(tid, arr)
+            for c in unholed:
+                voids[c]["filled"] = True
+                filled_mm3 += voids[c]["volume_mm3"]
+            self.log(f"[export] {len(unholed)} enclosed void(s) without a clean escape-hole site filled "
+                     f"({filled_mm3:.1f} mm³; the mass correction restores the mass)")
+            n_without = 0
+        if unholed and not cfg.fill_unholed:              # §8 item 5b: reported (manufacturing warning), kept hollow
+            self.log(f"[export] WARNING: {len(unholed)} enclosed void(s) without a clean escape-hole site stay "
+                     f"sealed (unvented; trapped powder)")
         self.summary["voids"].update(holes=len(holes_p), without_hole=n_without,
-                                     per_void=[dict(id=v["id"], volume_mm3=v["volume_mm3"], holes=v.get("holes", 0))
+                                     unvented=n_without,
+                                     filled_no_hole=len(unholed) if cfg.fill_unholed else 0,
+                                     filled_no_hole_mm3=filled_mm3,
+                                     enclosed=int(sum(1 for v in voids if v["enclosed"] and not v.get("filled"))),
+                                     per_void=[dict(id=v["id"], volume_mm3=v["volume_mm3"], holes=v.get("holes", 0),
+                                                    filled=bool(v.get("filled", False)),
+                                                    vented=bool(v.get("holes", 0) > 0))
                                                for v in voids if v["enclosed"]])
         self._t("C_holes", t0)
 
@@ -1198,10 +1269,20 @@ class Exporter:
 
     # -- stage E ---------------------------------------------------------------------------------------------------
     def stage_e(self, out_dir, name="final_design"):
-        cfg, h = self.cfg, self.cfg.h_x
         t0 = time.time()
+        mc = self._mc_tiles(self.delta)
+        self._t("E1_marching_cubes", t0)
+        V, F = self._weld_checks(*mc)
+        if self.cfg.write_stl:
+            self._write(V, F, out_dir, name)
+        self.mesh = (V, F)
+        return V, F
+
+    def _mc_tiles(self, delta):
+        """Marching cubes of every tile at mass shift δ: (pos, keys, faces) lists (faces offset into the concatenated
+        positions) and the ambiguous-face statistics (nodes flipped, max iterations, tiles not converged, halo)."""
         self._setG()
-        items = [(t, self.delta, 1, True) for t in self.grid.tile_ids()]
+        items = [(t, delta, 1, True) for t in self.grid.tile_ids()]
         res = _pmap(_mesh_tile, items, self.workers)
         keys, pos, faces = [], [], []
         base, n_flip, it_max, n_unconv, n_exc = 0, 0, 0, 0, 0
@@ -1213,8 +1294,13 @@ class Exporter:
             n_exc += abs(it_) >= min(MC_HALO, self.grid.n)
             pos.append(p); keys.append(k); faces.append(f.astype(np.int64) + base)
             base += len(p)
-        del res
-        self._t("E1_marching_cubes", t0)
+        return pos, keys, faces, (n_flip, it_max, n_unconv, n_exc, MC_HALO)
+
+    def _weld_checks(self, pos, keys, faces, amb):
+        """Weld the per-tile triangles by lattice-edge keys, drop degenerate faces, material islands and small enclosed
+        voids, and run the mesh checks (self.summary["mesh"]). Returns (V, F)."""
+        cfg, h = self.cfg, self.cfg.h_x
+        n_flip, it_max, n_unconv, n_exc, halo = amb
         t0 = time.time()
         if not faces:
             raise RuntimeError("export produced no surface")
@@ -1243,7 +1329,7 @@ class Exporter:
         chk["islands"] = isl
         chk["ambiguous_faces"] = dict(nodes_flipped=int(n_flip), flipped_mm3=float(n_flip * h ** 3),
                                       max_iterations=int(it_max), tiles_not_converged=int(n_unconv),
-                                      tiles_halo_exceeded=int(n_exc), halo=MC_HALO)
+                                      tiles_halo_exceeded=int(n_exc), halo=int(halo))
         chk["volume_rel"] = chk["volume"] / self.V0 - 1.0
         chk["volume_ok"] = bool(abs(chk["volume_rel"]) <= cfg.vol_tol)
         if chk["faces"] <= cfg.trimesh_check_max_faces:
@@ -1253,15 +1339,14 @@ class Exporter:
                                   volume=float(tm.volume), bodies=int(len(tm.split(only_watertight=False))))
         self.summary["mesh"] = chk
         self._t("E2_weld_checks", t0)
-        if cfg.write_stl:
-            t0 = time.time()
-            path = os.path.join(out_dir, f"{name}.stl")
-            write_stl(path, V, F)
-            chk["stl"] = path
-            chk["stl_bytes"] = os.path.getsize(path)
-            self._t("E3_stl", t0)
-        self.mesh = (V, F)
         return V, F
+
+    def _write(self, V, F, out_dir, name):
+        t0 = time.time()
+        path = os.path.join(out_dir, f"{name}.stl")
+        write_stl(path, V, F)
+        self.summary["mesh"].update(stl=path, stl_bytes=os.path.getsize(path))
+        self._t("E3_stl", t0)
 
     def wall_stats(self, Vm, Fm, out_dir):
         cfg, h = self.cfg, self.cfg.h_x
@@ -1319,19 +1404,25 @@ class Exporter:
         rim = np.zeros(len(t), bool)
         H = getattr(self, "holes", None)
         if H is not None and len(H["p"]):
-            for p_, n_, s0_, s1_, r_ in zip(H["p"], H["n"], H["s0"], H["s1"], H["r"]):
-                d_ = w["P"] - p_
-                sax = d_ @ n_
-                rad = np.linalg.norm(d_ - sax[:, None] * n_, axis=1)
-                rim |= (sax > s0_ - 2 * h) & (sax < s1_ + 2 * h) & (rad < r_ + 2 * h)
+            # either end of the ray on the bore: a ray from the outer surface next to an oblique hole mouth exits
+            # through the bore (the mouth's lip, a wedge by construction: SR_VAL2 MBB and L-bracket, sr-q2)
+            for X_ in (w["P"], w["P"] - t[:, None] * w["N"]):
+                for p_, n_, s0_, s1_, r_ in zip(H["p"], H["n"], H["s0"], H["s1"], H["r"]):
+                    d_ = X_ - p_
+                    sax = d_ @ n_
+                    rad = np.linalg.norm(d_ - sax[:, None] * n_, axis=1)
+                    rim |= (sax > s0_ - 2 * h) & (sax < s1_ + 2 * h) & (rad < r_ + 2 * h)
         off = ~rim
         self.summary["wall_off_rims"] = dict(
             n_rim=int(rim.sum()), min_as_built=float(t_ab[off].min()) if off.any() else None,
+            min_nominal=float(t[off].min()) if off.any() else None,
+            n_nominal_below_t_min_minus_b_v=int((t[off] < cfg.t_min - cfg.b_v).sum()),
             n_below_t_min_minus_b_v=int((t_ab[off] < cfg.t_min - cfg.b_v).sum()),
             # walls sit at the t_min bound by design: count only those thinner than the export voxel resolution allows
             n_below_t_min_minus_b_v_disc=int((t_ab[off] < cfg.t_min - cfg.b_v - 2.5 * cfg.h_x).sum()))
         self.summary["wall"] = dict(samples=int(len(t)), miss=w["n_miss"], mesh_stride=stride, min_nominal=float(t.min()),
-                                    p1_nominal=float(np.quantile(t, 0.01)), median_nominal=float(np.median(t)),
+                                    p1_nominal=float(np.quantile(t, 0.01)), p05_nominal=float(np.quantile(t, 0.05)),
+                                    median_nominal=float(np.median(t)), max_nominal=float(t.max()),
                                     min_as_built=float(t_ab.min()), p1_as_built=float(np.quantile(t_ab, 0.01)),
                                     frac_below_t_min=float((t < cfg.t_min).mean()))
         self._t("E4_wall_thickness", t0)
@@ -1352,7 +1443,7 @@ class Exporter:
             tids = self.stage_b() if (cfg.clean and self.dz.has_void) else [t for t in self.grid.tile_ids()]
             if not (cfg.clean and self.dz.has_void):
                 self.summary["cleanup"] = {}
-            if cfg.holes and cfg.clean and self.dz.has_void:
+            if cfg.clean and self.dz.has_void:               # stage C labels voids; holes only if cfg.holes
                 self.stage_c(tids)
             ok = self.stage_d()
             if ok or attempt == 1:
@@ -1382,33 +1473,655 @@ class Exporter:
 
 
 # =====================================================================================================================
+# GPU export (PLAN_single_run §2-§3): one GPU, a few GiB of device and host memory
+# =====================================================================================================================
+_GPU_SRC = r"""
+extern "C" {
+// Both branches of the nominal ψ per queried cell: o = φ − P d and ψ_in = −φ − P a. The interpolation is
+// design.cell_psi's (clipped, normalised barycentrics, float64); ψ_in uses a_closed where every positive-weight vertex
+// of the closest Γ_h triangle is closed (closure rule, §8.2). cmode: constant design (d_const, a_const).
+// Cells with no surface within the query radius (phi >= far) are outside.
+__global__ void exp_psi(long long n, const float* phi, const int* face, const float* bary, const int* Th,
+        const double* d, const double* a, const double* cl, double a_closed, int cmode, double dconst, double aconst,
+        float far, float* o, float* pin) {
+    int v[3]; double w[3]; bool outer;
+    for (long long c = blockIdx.x * (long long)blockDim.x + threadIdx.x; c < n;
+         c += (long long)gridDim.x * blockDim.x) {
+        double ph = (double)phi[c];
+        if (ph >= (double)far) { o[c] = 1.0e30f; pin[c] = -1.0e30f; continue; }
+        double oo, ii;
+        if (cmode) {
+            oo = ph - dconst; ii = -ph - aconst;
+        } else {
+            double psi = cell_psi(c, phi, face, bary, Th, d, a, 0.0, 0, &outer, v, w);
+            if (outer) { oo = psi; ii = -ph - (((w[0] * a[v[0]]) + w[1] * a[v[1]]) + w[2] * a[v[2]]); }
+            else       { ii = psi; oo = ph - (((w[0] * d[v[0]]) + w[1] * d[v[1]]) + w[2] * d[v[2]]); }
+            double cc = ((w[0] * cl[v[0]]) + w[1] * cl[v[1]]) + w[2] * cl[v[2]];
+            if (cc >= 1.0 - 1e-9) ii = -ph - a_closed;
+        }
+        o[c] = (float)oo; pin[c] = (float)ii;
+    }
+}
+
+// Smooth opening of the void {s > 0} by a ball of radius r (PLAN_single_run §2). s = ψ_in on a region of m0×m1×m2
+// cells; for the n0×n1×n2 core cells (offset H ≥ R in every axis):
+//   ψ_open(x) = min(s(x), max_c [min(s(c), cap) − |x − c|]),  c ∈ lattice, s(c) ≥ r, |x − c| ≤ R h,
+// offsets sorted by |k| (early exit once cap − |k| h ≤ best). With s the depth into the void (1-Lipschitz), the ball
+// of radius s(c) ≥ r at c is inscribed, so {ψ_open > 0} is the union of inscribed balls of radius ≥ r: the opening.
+// ψ_open is distance-like (slope 1) in removed thin void, so the removed region has no terraces. Cells with s ≥ r
+// or s ≤ −2h are unchanged; floor_ (= −2h: continuous with them) where no centre is found.
+__global__ void open_void(const float* s, int m1, int m2, int H, int n0, int n1, int n2, const int* off,
+        const float* offd, int noff, float r, float cap, float h, float floor_, float* out) {
+    long long N = (long long)n0 * n1 * n2;
+    for (long long t = blockIdx.x * (long long)blockDim.x + threadIdx.x; t < N;
+         t += (long long)gridDim.x * blockDim.x) {
+        int x = (int)(t / ((long long)n1 * n2)), y = (int)((t / n2) % n1), z = (int)(t % n2);
+        long long c = ((long long)(x + H) * m1 + (y + H)) * m2 + (z + H);
+        float sx = s[c];
+        if (sx >= r || sx <= -2.0f * h) { out[t] = sx; continue; }
+        float best = floor_;
+        for (int k = 0; k < noff; k++) {
+            float dk = offd[k];
+            if (cap - dk <= best) break;
+            long long q = c + ((long long)off[3 * k] * m1 + off[3 * k + 1]) * m2 + off[3 * k + 2];
+            float sc = s[q];
+            if (sc >= r) {
+                float val = fminf(sc, cap) - dk;
+                if (val > best) best = val;
+            }
+        }
+        out[t] = fminf(sx, best);
+    }
+}
+
+// Minimum wall to the outer surface (sr-q2). O = outer branch φ − P d on an m0×m1×m2 region, p = void ψ on the
+// n0×n1×n2 cells at offset H. Dout(x) = min over cells c with O(c) > 0 within the offsets of |x − c| − min(O(c), h)
+// (distance to the outer surface; O is distance-like outside, slope ≥ 1, so this never overestimates it):
+//   pout = min(p, Dout − t_min)   (void at least t_min from the outside; unchanged where no outside cell is in range)
+//   dm   = Dout − t_min           (1e30 where none)
+// D1 bounds a + d ≥ t_min along the Γ₀ normal only; where d varies steeply (the passive taper) the walls tilt and
+// their normal thickness drops to ≈ t_min / sqrt(1 + |∇d|²).
+__global__ void wall_cap(const float* O, const float* p, int m1, int m2, int H, int n0, int n1, int n2,
+        const int* off, const float* offd, int noff, float tmin, float h, float* pout, float* dm) {
+    long long N = (long long)n0 * n1 * n2;
+    for (long long t = blockIdx.x * (long long)blockDim.x + threadIdx.x; t < N;
+         t += (long long)gridDim.x * blockDim.x) {
+        int x = (int)(t / ((long long)n1 * n2)), y = (int)((t / n2) % n1), z = (int)(t % n2);
+        long long c = ((long long)(x + H) * m1 + (y + H)) * m2 + (z + H);
+        float best = 1.0e30f;
+        for (int k = 0; k < noff; k++) {
+            float dk = offd[k];
+            if (dk - h >= best) break;
+            long long q = c + ((long long)off[3 * k] * m1 + off[3 * k + 1]) * m2 + off[3 * k + 2];
+            float oq = O[q];
+            if (oq > 0.0f) { float v = dk - fminf(oq, h); if (v < best) best = v; }
+        }
+        float px = p[t];
+        if (best < 1.0e29f) { dm[t] = best - tmin; pout[t] = fminf(px, best - tmin); }
+        else { dm[t] = 1.0e30f; pout[t] = px; }
+    }
+}
+}
+"""
+_GPU_MOD = None
+_WK: dict = {}
+QMAX = 32000                    # int16 quantisation of ψ ∈ [−Q, Q] (step Q/QMAX ≈ 2e-5 mm at h_x = 0.2 mm)
+
+
+def _gpu_module():
+    """design._KERNELS (cell_psi, the optimiser's fused interpolation) + the export kernels, one CuPy module."""
+    global _GPU_MOD
+    if _GPU_MOD is None:
+        import cupy as cp
+        from .design import _KERNELS
+        _GPU_MOD = cp.RawModule(code=_KERNELS + _GPU_SRC, options=("--fmad=false",))
+    return _GPU_MOD
+
+
+def _warp_kernels():
+    """Warp BVH query: signed distance φ to Γ₀ (winding-number sign, as band.py), the closest point on Γ₀ and, when
+    Γ_h is given, its closest Γ_h triangle and barycentrics (u, v, 1 − u − v) for (Th[f,0], Th[f,1], Th[f,2])."""
+    if _WK:
+        return _WK
+    import warp as wp
+    wp.config.quiet = True
+    if "SCRATCH" in os.environ and "WARP_CACHE_PATH" not in os.environ:
+        wp.config.kernel_cache_dir = os.path.join(os.environ["SCRATCH"], "warp_cache")
+    wp.init()
+
+    @wp.kernel
+    def q_cells(mesh0: wp.uint64, meshh: wp.uint64, has_h: int, cells: wp.array(dtype=wp.int32), lo: wp.vec3f,
+                h: float, m1: int, m2: int, maxd: float, phi: wp.array(dtype=wp.float32),
+                face: wp.array(dtype=wp.int32), bary: wp.array(dtype=wp.vec3f)):
+        t = wp.tid()
+        c = cells[t]
+        i = c // (m1 * m2)
+        j = (c // m2) % m1
+        k = c % m2
+        p = lo + wp.vec3f(float(i), float(j), float(k)) * h
+        phi[t] = 1.0e8
+        face[t] = 0
+        bary[t] = wp.vec3f(1.0, 0.0, 0.0)
+        q = wp.mesh_query_point_sign_winding_number(mesh0, p, maxd, 2.0, 0.5)
+        if q.result:
+            cp0 = wp.mesh_eval_position(mesh0, q.face, q.u, q.v)
+            phi[t] = q.sign * wp.length(p - cp0)
+            if has_h != 0:
+                qh = wp.mesh_query_point_no_sign(meshh, cp0, 1.0e6)
+                if qh.result:
+                    face[t] = qh.face
+                    bary[t] = wp.vec3f(qh.u, qh.v, 1.0 - qh.u - qh.v)
+
+    _WK.update(wp=wp, q_cells=q_cells)
+    return _WK
+
+
+def _launch(n: int) -> tuple:
+    import cupy as cp
+    sm = cp.cuda.Device().attributes["MultiProcessorCount"]
+    return (max(1, min(-(-int(n) // 256), 32 * sm)),), (256,)
+
+
+def opening_R(r: float, h: float) -> int:
+    """Search radius (cells) of the smooth opening: a cell 2h outside the void wall needs a centre with s ∈ [r, r + 2h]
+    at distance ≈ r + 2h; 3 cells of lattice slack so that the 2h-thick centre shell is always reached (with
+    ceil((r + 2h)/h) alone, cells just outside the wall found no centre and took the floor value)."""
+    return int(math.ceil((r + 2.0 * h) / h)) + 3
+
+
+def tess_volume(V: np.ndarray, T: np.ndarray) -> float:
+    """Enclosed volume of a closed, outward-oriented tessellation (float64)."""
+    a, b, c = (np.asarray(V, np.float64)[T[:, k]] for k in range(3))
+    return float(np.einsum("ij,ij->i", a, np.cross(b, c)).sum()) / 6.0
+
+
+class GpuExporter(Exporter):
+    """Export of one `Design` on one GPU (PLAN_single_run §3); same stages and outputs as `Exporter`.
+
+    A  per tile of n³ cells (+ the opening halo H ≥ R): blocks pruned by φ at their centres, then Warp BVH queries
+       (φ, closest Γ_h triangle) and ψ's two branches (`exp_psi`, design.cell_psi); the void branch is opened with
+       the smooth distance-based ψ (`open_void`, replaces the lattice opening and its constant −h/2 cells).
+       Kept per tile (host): uint8 codes (0 material, 1 void, 2 outside, 3 dead), the outer-shell table
+       S = (idx, φ, Γ_h triangle, b1, b2) for |o| ≤ Δ + 2h (re-evaluated for the mass shift δ) and the void-wall table
+       P = (idx, ψ_open) for |ψ_open| < 3h. Nothing else: device and host memory stay at a few GiB.
+       Minimum wall (cfg.min_wall, sr-q2): the opened void is kept ≥ t_min from the outer surface (`wall_cap`: D1
+       bounds a + d along the Γ₀ normal only, so walls tilted by a steep d, e.g. the passive taper, were thinner),
+       and material between voids thinner than t_min − b_v (closure-rule columns of wholly closed Γ_h triangles,
+       thin webs) is removed outside that t_min zone (material depth min(D_out, D_void) opened by `open_void`).
+    B  enclosed voids < void_min_mm3 filled, material islands marked dead (`Exporter._fill_islands`, on the codes).
+    C  escape holes (`Exporter.stage_c`); an enclosed void with no clean hole site is filled (cfg.fill_unholed, R5).
+    D  δ by Brent on the linear-ramp volume of ψ against V_target (default: the exact volume of the Γ₀ tessellation,
+       i.e. the solid's mass), then after meshing ≤ 2 secant steps on the mesh volume (dV/dδ from the ramp volume)
+       until |V_mesh/V_target − 1| ≤ mesh_vol_tol.
+    E  ψ(δ) of every tile into one int16 lattice on the device; per tile: ambiguous lattice faces removed
+       (`resolve_ambiguous_faces`, halo mc_halo), Warp marching cubes, triangles to the host with their lattice-edge
+       weld keys; weld, island/void drop, checks and the binary STL as `Exporter`; wall thickness by ray casting."""
+
+    def __init__(self, design: Design, cfg: ExportConfig, normals=None, mount_mesh=None, stress=None, r_ma=None,
+                 lo_hi=None):
+        import dataclasses as _dc
+        cfg = _dc.replace(cfg, wall_max_faces=max(cfg.wall_max_faces, 1 << 40))     # never the CPU re-extraction
+        super().__init__(design, cfg, normals, mount_mesh, stress, r_ma, lo_hi)
+        if self.grid.n % cfg.block:
+            raise ValueError("tile must be a multiple of block")
+        self.workers = cfg.workers or 1
+        self.Q = 3.0 * cfg.h_x
+        self.S_out, self.P_in = {}, {}
+
+    # -- device set-up ---------------------------------------------------------------------------------------------
+    def _gpu_setup(self):
+        import cupy as cp
+        wk = _warp_kernels()
+        wp = self._wp = wk["wp"]
+        self._q = wk["q_cells"]
+        dz = self.dz
+        self.c0 = 0.5 * (dz.V0.min(0) + dz.V0.max(0))           # centred float32 frame for the BVH (as band.py)
+
+        def mesh(V, T, wn):
+            pts = wp.array(np.ascontiguousarray(V - self.c0, np.float32), dtype=wp.vec3f, device="cuda:0")
+            idx = wp.array(np.ascontiguousarray(T, np.int32).ravel(), dtype=wp.int32, device="cuda:0")
+            return wp.Mesh(pts, idx, support_winding_number=wn)
+        self._m0 = mesh(dz.V0, dz.T0, True)
+        self._mh = mesh(dz.Vh, dz.Th, False) if dz.Vh is not None else None
+        mod = _gpu_module()
+        self._k_psi, self._k_open = mod.get_function("exp_psi"), mod.get_function("open_void")
+        self._k_wall = mod.get_function("wall_cap")
+        if dz.Vh is not None:
+            self._Th = cp.asarray(np.ascontiguousarray(dz.Th, np.int32))
+            self._d = cp.asarray(np.clip(dz.d, 0.0, np.maximum(dz.d_hi, dz.d)), dtype=cp.float64)   # Design.d_at(δ=0)
+            self._a = cp.asarray(dz.a_lin, dtype=cp.float64)
+            self._cl = cp.asarray(dz.closed_f, dtype=cp.float64)
+        else:
+            self._Th = cp.zeros(3, cp.int32)
+            self._d = self._a = self._cl = cp.zeros(1, cp.float64)
+
+    def _query(self, cells, lo, h: float, m: int, maxd: float, want_h: bool):
+        """φ, closest Γ_h triangle and barycentrics (CuPy) at the centres lo + h (i, j, k) of the region cells `cells`
+        (int32 flat indices into an m³ box); lo in mm (global frame)."""
+        import cupy as cp
+        wp = self._wp
+        N = int(cells.size)
+        phi = wp.empty(N, dtype=wp.float32, device="cuda:0")
+        face = wp.empty(N, dtype=wp.int32, device="cuda:0")
+        bary = wp.empty(N, dtype=wp.vec3f, device="cuda:0")
+        cells = cp.ascontiguousarray(cells, dtype=cp.int32)
+        cp.cuda.Device().synchronize()
+        mh = self._mh if (want_h and self._mh is not None) else self._m0
+        wp.launch(self._q, dim=N, inputs=[self._m0.id, mh.id, int(want_h and self._mh is not None),
+                                          wp.from_dlpack(cells), wp.vec3f(*(np.asarray(lo) - self.c0).tolist()),
+                                          float(h), int(m), int(m), float(maxd), phi, face, bary], device="cuda:0")
+        wp.synchronize_device("cuda:0")
+        out = (cp.asarray(phi).copy(), cp.asarray(face).copy(), cp.asarray(bary).reshape(N, 3).copy())
+        del phi, face, bary
+        return out
+
+    # -- stage A ---------------------------------------------------------------------------------------------------
+    def stage_a(self, delta_shell: float):
+        import cupy as cp
+        t0 = time.time()
+        cfg, dz, g = self.cfg, self.dz, self.grid
+        h, n, b, Q = g.h, g.n, cfg.block, self.Q
+        self._gpu_setup()
+        self.delta_shell = delta_shell
+        self.store = TileStore(g)
+        self.S_out, self.P_in = {}, {}
+        opening = bool(cfg.clean and dz.has_void)
+        r = 0.5 * cfg.v_min
+        R = opening_R(r, h) if opening else 0
+        # minimum wall (sr-q2): the void ψ is computed on the core plus a margin M (= the material-opening radius
+        # R_m), capped there by the distance to the outside (search radius R_w), then the material is opened with
+        # balls of diameter t_min − b_v on the core. Halo Hw ≥ max(R + M, M + R_w).
+        mw = bool(cfg.min_wall and opening)
+        r_m = 0.5 * (cfg.t_min - cfg.b_v)
+        M = opening_R(r_m, h) if mw else 0
+        R_w = int(math.ceil((cfg.t_min + h) / h)) + 2 if mw else 0          # Dout search radius (+ lattice slack)
+        R_v = int(math.ceil((r_m + 2.0 * h) / h)) + 2 if mw else 0          # Dvoid search radius (≥ the cap)
+        E1 = M + R_v                                                       # margin of the void ψ box
+        Hw = max(R + E1, E1 + R_w)
+        Hw = -(-Hw // (b // 2)) * (b // 2)                    # ≥ R + E1, and (n + 2 Hw) a multiple of the block
+        m = n + 2 * Hw
+        nb = m // b
+
+        def ball(Rc):
+            rng_ = np.arange(-Rc, Rc + 1)
+            D_ = np.stack(np.meshgrid(rng_, rng_, rng_, indexing="ij"), -1).reshape(-1, 3)
+            q2 = (D_ * D_).sum(1)
+            sel = q2 <= Rc * Rc
+            order = np.argsort(q2[sel], kind="stable")
+            return (cp.asarray(np.ascontiguousarray(D_[sel][order], np.int32)),
+                    cp.asarray((np.sqrt(q2[sel][order]) * h).astype(np.float32)))
+        off, offd = ball(R)
+        if mw:
+            off_w, offd_w = ball(R_w)
+            off_m, offd_m = ball(M)
+            off_v, offd_v = ball(R_v)
+        cap, floor_ = r + 2.0 * h, -2.0 * h   # −2h: 1-Lipschitz next to unchanged cells
+        ne = n + 2 * E1                        # void ψ box: core + margin E1, at offset Hw − E1 in the region
+        n2 = n + 2 * M                         # material-depth box: core + M, at offset R_v in the void ψ box
+        core_e = (slice(Hw - E1, Hw + n + E1),) * 3
+        cM = (slice(E1, E1 + n),) * 3          # core in the void ψ box
+        b2 = (slice(R_v, R_v + n2),) * 3       # material-depth box in the void ψ box
+        o2 = (slice(Hw - M, Hw + n + M),) * 3  # material-depth box in the region
+        wall_added, fins_removed, fin_pts = 0, 0, []
+        ext = dz.V0.max(0) - dz.V0.min(0)
+        band_out = dz.d_out_max + delta_shell + 3.0 * h       # beyond: o > Δ + 2h for every δ in the bracket
+        maxd = max(band_out + h, 0.5 * float(ext.min()) + 2.0 * h)   # interior points lie within ½ min extent of Γ₀
+        far = np.float32(1.0e7)
+        S_thr = delta_shell + 2.0 * h
+        Rb = 0.5 * b * h * math.sqrt(3.0)
+        blk_cells = cp.arange(nb ** 3, dtype=cp.int32)
+        core = (slice(Hw, Hw + n),) * 3
+        nq, v0r, void_raw, void_open, n_open_tiles = 0, 0.0, 0, 0, 0
+        for tid in g.tile_ids():
+            lo_core = g.tile_lo(tid) + 0.5 * h                # centre of core cell (0, 0, 0)
+            lo_reg = lo_core - Hw * h
+            phb = self._query(blk_cells, lo_reg + 0.5 * (b - 1) * h, b * h, nb, 1.0e6, False)[0]
+            need = (phb - Rb <= band_out).reshape(nb, nb, nb)
+            if not bool(need.any()):
+                self.store.set(tid, 2)
+                continue
+            mask = cp.repeat(cp.repeat(cp.repeat(need, b, 0), b, 1), b, 2)
+            if not bool(mask[core].any()):
+                self.store.set(tid, 2)
+                continue
+            cells = cp.flatnonzero(mask.ravel()).astype(cp.int32)
+            del mask
+            phi, face, bary = self._query(cells, lo_reg, h, m, maxd, True)
+            o_c, i_c = cp.empty(cells.size, cp.float32), cp.empty(cells.size, cp.float32)
+            self._k_psi(*_launch(cells.size), (
+                np.int64(cells.size), phi, face, bary, self._Th, self._d, self._a, self._cl, np.float64(A_CLOSED),
+                np.int32(dz.Vh is None), np.float64(max(dz.d_const, 0.0)), np.float64(dz.a_const), far, o_c, i_c))
+            ci, cj, ck = cells // (m * m), (cells // m) % m, cells % m
+            inc = (ci >= Hw) & (ci < Hw + n) & (cj >= Hw) & (cj < Hw + n) & (ck >= Hw) & (ck < Hw + n)
+            lidx = (((ci - Hw) * n + (cj - Hw)) * n + (ck - Hw)).astype(cp.int32)
+            nq += int(cells.size)
+            v0r += float(cp.clip(0.5 - phi[inc].astype(cp.float64) / h, 0.0, 1.0).sum())
+            ss = inc & (cp.abs(o_c) <= S_thr)                 # outer-shell table
+            if bool(ss.any()):
+                bb = cp.maximum(bary[ss].astype(cp.float64), 0.0)
+                bb /= cp.maximum(bb.sum(1, keepdims=True), 1e-300)
+                self.S_out[tid] = (lidx[ss].get(), phi[ss].get(), face[ss].get(),
+                                   bb[:, 1].astype(cp.float32).get(), bb[:, 2].astype(cp.float32).get())
+            O = cp.full(m ** 3, 1.0e30, cp.float32)
+            I = cp.full(m ** 3, -1.0e30, cp.float32)
+            O[cells] = o_c
+            I[cells] = i_c
+            del phi, face, bary, o_c, i_c, ci, cj, ck, inc, lidx, cells
+            O, I = O.reshape(m, m, m), I.reshape(m, m, m)
+            Ic = I[core]
+            void_raw += int((Ic > 0).sum())
+            if opening and bool((I[core_e] > -2.0 * h).any()):
+                Pe = cp.empty(ne ** 3, cp.float32)
+                self._k_open(*_launch(ne ** 3), (
+                    I, np.int32(m), np.int32(m), np.int32(Hw - E1), np.int32(ne), np.int32(ne), np.int32(ne), off,
+                    offd, np.int32(len(offd)), np.float32(r), np.float32(cap), np.float32(h), np.float32(floor_), Pe))
+                Pe = Pe.reshape(ne, ne, ne)
+                n_open_tiles += 1
+                void_open += int((Pe[cM] > 0).sum())
+                if mw:
+                    # (i) void ≥ t_min from the outside: Pc = min(Pe, Dout − t_min); Dm = Dout − t_min
+                    Pc, Dm = cp.empty(ne ** 3, cp.float32), cp.empty(ne ** 3, cp.float32)
+                    self._k_wall(*_launch(ne ** 3), (
+                        O, Pe, np.int32(m), np.int32(m), np.int32(Hw - E1), np.int32(ne), np.int32(ne), np.int32(ne),
+                        off_w, offd_w, np.int32(len(offd_w)), np.float32(cfg.t_min), np.float32(h), Pc, Dm))
+                    Pc, Dm = Pc.reshape(ne, ne, ne), Dm.reshape(ne, ne, ne)
+                    wall_added += int(((Pe[cM] > 0) & (Pc[cM] <= 0)).sum())
+                    # (ii) material between voids thinner than t_min − b_v (closure-rule fins, thin webs): the
+                    # material depth s = min(Dout, Dvoid) (distances, not ψ: the closure rule sets ψ_in = −φ − 1e4 in
+                    # wholly closed cells, which made the closure-rule columns look deep) is opened by balls of radius
+                    # r_m; outside the t_min zone of the outer surface (Dm < 0, protected) the unopened material
+                    # becomes void (ψ = −s_open, smooth)
+                    Dv, big = cp.empty(n2 ** 3, cp.float32), cp.full(n2 ** 3, 1.0e30, cp.float32)
+                    self._k_wall(*_launch(n2 ** 3), (                  # Dvoid: tmin = 0, p = +∞ (pout = dm = Dvoid)
+                        Pc, big, np.int32(ne), np.int32(ne), np.int32(R_v), np.int32(n2), np.int32(n2), np.int32(n2),
+                        off_v, offd_v, np.int32(len(offd_v)), np.float32(0.0), np.float32(h), big, Dv))
+                    Dv = Dv.reshape(n2, n2, n2)
+                    del big
+                    P2, O2 = Pc[b2], O[o2]
+                    Sm = cp.ascontiguousarray(cp.where(P2 > 0, -P2, cp.where(O2 > 0, -O2, cp.minimum(
+                        Dm[b2] + np.float32(cfg.t_min), Dv))))
+                    del Dv, P2, O2
+                    Mo = cp.empty(n ** 3, cp.float32)
+                    self._k_open(*_launch(n ** 3), (
+                        Sm, np.int32(n2), np.int32(n2), np.int32(M), np.int32(n), np.int32(n), np.int32(n), off_m,
+                        offd_m, np.int32(len(offd_m)), np.float32(r_m), np.float32(r_m + 2.0 * h), np.float32(h),
+                        np.float32(floor_), Mo))
+                    Mo = Mo.reshape(n, n, n)
+                    P = cp.maximum(Pc[cM], cp.minimum(-Mo, Dm[cM]))
+                    fmask = (Pc[cM] <= 0) & (O[core] <= 0) & (P > 0)
+                    nfin = int(fmask.sum())
+                    fins_removed += nfin
+                    if nfin and len(fin_pts) < 20000:          # §8 check: where the export still removes fins
+                        ijk = cp.stack(cp.nonzero(fmask), 1)[:: max(1, nfin // 200)].get()
+                        fin_pts.extend((lo_core + ijk * h).tolist())
+                    del fmask
+                    del Pc, Dm, Sm, Mo
+                else:
+                    P = cp.ascontiguousarray(Pe[cM])
+                del Pe
+            else:
+                P = cp.ascontiguousarray(Ic)
+                void_open += int((P > 0).sum())
+            code = cp.where(O[core] > 0, 2, cp.where(P > 0, 1, 0)).astype(cp.uint8)
+            near = cp.flatnonzero((cp.abs(P) < Q).ravel())
+            if near.size:
+                self.P_in[tid] = (near.astype(cp.int32).get(), P.ravel()[near].get())
+            self.store.set(tid, code.get())
+            del O, I, P, code, near
+        cp.get_default_memory_pool().free_all_blocks()
+        self._void_cells = (void_raw, void_open)
+        self.V0_ramp = v0r * h ** 3
+        self.V0 = float(cfg.target_volume) if cfg.target_volume is not None else tess_volume(dz.V0, dz.T0)
+        self.summary.update(V0_mm3=self.V0, V0_ramp_mm3=self.V0_ramp, V0_ramp_rel=self.V0_ramp / self.V0 - 1.0,
+                            n_tiles=len(g.tile_ids()), n_cell_queries=nq, opening_halo=Hw, opening_R_cells=R,
+                            n_opened_tiles=n_open_tiles,
+                            min_wall=dict(on=mw, t_min_outer=cfg.t_min if mw else None,
+                                          t_min_between_voids=2 * r_m if mw else None, R_w=R_w, R_m=M,
+                                          void_to_material_mm3=wall_added * h ** 3,
+                                          fins_removed_mm3=fins_removed * h ** 3,
+                                          fin_points=fin_pts[:20000]),
+                            n_shell_cells=int(sum(len(s[0]) for s in self.S_out.values())),
+                            n_void_wall_cells=int(sum(len(p[0]) for p in self.P_in.values())))
+        if mw:
+            self.log(f"[export] min wall: void → material {wall_added * h ** 3:.2f} mm³ (≥ {cfg.t_min} mm from the "
+                     f"outside), fins removed {fins_removed * h ** 3:.2f} mm³ (< {2 * r_m:.2f} mm between voids)")
+        self._t("A_geometry_gpu", t0)
+
+    # -- stage B ---------------------------------------------------------------------------------------------------
+    def stage_b(self):
+        h = self.cfg.h_x
+        tids = [t for t in self.grid.tile_ids() if self.store.scalar(t) != 2]
+        raw, opened = self._void_cells
+        rep = dict(opening="smooth distance-based ψ (GPU)", void_raw_mm3=raw * h ** 3,
+                   opening_removed_mm3=(raw - opened) * h ** 3)
+        self._fill_islands(tids, rep)
+        self.summary["cleanup"] = rep
+        self.log(f"[export] cleanup: {rep}")
+        return tids
+
+    # -- ψ of a tile from codes and tables ---------------------------------------------------------------------------
+    def _parts(self, tid, delta: float):
+        """(o, ψ_in) dense float32 (n³, clipped to ±Q) of tile `tid` at mass shift δ, escape holes included."""
+        n, Q = self.grid.n, self.Q
+        code = self.store.get(tid).reshape(-1)
+        o = np.where(code >= 2, Q, -Q).astype(np.float32)
+        pin = np.where(code == 1, Q, -Q).astype(np.float32)
+        P = self.P_in.get(tid)
+        if P is not None:
+            idx, val = P
+            pin[idx] = np.where((code[idx] == 0) & (val > 0), -Q, np.clip(val, -Q, Q))   # filled voids stay filled
+        S = self.S_out.get(tid)
+        if S is not None:
+            idx, phi, tri, b1, b2 = S
+            oo = phi.astype(np.float64) - self.dz.d_at(tri, b1, b2, delta)
+            o[idx] = np.clip(np.where(code[idx] == 3, Q, oo), -Q, Q)
+        pin = pin.reshape(n, n, n)
+        _hole_psi_into(pin, self.grid, tid, getattr(self, "holes", None), self.grid.h)
+        return o.reshape(n, n, n), pin
+
+    def _uniform(self, tid):
+        """Code of a tile whose ψ is ±Q everywhere (scalar codes, no table entries, no hole), else None."""
+        s = self.store.scalar(tid)
+        if s is None or tid in self.S_out or tid in self.P_in or _tile_has_hole(tid):
+            return None
+        return s
+
+    # -- stage D ---------------------------------------------------------------------------------------------------
+    def stage_d(self):
+        cfg, dz, h, n, Q = self.cfg, self.dz, self.cfg.h_x, self.grid.n, self.Q
+        t0 = time.time()
+        self._setG()
+        Vc = 0.0
+        arrs = []
+        for tid in self.grid.tile_ids():
+            u = self._uniform(tid)
+            if u is not None:
+                Vc += float(n ** 3) if u == 0 else 0.0
+                continue
+            o, pin = self._parts(tid, 0.0)
+            f = ramp(-np.maximum(o, pin), h).reshape(-1)
+            S = self.S_out.get(tid)
+            if S is None:
+                Vc += float(f.sum(dtype=np.float64))
+                continue
+            idx = S[0]
+            Vc += float(f.sum(dtype=np.float64) - f[idx].sum(dtype=np.float64))
+            pS = pin.reshape(-1)[idx].copy()
+            pS[self.store.get(tid).reshape(-1)[idx] == 3] = Q       # dead material never counts
+            arrs.append((S[1], S[2], S[3], S[4], pS))
+        if arrs:
+            phi = np.concatenate([a[0] for a in arrs]).astype(np.float64); tri = np.concatenate([a[1] for a in arrs])
+            b1 = np.concatenate([a[2] for a in arrs]); b2 = np.concatenate([a[3] for a in arrs])
+            pS = np.concatenate([a[4] for a in arrs]).astype(np.float64)
+        else:
+            phi = pS = np.zeros(0); tri = np.zeros(0, np.int32); b1 = b2 = np.zeros(0, np.float32)
+        del arrs
+
+        def V_of(delta):
+            oo = phi - dz.d_at(tri, b1, b2, delta)
+            return (Vc + float(ramp(-np.maximum(oo, pS), h).sum())) * h ** 3
+        self._V_of = V_of
+        v00 = V_of(0.0)
+        rel0 = v00 / self.V0 - 1.0
+        out = dict(V_target_mm3=self.V0, V_before_mm3=v00, rel_before=rel0)
+        delta, ok = 0.0, True
+        if cfg.mass_correct and not dz.trivial_solid and abs(rel0) > cfg.mass_tol:
+            lim = self.delta_shell
+            fl, fh = V_of(-lim) / self.V0 - 1.0, V_of(lim) / self.V0 - 1.0
+            if fl * fh > 0:
+                out["bracket_failed"] = dict(limit=lim, f_lo=fl, f_hi=fh)
+                ok = False
+            else:
+                delta = brentq(lambda x: V_of(x) / self.V0 - 1.0, -lim, lim, xtol=1e-7, rtol=1e-10)
+        out.update(delta=delta, V_after_mm3=V_of(delta), rel_after=V_of(delta) / self.V0 - 1.0,
+                   warn=bool(abs(delta) > cfg.delta_warn), fail=bool(abs(delta) > cfg.delta_fail),
+                   n_brent_cells=int(len(phi)), ok=ok)
+        self.delta = delta
+        self.summary["mass_correction"] = out
+        self._t("D_mass", t0)
+        return ok
+
+    # -- stage E ---------------------------------------------------------------------------------------------------
+    def _mc_tiles(self, delta):
+        import cupy as cp
+        from warp.geometry import IsoSurfaceMarchingCubes
+        wp = self._wp
+        g, cfg = self.grid, self.cfg
+        n, h, Q = g.n, g.h, self.Q
+        qs = Q / QMAX
+        H = int(min(cfg.mc_halo, n))
+        self._setG()
+        # ψ(δ) on every lattice node, int16 on the device; node i at index i + H (padding: outside)
+        L = cp.full(tuple(int(s) + 2 * H + 1 for s in g.shape), QMAX, cp.int16)
+        for tid in g.tile_ids():
+            sl = tuple(slice(H + tid[a] * n, H + tid[a] * n + n) for a in range(3))
+            u = self._uniform(tid)
+            if u is not None:
+                if u == 0:
+                    L[sl] = -QMAX
+                continue
+            o, pin = self._parts(tid, delta)
+            L[sl] = cp.asarray(np.rint(np.clip(np.maximum(o, pin), -Q, Q) / qs).astype(np.int16))
+        eps = np.float32(1e-2 * h)                     # crossings strictly inside lattice edges (robust weld keys)
+        keys, pos, faces = [], [], []
+        base_v, n_flip, it_max, n_unconv, n_exc = 0, 0, 0, 0, 0
+        nk = np.asarray(g.shape, np.int64) + 1
+        for tid in g.tile_ids():
+            i0 = [tid[a] * n for a in range(3)]          # = L index of global node i0 − H
+            blk = L[i0[0]:i0[0] + n + 1 + 2 * H, i0[1]:i0[1] + n + 1 + 2 * H, i0[2]:i0[2] + n + 1 + 2 * H]
+            core = blk[H:H + n + 1, H:H + n + 1, H:H + n + 1]
+            if not (int(core.min()) < 0 < int(core.max())):
+                continue
+            psi = blk.astype(cp.float32) * np.float32(qs)
+            psi = cp.where(cp.abs(psi) < eps, cp.where(psi < 0, -eps, eps), psi).astype(cp.float32)
+            nf_, it_ = resolve_ambiguous_faces(psi, eps)
+            n_flip += nf_; it_max = max(it_max, abs(it_)); n_unconv += it_ < 0; n_exc += abs(it_) >= H
+            psi = cp.ascontiguousarray(psi[H:H + n + 1, H:H + n + 1, H:H + n + 1])
+            if not (float(psi.min()) < 0 < float(psi.max())):
+                continue
+            cp.cuda.Device().synchronize()
+            verts, tris = IsoSurfaceMarchingCubes.extract(wp.from_dlpack(psi), 0.0)
+            wp.synchronize_device("cuda:0")
+            v = verts.numpy().astype(np.float64)
+            f = tris.numpy().reshape(-1, 3).astype(np.int64)
+            del verts, tris, psi
+            if not len(f):
+                continue
+            fr = np.abs(v - np.rint(v))
+            axis = fr.argmax(1)
+            lat = np.rint(v).astype(np.int64)
+            ar = np.arange(len(v))
+            lat[ar, axis] = np.floor(v[ar, axis]).astype(np.int64)
+            lat += np.asarray(i0, np.int64)
+            k = ((lat[:, 0] * nk[1] + lat[:, 1]) * nk[2] + lat[:, 2]) * 3 + axis
+            k[(fr > 1e-5).sum(1) != 1] = -1               # not on a lattice edge: never welded
+            pos.append((g.origin + (np.asarray(i0) + v + 0.5) * h).astype(np.float32))
+            keys.append(k)
+            faces.append(f + base_v)
+            base_v += len(v)
+        del L
+        cp.get_default_memory_pool().free_all_blocks()
+        # orientation: material is ψ < 0; Warp's winding is fixed, so one global check suffices
+        vol = 0.0
+        if faces:
+            P_ = np.concatenate(pos).astype(np.float64)
+            for f_ in faces:
+                a_, b_, c_ = P_[f_[:, 0]], P_[f_[:, 1]], P_[f_[:, 2]]
+                vol += float(np.einsum("ij,ij->i", a_, np.cross(b_, c_)).sum()) / 6.0
+            del P_
+            if vol < 0:
+                faces = [f_[:, ::-1].copy() for f_ in faces]
+        return pos, keys, faces, (n_flip, it_max, n_unconv, n_exc, H)
+
+    # -- driver ----------------------------------------------------------------------------------------------------
+    def _run(self, out_dir: str, name: str) -> dict:
+        cfg, dz = self.cfg, self.dz
+        os.makedirs(out_dir, exist_ok=True)
+        t_all = time.time()
+        self.stage_a(cfg.delta_retry)                     # one pass: the shell table covers |δ| ≤ delta_retry
+        clean = cfg.clean and dz.has_void
+        tids = self.stage_b() if clean else [t for t in self.grid.tile_ids() if self.store.scalar(t) != 2]
+        if not clean:
+            self.summary["cleanup"] = {}
+        if clean:                                          # stage C labels voids; holes only if cfg.holes
+            self.stage_c(tids)
+        ok = self.stage_d()
+        if getattr(self, "holes", None) is not None and len(self.holes["p"]):
+            with open(os.path.join(out_dir, "escape_holes.csv"), "w", newline="") as f:
+                wr = csv.writer(f)
+                wr.writerow(["void_id", "hole", "x", "y", "z", "nx", "ny", "nz", "wall_mm", "score", "score_kind",
+                             "void_volume_mm3"])
+                wr.writerows(self.holes_rows)
+        steps = []
+        for it in range(3):
+            t0 = time.time()
+            mc = self._mc_tiles(self.delta)
+            self._t(f"E1_marching_cubes_{it}", t0)
+            V, F = self._weld_checks(*mc)
+            del mc
+            rel = self.summary["mesh"]["volume_rel"]
+            steps.append(dict(delta=self.delta, rel_mesh=rel))
+            if not (cfg.mass_correct and ok) or dz.trivial_solid or abs(rel) <= cfg.mesh_vol_tol or it == 2:
+                break
+            e = 0.25 * cfg.h_x
+            slope = (self._V_of(self.delta + e) - self._V_of(self.delta - e)) / (2.0 * e)
+            if not slope > 0:
+                break
+            nd = self.delta - (self.summary["mesh"]["volume"] - self.V0) / slope
+            if abs(nd) > self.delta_shell:                 # outside the shell table: keep the Brent δ
+                break
+            self.delta = nd
+        mc_ = self.summary["mass_correction"]
+        mc_.update(delta=self.delta, mesh_steps=steps, rel_mesh=steps[-1]["rel_mesh"],
+                   V_ramp_final_mm3=self._V_of(self.delta),           # ψ volume at the final δ (vs the mesh volume)
+                   warn=bool(abs(self.delta) > cfg.delta_warn), fail=bool(abs(self.delta) > cfg.delta_fail))
+        self.mesh = (V, F)
+        if cfg.write_stl:
+            self._write(V, F, out_dir, name)
+        if cfg.wall_hist:
+            self.wall_stats(V, F, out_dir)
+        self.timing["total"] = round(time.time() - t_all, 2)
+        ru = resource.getrusage(resource.RUSAGE_SELF)
+        self.summary.update(h_x=cfg.h_x, tile=cfg.tile, workers=self.workers, timing_s=self.timing, device="gpu",
+                            peak_rss_parent_GB=ru.ru_maxrss / 1e6, grid_shape=[int(x) for x in self.grid.shape])
+        ok = (mc_["ok"] and not mc_["fail"] and self.summary["mesh"]["watertight_manifold"]
+              and self.summary["mesh"]["volume_ok"])
+        self.summary["ok"] = bool(ok)
+        with open(os.path.join(out_dir, f"{name}_export.json"), "w") as f:
+            json.dump(self.summary, f, indent=1, default=float)
+        return self.summary
+
+
+# =====================================================================================================================
 # high-level entry points
 # =====================================================================================================================
-def vertex_fields(ctx, xi, D_comp: float = 4.0, h_g: float | None = None):
-    """Nominal per-vertex (d, a, d_hi, xt_a, passive) of Γ_h for the packed design xi = [ξᵈ, ξᵃ] (THEORY §3.4).
-
-    Mirrors `optimise.PhaseModel` (a_hi = r_MA + γ_c h_g, d_hi from clearance and D_comp, D1 bound for a_lo)."""
-    from types import SimpleNamespace
-    from . import config as ccfg
-    from .design import DesignMap, DesignSpace, passive_thin
-    cfg = ctx.cfg
-    nv = ctx.surf.n_vertices
-    m, dsg = cfg["manufacturing"], cfg["design"]
-    if h_g is None:
-        h_g = min(p["h_g"] for p in cfg["grid"]["phases"])
-    a_hi = ctx.r_ma + dsg["closure_gamma"] * h_g
-    d_hi = np.minimum.reduce([ctx.r_out - dsg["gap_mm"], ctx.keepout - dsg["keep_out_clearance_mm"],
-                              np.full(nv, D_comp)]).clip(0.0)
-    if not dsg["allow_outward"]:
-        d_hi[:] = 0.0
-    passive = ctx.mount | passive_thin(a_hi, m["t_min_mm"], m["void_min_mm"])
-    r_f = ccfg.phase_value(cfg["filter"]["radius_mm"], len(cfg["grid"]["phases"]) - 1)
-    ds = DesignSpace(r_ma=ctx.r_ma, a_hi=a_hi, d_hi=d_hi, area=ctx.surf.A, passive=passive, filt=ctx.surf.filter(r_f),
-                     t_min=m["t_min_mm"], v_min=m["void_min_mm"], b_v=m["wall_bias_mm"], b_o=m["outer_bias_mm"],
-                     soft_w=dsg["inset_soft_mm"])
-    xi = np.asarray(xi, np.float64)
-    xt_d, xt_a, d, a, _, _ = DesignMap.vertex_fields(SimpleNamespace(xp=np, ds=ds), xi[:nv], xi[nv:])
-    return dict(d=d, a=a, d_hi=d_hi, xt_a=xt_a, passive=passive, r_ma=ctx.r_ma)
+def vertex_fields(ctx, xi, D_comp: float = 4.0, h_g: float | None = None, hollow=None):
+    """Nominal per-vertex fields (d, a, d_hi, xt_a, passive, r_ma, closed, ...) of Γ_h for the packed design
+    xi = [ξᵈ, ξᵃ]: the optimiser's final-phase chain `design.vertex_fields_final` (F² filter, smoothed r_MA, d taper,
+    hollow-set taper, closure projection). `hollow`: the run's hollow-allowed set (optimise.load_design); None =
+    hollowing allowed everywhere."""
+    from .design import vertex_fields_final
+    return vertex_fields_final(ctx, xi, h_g, D_comp, hollow)
 
 
 def export_design(ctx, xi, out_dir: str, D_comp: float = 4.0, stress=None, name: str = "final_design", h_g=None,
@@ -1428,6 +2141,26 @@ def export_design(ctx, xi, out_dir: str, D_comp: float = 4.0, stress=None, name:
         if sel.any():
             mount_mesh = (ctx.V, ctx.T[sel])
     ex = Exporter(dz, cfg, normals=N, mount_mesh=mount_mesh, stress=stress, r_ma=f["r_ma"])
+    return ex.run(out_dir, name)
+
+
+def export_design_gpu(ctx, xi, out_dir: str, D_comp: float = 4.0, stress=None, name: str = "final_design", h_g=None,
+                      fields: dict | None = None, closed_thr: float | None = None, **cfg_kw) -> dict:
+    """GPU export (`GpuExporter`) of the nominal design xi of `ctx`: <name>.stl, escape_holes.csv,
+    wall_thickness.csv, <name>_export.json. cfg_kw: ExportConfig fields (h_x, tile, mc_halo, log, ...); `fields`:
+    precomputed `vertex_fields`; closed_thr: ξ̃ᵃ at and above which a vertex is exactly closed. Returns the summary."""
+    cfg = ExportConfig.from_run_cfg(ctx.cfg, **cfg_kw)
+    f = fields if fields is not None else vertex_fields(ctx, xi, D_comp, h_g)
+    s = ctx.surf
+    closed = f["xt_a"] >= (cfg.closed_thr if closed_thr is None else closed_thr)
+    dz = Design(ctx.V, ctx.T, s.V, s.T, f["d"], f["a"], f["d_hi"], active=~f["passive"], closed=closed, sign=cfg.sign)
+    N = s.projected_normals() if hasattr(s, "projected_normals") else s.N
+    mount_mesh = None
+    if len(getattr(ctx, "mount_ids", [])):
+        sel = np.isin(ctx.TF, np.asarray(ctx.mount_ids))
+        if sel.any():
+            mount_mesh = (ctx.V, ctx.T[sel])
+    ex = GpuExporter(dz, cfg, normals=N, mount_mesh=mount_mesh, stress=stress, r_ma=f["r_ma"])
     return ex.run(out_dir, name)
 
 

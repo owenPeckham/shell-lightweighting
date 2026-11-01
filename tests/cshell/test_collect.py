@@ -236,7 +236,7 @@ def test_end_to_end_run_collect(b2, tmp_path):
     cfg_path = tmp_path / "b2.json"
     json.dump({**cfg, "output_dir": str(tmp_path)}, open(cfg_path, "w"))
     for s in ("uniform", "neutral"):
-        assert cli.main(["run", str(cfg_path), "--start", s]) == 0
+        assert cli.main(["run", str(cfg_path), "--start", s, "--no-finalise"]) == 0    # legacy collect below
     rd = tmp_path / cfg["name"]
     assert (rd / "done_uniform.json").exists()
     assert cli.main(["collect", str(rd)]) == 0

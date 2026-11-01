@@ -3,14 +3,20 @@
     python -m cshell faces <step> [--png faces.png] [--all]     list faces (= dshell faces)
     python -m cshell init  <step> [--out cfg.json]              template config (= dshell init)
     python -m cshell setup <cfg> [--set k=v ...]                geometry, bands, P per phase; DOF and memory plan
-    python -m cshell run   <cfg> [--start S] [--phase P] [--set k=v ...] [--resume DIR] [--max-hours H]
-    python -m cshell collect <run_dir> [--allow-incomplete] [--no-validate]   merge starts, export, re-score, decide
+    python -m cshell run   <cfg> [--start S] [--phase P] [--set k=v ...] [--resume DIR] [--max-hours H] [--no-finalise]
+                                                                optimise, then finalise (PLAN_single_run §3)
+    python -m cshell export <run_dir> [--out DIR] [--h MM] [--no-rescore] [--no-report] [--sensitivity] [--bodyfit]
+                                                                re-run finalise: shifted-grid re-score, GPU export,
+                                                                summary.json, report (cshell.finalise)
+    python -m cshell collect <run_dir> [--allow-incomplete] [--no-validate]   legacy multi-start collect (Stage 2)
     python -m cshell report  <run_dir>                          report.pdf (cshell.report.build)
-    python -m cshell bench   [B1|B2|B3|all] [--set ...] [--no-collect]       Appendix B benchmarks: run + collect
+    python -m cshell bench   [B1|B2|B3|all] [--set ...] [--no-finalise]      Appendix B benchmarks: run + finalise
 
 `run` exit codes: 0 done, 3 paused by --max-hours (resume with --resume <run_dir>). With $CSHELL_RUNDIR_FILE set, the
 run directory is written there (cluster/run.sh uses it to chain allocations). A finished start leaves
-`done_<start>.json` in the run directory and is skipped on --resume.
+`done_<start>.json` in the run directory and is skipped on --resume. When every configured start is done (and no
+--phase/--start restricts the call), `run` finalises in the same process (contract C3) unless --no-finalise; a resume
+of a fully optimised run without summary.json only finalises.
 """
 from __future__ import annotations
 
@@ -42,19 +48,35 @@ def cmd_run(a):
     if a.resume:
         starts = [s for s in starts if not os.path.exists(config.start_file(out, "done_{}.json", s))]
     run_info(out, dict(command="run", starts=starts, resume=bool(a.resume)))
+    ctx = None
     if not starts:
         print("[cshell] all starts already done")
-        return 0
-    ctx = Context(cfg)
-    for s in starts:
-        run = Run(cfg, s, out, max_hours=a.max_hours)
-        run.ctx = ctx                                    # used by the dshell start (Run.initial_xi)
-        r = run.run(ctx, resume=bool(a.resume), only_phase=a.phase)
-        print(json.dumps(dict(start=s, **r), default=float))
-        if r.get("status") == "paused":
-            return EXIT_PAUSED
-        if a.phase is None:
-            json.dump(dict(start=s, **r), open(os.path.join(out, f"done_{s}.json"), "w"), indent=1, default=float)
+    else:
+        ctx = Context(cfg)
+        for s in starts:
+            run = Run(cfg, s, out, max_hours=a.max_hours)
+            run.ctx = ctx                                # used by the dshell start (Run.initial_xi)
+            r = run.run(ctx, resume=bool(a.resume), only_phase=a.phase)
+            print(json.dumps(dict(start=s, **r), default=float))
+            if r.get("status") == "paused":
+                return EXIT_PAUSED
+            if a.phase is None:
+                json.dump(dict(start=s, **r), open(os.path.join(out, f"done_{s}.json"), "w"), indent=1, default=float)
+    all_done = all(os.path.exists(config.start_file(out, "done_{}.json", s)) for s in cfg["optimiser"]["starts"])
+    finalise_now = (not getattr(a, "no_finalise", False) and a.phase is None and all_done
+                    and (bool(starts) or not os.path.exists(os.path.join(out, "summary.json"))))
+    if finalise_now:
+        from .finalise import finalise
+        S = finalise(out, ctx=ctx)
+        print(f"[cshell] finalise: {S['decision']['reason']}")
+    return 0
+
+
+def cmd_export(a):
+    from .finalise import finalise
+    S = finalise(a.run_dir, out_dir=a.out, rescore=not a.no_rescore, report=not a.no_report,
+                 do_sensitivity=a.sensitivity, do_bodyfit=a.bodyfit, h_mm=a.h)
+    print(f"[cshell] export: {S['decision']['reason']}")
     return 0
 
 
@@ -108,11 +130,9 @@ def cmd_bench(a):
     for n in names:
         cfg_path = str(root / BENCH[n])
         cfg = config.load(cfg_path, config.parse_set(a.set))
-        ns = argparse.Namespace(config=cfg_path, set=a.set, resume=None, start=None, phase=None, max_hours=None)
+        ns = argparse.Namespace(config=cfg_path, set=a.set, resume=None, start=None, phase=None, max_hours=None,
+                                no_finalise=a.no_finalise)
         rc = cmd_run(ns) or rc
-        if not a.no_collect:
-            cmd_collect(argparse.Namespace(run_dir=os.path.join(cfg["output_dir"], cfg["name"]),
-                                           allow_incomplete=False, no_validate=False))
     return rc
 
 
@@ -135,8 +155,18 @@ def main(argv=None):
     r.add_argument("--set", nargs="*", help="overrides, e.g. objective.w_capacity=0.8")
     r.add_argument("--resume", help="run directory to resume")
     r.add_argument("--max-hours", type=float)
+    r.add_argument("--no-finalise", action="store_true", help="optimise only (no re-score, export, summary, report)")
     r.set_defaults(fn=cmd_run)
-    c = sub.add_parser("collect", help="merge starts, export, re-score, validate, decide")
+    e = sub.add_parser("export", help="re-run finalise: shifted-grid re-score, GPU export, summary, report")
+    e.add_argument("run_dir")
+    e.add_argument("--out", help="output directory (default: run_dir; another directory leaves run_dir untouched)")
+    e.add_argument("--h", type=float, help="export grid spacing in mm (default: config export.h_mm, 0.2)")
+    e.add_argument("--no-rescore", action="store_true", help="skip the shifted-grid re-score (the decision rejects)")
+    e.add_argument("--no-report", action="store_true")
+    e.add_argument("--sensitivity", action="store_true", help="κ_b × σ_f re-evaluations (sensitivity.csv)")
+    e.add_argument("--bodyfit", action="store_true", help="body-fitted C3D10 check (validation.csv)")
+    e.set_defaults(fn=cmd_export)
+    c = sub.add_parser("collect", help="legacy multi-start collect (Stage 2): merge starts, export, re-score, decide")
     c.add_argument("run_dir")
     c.add_argument("--allow-incomplete", action="store_true", help="use the latest checkpoint if no start finished")
     c.add_argument("--no-validate", action="store_true", help="skip the body-fitted CalculiX check")
@@ -148,10 +178,10 @@ def main(argv=None):
     s.add_argument("config")
     s.add_argument("--set", nargs="*")
     s.set_defaults(fn=cmd_setup)
-    b = sub.add_parser("bench", help="Appendix B benchmarks (run + collect)")
+    b = sub.add_parser("bench", help="Appendix B benchmarks (run + finalise)")
     b.add_argument("which", nargs="?", default="all", choices=list(BENCH) + ["all"])
     b.add_argument("--set", nargs="*")
-    b.add_argument("--no-collect", action="store_true")
+    b.add_argument("--no-finalise", action="store_true")
     b.set_defaults(fn=cmd_bench)
     sub.add_parser("faces", help="list STEP faces (dshell faces)")
     sub.add_parser("init", help="template config (dshell init)")

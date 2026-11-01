@@ -1,7 +1,7 @@
 {
  "name": "MBB",
- "step_file": "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/examples/step/Solid MBB.step",
- "output_dir": "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-stage2/runs_cshell/FULL",
+ "step_file": "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-solid-pockmarks/examples/parts/Solid MBB.step",
+ "output_dir": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/SR_VAL4",
  "supports": [
   {
    "type": "cylinder",
@@ -46,7 +46,8 @@
   "void_min_mm": 3.0,
   "void_min_mm3": 30.0,
   "escape_holes_per_void": 2,
-  "escape_hole_diameter_mm": 3.0
+  "escape_hole_diameter_mm": 3.0,
+  "hole_clearance_mm": 0.5
  },
  "mounts": {
   "auto_analytic": true,
@@ -62,7 +63,15 @@
   "keep_out_clearance_mm": 0.5,
   "surface_edge_mm": 0.75,
   "closure_gamma": 0.75,
-  "inset_soft_mm": 0.1
+  "inset_soft_mm": 0.1,
+  "closure_xi": 0.9,
+  "r_ma_smooth_mm": 1.0,
+  "closed_raw_depth": true,
+  "section_radius_mm": 3.0,
+  "void_min_open": true,
+  "closure_band": 0.1,
+  "closure_skirt_mm": 1.5,
+  "taper": true
  },
  "grid": {
   "phases": [
@@ -83,7 +92,7 @@
   "geometry_offload": true
  },
  "fe": {
-  "engine": "auto",
+  "engine": "twogrid",
   "auto_direct_max_dof": 2000000,
   "element_type": "q1_im",
   "backend": "auto",
@@ -95,7 +104,8 @@
    "tol": 1e-10,
    "krylov_tol": 0.01,
    "maxiter": 100,
-   "nrhs": 7
+   "nrhs": 7,
+   "deterministic": "off"
   }
  },
  "capacity": {
@@ -107,6 +117,7 @@
   "stress_q": 2,
   "stress_quantile": 0.995,
   "exclude_bc_mm": 2.0,
+  "exclude_rma_factor": 2.0,
   "include_mounts": false,
   "buckling": true,
   "buckling_modes": 6,
@@ -121,26 +132,57 @@
   "min_density_geometric": 0.1
  },
  "objective": {
+  "type": "weighted",
+  "constraints": [],
+  "constraint_scale": 0.01,
+  "feasibility_tol": 0.001,
   "w_stiffness": 0.5,
   "w_capacity": 0.5,
   "min_gain": 0.02,
   "floor_stiffness": 0.85,
   "floor_capacity": 0.85,
-  "floors_as_constraints": false
+  "floors_as_constraints": true
  },
  "filter": {
   "radius_mm": [
    4.0,
    3.0,
    2.5
-  ]
+  ],
+  "passes": 2
+ },
+ "growth": {
+  "enabled": true,
+  "phase": 0,
+  "tol": 0.001,
+  "patience": null,
+  "quantiles": [
+   0.1,
+   0.2,
+   0.3,
+   0.4,
+   0.5,
+   0.6,
+   0.7,
+   0.8,
+   0.9,
+   1.0
+  ],
+  "step_tol": 0.0001,
+  "max_iters_per_step": 25,
+  "min_iters_per_step": 2,
+  "samples": 16
+ },
+ "export": {
+  "h_mm": 0.2,
+  "device": "gpu",
+  "closed_thr": 0.9,
+  "escape_holes": false
  },
  "optimiser": {
   "method": "mma",
   "starts": [
-   "uniform",
-   "dshell",
-   "neutral"
+   "solid"
   ],
   "max_iter": [
    60,

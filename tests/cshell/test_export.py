@@ -321,7 +321,8 @@ def test_axis_aligned_faces_single_body(tmp_path):
     cfg = ex.ExportConfig(h_x=0.1, tile=64, block=16, workers=_workers(), wall_hist=False, write_stl=False,
                           log=lambda *_: None)
     out = ex.baselines(np.asarray(m.vertices), np.asarray(m.faces), str(tmp_path), cfg)
-    assert out["original"]["mesh"]["bodies"] == 1 and out["uniform_shell"]["mesh"]["bodies"] == 2
+    assert out["original"]["mesh"]["bodies"] == 1 and out["uniform_shell"]["mesh"]["shells"] == 2
+    assert out["uniform_shell"]["mesh"]["bodies"] == 1 and out["uniform_shell"]["mesh"]["void_shells"] == 1
     assert abs(out["original"]["mesh"]["volume"] / 1000.0 - 1) < 1e-3
 
 
@@ -333,7 +334,7 @@ def test_uniform_shell_and_original(sphere, tmp_path):
     s = out["uniform_shell"]
     assert abs(s["t_final_mm"] - t_an) < 0.02
     assert s["ok"] and abs(s["mesh"]["volume"] / s["V0_mm3"] - 1) < 2e-3
-    assert s["mesh"]["bodies"] == 2                                       # outer skin and the enclosed original volume
+    assert s["mesh"]["shells"] == 2 and s["mesh"]["bodies"] == 1          # outer skin + the enclosed original volume
     assert abs(s["wall"]["median_nominal"] - t_an) < 0.04
     o = out["original"]
     assert o["ok"] and abs(o["mesh"]["volume"] / V0 - 1) < 2e-3 and o["mass_correction"]["delta"] == 0.0
@@ -360,6 +361,7 @@ def test_b2_rod_end_to_end(tmp_path):
     ctx = Context(cfg, log=lambda *_: None)
     nv = ctx.surf.n_vertices
     xi = np.concatenate([np.full(nv, 0.5), np.zeros(nv)])               # ξᵈ = 0.5, ξᵃ = 0
-    s = ex.export_design(ctx, xi, str(tmp_path), h_x=0.1, tile=64, block=16, workers=_workers(), log=lambda *_: None)
+    s = ex.export_design(ctx, xi, str(tmp_path), h_x=0.1, tile=64, block=16, workers=_workers(), log=lambda *_: None,
+                         holes=True)                                    # escape holes are opt-in (§8)
     assert s["mesh"]["watertight_manifold"] and abs(s["mesh"]["volume"] / s["V0_mm3"] - 1) <= 2e-3
-    assert s["voids"]["without_hole"] == 0 and s["mesh"]["bodies"] == 1
+    assert s["voids"]["without_hole"] == 0 and s["mesh"]["bodies"] == 1 and s["mesh"]["shells"] == 1

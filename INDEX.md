@@ -22,7 +22,7 @@ names in their text.
 | `LICENSE` | Licence |
 | `ushell/` | Fusion 360 add-in: `ShellOptimisation.py`, `ShellOptimisation.manifest` (Fusion keys on these names), `resources/`, `logs/` |
 | `dshell/` | Discrete-region optimiser (Python package): `README.md`, `requirements.txt`, `cli.py`, `config.py`, `geometry.py` (STEP, tessellation), `segment.py`, `field.py`, `fe.py` (voxel FE), `mechanics.py`, `optimise.py`, `report.py`, `util.py` |
-| `cshell/` | Continuous optimiser (Python package): `README.md`, `cluster/` (Slurm scripts), `cli.py`, `config.py`, `surface.py`, `band.py`, `design.py`, `objective.py`, `fe_twogrid.py` / `fe_sparse.py` / `fea.py` (FE), `mma.py`, `optimise.py`, `collect.py`, `export.py`, `validate.py` / `bodyfit_gpu.py`, `report.py` |
+| `cshell/` | Continuous optimiser (Python package): `README.md`, `cluster/` (Slurm scripts), `cli.py`, `config.py`, `surface.py`, `band.py`, `design.py`, `objective.py`, `fe_twogrid.py` / `fe_sparse.py` / `fea.py` (FE), `mma.py`, `optimise.py`, `finalise.py`, `export.py`, `validate.py` / `bodyfit_gpu.py`, `report.py` (`collect.py`: legacy Stage 2) |
 | `examples/parts/` | The three Study 1 STEP parts: `Solid MBB.step`, `Solid Cantilever.step`, `Solid L-bracket.step` (shared by all optimisers) |
 | `examples/dshell/` | dshell configs (`mbb.json`, `cantilever.json`, `l_bracket.json`) and `runs/<part>/` results |
 | `examples/cshell/` | cshell configs (`mbb.json`, `cantilever.json`, `l_bracket.json`), `bench/` (B1–B3 benchmark parts + configs, `make_bench.py`), `runs/<part>/` results |
@@ -35,30 +35,30 @@ names in their text.
 
 | Part | dshell (`examples/dshell/runs/`) | cshell (`examples/cshell/runs/`) |
 | --- | --- | --- |
-| MBB | `MBB/report.pdf`, `summary.txt`: solid kept (J +0.0003) | `MBB/report.pdf`, `summary.txt`: accepted, J +0.482, K/K0 1.10, P/P0 2.39 |
-| Cantilever | `Cantilever/report.pdf`: hollow design accepted (J +0.479) | `Cantilever/report.pdf`: accepted, J +0.490, K/K0 0.98, P/P0 2.71 |
-| L-bracket | `L-bracket/report.pdf`: solid kept | `L-bracket/report.pdf`: accepted, J +0.129, K/K0 1.16, P/P0 1.12 |
+| MBB | `MBB/report.pdf`, `summary.txt`: solid kept (J +0.0003) | `MBB/report.pdf`, `summary.txt`: accepted, J +0.496, K/K0 1.113, P/P0 2.42 (buckling) |
+| Cantilever | `Cantilever/report.pdf`: hollow design accepted (J +0.479) | `Cantilever/report.pdf`: accepted, J +0.478, K/K0 0.975, P/P0 2.67 (buckling) |
+| L-bracket | `L-bracket/report.pdf`: solid kept | `L-bracket/report.pdf`: accepted, J +0.069, K/K0 1.091, P/P0 1.05 (strength) |
 
 - **dshell runs** (`examples/dshell/runs/<part>/`, from before the rename, so the texts say `vshell`): `report.pdf`,
   `summary.json/.txt`, `run_log.txt`, `run_info.json`, `config_used.json`, `regions.csv`, `evaluations.csv`,
   `mass_sweep.csv`, `escape_holes.csv`, `sensitivity.csv`, `arrays.npz` (segmentation; the cshell `dshell` start reads
   it). No STLs. 2–3 MB per part.
-- **cshell runs** (`examples/cshell/runs/<part>/`): report, summaries, histories, fields (`fields.vtp` for ParaView),
-  buckling modes, final design fields `xi_<start>_phase*.npy`, plots, and decimated preview STLs
-  (`final_design_preview.stl`, `original_preview.stl`, `uniform_shell_preview.stl`). File list, the full-resolution
-  data location on Isambard and how to regenerate: `examples/cshell/runs/README.md`. J = w_K ln K/K0 + w_P ln P/P0
-  at constant mass, re-scored on the exported design; full comparison in `docs/cshell/VALIDATION.md` V6 and
-  `docs/cshell/STATUS.md` §5.
+- **cshell runs** (`examples/cshell/runs/<part>/`, round-4 single-run results): report, summaries, history, fields
+  (`fields.vtp` for ParaView), `xi_solid_phase*.npy` / `design_solid_phase*.npz`, plots, and decimated preview STLs
+  (`final_design_preview.stl`, `original_preview.stl`). File list, the full-resolution data location on Isambard and
+  how to regenerate: `examples/cshell/runs/README.md`. J = 0.5 ln K/K0 + 0.5 ln P/P0 at constant mass, re-scored on
+  the exported design; results and known issues in `docs/cshell/STATUS.md` §5 (Stage 2 comparison:
+  `docs/cshell/VALIDATION.md` V6).
 
 ## How to run
 
 - **ushell**: install in Fusion 360 (see `README.md`), run from Utilities → Add-Ins.
 - **dshell** (any PC): `pip install -r dshell/requirements.txt`, then from the repository root
   `python -m dshell run examples/dshell/l_bracket.json` (details `dshell/README.md`).
-- **cshell** (Isambard-AI, one GH200 per start; never on the login node): environment in `cshell/cluster/env.sh`
+- **cshell** (Isambard-AI, one GH200 per part; never on the login node): environment in `cshell/cluster/env.sh`
   (conda env from `docs/cshell/environment.yml`); full part:
-  `cshell/cluster/launch_part.sh examples/cshell/cantilever.json` (three starts, then collect + report);
-  `python -m cshell --help` for `setup`, `run`, `collect`, `report`, `faces`, `init`. Outputs go to
+  `cshell/cluster/launch_part.sh examples/cshell/cantilever.json` (one run from the solid, finalise in the same job);
+  `python -m cshell --help` for `setup`, `run`, `export`, `report`, `faces`, `init`. Outputs go to
   `runs_cshell/<name>/` (a symlink at the repository root to project storage; configs' `output_dir`). Details:
   `cshell/README.md`, `cshell/cluster/README.md`.
 

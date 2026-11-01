@@ -106,3 +106,231 @@ def test_d1_wall_bound_and_passive():
         assert np.all(a + d >= ds.t_min - 1e-9)                       # softplus(x) ≥ max(x, 0)
         assert np.all(a >= 0) and np.all(np.abs(a - np.maximum(ds.t_min - d, 0)) <= ds.soft_w * np.log(2) + 1e-12)
     assert passive_thin(np.array([1.4, 1.6, 3.0]), 1.5, 3.0).tolist() == [True, False, False]
+
+
+# ---- PLAN_single_run §1, §2, §4: F², tapers, closure projection, solid start ---------------------------------------
+def _helmholtz(V, F, r):
+    import igl
+    from cshell.surface import HelmholtzFilter
+    L = -igl.cotmatrix(V, F)
+    M = igl.massmatrix(V, F, igl.MASSMATRIX_TYPE_VORONOI)
+    return HelmholtzFilter(M, L, r)
+
+
+def _sphere_faces(sub=4):
+    import trimesh
+    S = trimesh.creation.icosphere(subdivisions=sub, radius=R0)
+    return np.asarray(S.vertices), np.asarray(S.faces)
+
+
+def test_repeated_filter_adjoint_and_inverse():
+    """F²: ⟨F²x, y⟩ = ⟨x, (Fᵀ)²y⟩ to rounding; FD of the linear map; invert(apply(x)) = x; spike suppression."""
+    from cshell.surface import RepeatedFilter
+    V, T = _sphere_faces()
+    F1 = _helmholtz(V, T, 1.5)
+    F2 = RepeatedFilter(F1, 2)
+    rng = np.random.default_rng(1)
+    x, y = rng.standard_normal(len(V)), rng.standard_normal(len(V))
+    lhs, rhs = F2.apply(x) @ y, x @ F2.adjoint(y)
+    assert abs(lhs - rhs) <= 1e-12 * max(abs(lhs), 1.0)
+    assert np.allclose(F2.apply(x), F1.apply(F1.apply(x)))
+    i = 7                                                      # FD of y·F²x along e_i equals (F²)ᵀy at i
+    for h in (1e-2, 1e-4):
+        e = np.zeros(len(V)); e[i] = h
+        fd = (F2.apply(x + e) @ y - F2.apply(x - e) @ y) / (2 * h)
+        assert abs(fd - F2.adjoint(y)[i]) <= 1e-8 * max(1.0, abs(fd))
+    assert np.allclose(F2.invert(F2.apply(x)), x, atol=1e-8)
+    spike = np.zeros(len(V)); spike[0] = 1.0                 # one-vertex spike: peak/1-ring ratio drops with F²
+    nb = np.unique(T[np.any(T == 0, axis=1)]); nb = nb[nb != 0]
+    r1 = F1.apply(spike); r2 = F2.apply(spike)
+    assert r2[0] / r2[nb].mean() < r1[0] / r1[nb].mean()
+
+
+def _tapered_space(closure=0.9):
+    from cshell.design import taper_weight
+    from cshell.surface import RepeatedFilter, surface_distance
+    ds, disc, V = sphere_problem()
+    _, T = _sphere_faces(4)
+    ds.filt = RepeatedFilter(_helmholtz(V, T, 1.5), 2)
+    ds.passive = V[:, 2] > 0.8 * R0                               # a passive cap
+    H = V[:, 0] < 2.0                                              # hollow-allowed set
+    ds.taper_d = taper_weight(surface_distance(V, T, ds.passive), 1.5)
+    ds.taper_a = taper_weight(surface_distance(V, T, ds.passive | ~H), 1.5)
+    ds.closure_xi = closure
+    ds.a_cl = ds.a_hi + 0.3 * (1 + np.sin(V[:, 0]))               # closed inset above a^hi (raw-depth blend)
+    ds.a_top = ds.r_ma - 0.5 * ds.v_min                            # open voids ≥ v_min across (sr-fix 2)
+    return ds, disc, V, T, H
+
+
+@pytest.mark.parametrize("skirt", [False, True])
+@pytest.mark.parametrize("as_built", [False, True])
+def test_directional_with_taper_and_projection(as_built, skirt):
+    """∂/∂ξ through F², τ_d, τ_a, the closure projection and (sr-v4) the closure skirt: FD agreement < 1e-6, Taylor
+    slope ≈ 2."""
+    ds, disc, V, T, H = _tapered_space()
+    if skirt:
+        ds.closure_skirt = _helmholtz(V, T, 1.0)
+    dm = DesignMap(ds, disc)
+    rng = np.random.default_rng(3)
+    nv = len(V)
+    xd = rng.uniform(0.2, 0.6, nv)
+    xa = 0.5 + 0.48 * np.sin(0.6 * V[:, 1])                       # smooth: spans open, band and closed after F²
+    dd, da = ds.filt.apply(rng.standard_normal(nv)), ds.filt.apply(rng.standard_normal(nv))
+    gE = rng.standard_normal(disc.n_elem)
+
+    def fun(x1, x2):
+        st = dm.forward(x1, x2, as_built)
+        return np.array([dm.volume(st), float(gE @ dm.rho_hat(st))]), st
+
+    f0, st = fun(xd, xa)
+    xc, w = ds.closure_xi, ds.closure_band                        # the closure band is exercised
+    assert np.any((st.xit_a > xc - w) & (st.xit_a < xc))
+    if skirt:                                                      # the skirt is exercised (0 < G < 1 somewhere)
+        assert np.any((st.skirt["G"] > 0.05) & (st.skirt["G"] < 0.95))
+    gv, gr = dm.volume_grad(st), dm.pull_rho_hat(st, gE)
+    pred = np.array([gv[0] @ dd + gv[1] @ da, gr[0] @ dd + gr[1] @ da])
+    h = 1e-6
+    fd = (fun(xd + h * dd, xa + h * da)[0] - fun(xd - h * dd, xa - h * da)[0]) / (2 * h)
+    assert np.all(np.abs(fd / pred - 1) < 1e-6), (fd, pred)
+    rem = [np.abs(fun(xd + t * dd, xa + t * da)[0] - f0 - t * pred) for t in (1e-2, 1e-3, 1e-4)]
+    assert np.all(np.log10(rem[0] / rem[2]) / 2 > 1.8)
+
+
+def test_taper_and_hollow_closure():
+    """τ_d: d = 0 on passive vertices and no cliff at their border; τ_a: closed (a = a^hi) outside H and on passive."""
+    ds, disc, V, T, H = _tapered_space()
+    dm = DesignMap(ds, disc)
+    nv = len(V)
+    _, xt_a, d, a, _, _ = dm.vertex_fields(np.full(nv, 0.8), np.full(nv, 0.2))
+    assert np.all(d[ds.passive] == 0) and np.allclose(a[ds.passive | ~H], ds.a_cl[ds.passive | ~H])
+    E = np.unique(np.sort(np.concatenate([T[:, [0, 1]], T[:, [1, 2]], T[:, [2, 0]]]), 1), axis=0)
+    jump_taper = np.abs(d[E[:, 0]] - d[E[:, 1]]).max()
+    ds_hard = DesignSpace(**{**ds.__dict__, "taper_d": None, "taper_a": None})
+    d_hard = DesignMap(ds_hard, disc).vertex_fields(np.full(nv, 0.8), np.full(nv, 0.2))[2]
+    jump_hard = np.abs(d_hard[E[:, 0]] - d_hard[E[:, 1]]).max()
+    print("max edge jump of d: taper", jump_taper, "hard", jump_hard)
+    assert jump_taper < 0.5 * jump_hard
+
+
+def test_closure_projection():
+    """ξ̂ = g(min(ξ̃/0.9, 1)): g(0) = 0, ξ̂ = 1 and dξ̂ = 0 for ξ̃ ≥ 0.9, C¹ at 0.9, monotone; inverse; a ≥ r_MA."""
+    from cshell.design import closure_projection, closure_projection_inverse
+    x = np.linspace(0, 1, 100001)
+    y, dy = closure_projection(np, x, 0.9)
+    assert y[0] == 0 and np.all(y[x >= 0.9] == 1) and np.all(dy[x >= 0.9] == 0)
+    assert np.all(np.diff(y) >= 0) and abs(dy[np.searchsorted(x, 0.9) - 1]) < 1e-3
+    np.testing.assert_allclose(np.gradient(y, x)[10:-10], dy[10:-10], atol=1e-3)
+    assert np.allclose(closure_projection(np, closure_projection_inverse(y, 0.9), 0.9)[0], y)
+    ds, disc, V, T, H = _tapered_space()
+    nv = len(V)
+    ds.passive = np.zeros(nv, bool)
+    ds.taper_a = ds.taper_d = None
+    _, xt_a, d, a, _, _ = DesignMap(ds, disc).vertex_fields(np.zeros(nv), np.full(nv, 0.95))
+    assert np.all(xt_a >= 0.9) and np.all(a >= ds.r_ma)                 # closure reachable at ξ̃ᵃ ≥ 0.9
+
+
+def test_inset_map_matches_export_closure():
+    """sr-fix 2: ξ̃ᵃ ≥ ξ_c (export.closed_thr) gives a = a_cl exactly (closed as in the export); below the band
+    (ξ̃ᵃ ≤ ξ_c − w) the void is at least v_min across (a ≤ r_MA − v_min/2); a is monotone in ξ̃ᵃ."""
+    from cshell.design import closure_projection, inset_map, softplus
+    ds, disc, V, T, H = _tapered_space()
+    nv = len(V)
+    a_lo = softplus(np, ds.t_min - np.zeros(nv), ds.soft_w)[0]
+    prev = None
+    for x in np.linspace(0, 1, 201):
+        xt = np.full(nv, x)
+        xh, dxh = closure_projection(np, xt, ds.closure_xi)
+        a = inset_map(np, ds, xt, xh, dxh, a_lo)[0]
+        if x >= ds.closure_xi:
+            assert np.allclose(a, ds.a_cl)
+        if x <= ds.closure_xi - ds.closure_band:
+            assert np.all(2 * (ds.r_ma - a) >= ds.v_min - 1e-9)
+        if prev is not None:
+            assert np.all(a >= prev - 1e-12)
+        prev = a
+
+
+def test_closed_cells_have_no_void():
+    """sr-fix 2 (export closure rule): with every vertex closed (ξ̃ᵃ ≥ ξ_c) the design is the solid even where the
+    closed inset under-reaches the local depth (a_cl = r_MA/2 here); one open vertex opens only its own triangles."""
+    ds, disc, V, T, H = _tapered_space()
+    nv = len(V)
+    ds.passive = np.zeros(nv, bool)
+    ds.taper_a = ds.taper_d = None
+    ds.a_cl = 0.5 * ds.r_ma
+    dm = DesignMap(ds, disc)
+    V0 = dm.solid_volume()
+    st = dm.forward(np.zeros(nv), np.ones(nv), as_built=False)
+    assert abs(dm.volume(st) / V0 - 1) < 1e-12
+    ds_off = DesignSpace(**{**ds.__dict__, "a_top": None})          # rule off (legacy): the under-reach cuts voids
+    assert DesignMap(ds_off, disc).volume(DesignMap(ds_off, disc).forward(np.zeros(nv), np.ones(nv), False)) < 0.99 * V0
+
+
+def test_solid_start_gradient_nonzero():
+    """§1: the solid start (ξᵈ = 0, a = r_MA) is solid to < 1e-3 in volume and has ∂V/∂ξᵃ ≠ 0; the old closed start
+    (ξᵃ = 1, a = a^hi) has ∂V/∂ξᵃ = 0."""
+    from cshell.design import solid_start_xi_a
+    ds, disc, V = sphere_problem()
+    ds.closure_xi = 0.9
+    dm = DesignMap(ds, disc)
+    nv = len(V)
+    xa = solid_start_xi_a(ds)
+    _, _, _, a, _, _ = dm.vertex_fields(np.zeros(nv), xa)
+    assert np.allclose(a, ds.r_ma, atol=1e-6)
+    ds2, _, _, _, _ = _tapered_space()                             # with the sr-fix closure band: a = r_MA too
+    ds2.taper_a = ds2.taper_d = None
+    ds2.passive = np.zeros(nv, bool)
+    a2 = DesignMap(ds2, disc).vertex_fields(np.zeros(nv), solid_start_xi_a(ds2))[3]
+    assert np.abs(a2 - ds2.r_ma).max() < 0.05                     # F² ξ ≈ target (projected Richardson)
+    ds2.closure_skirt = _helmholtz(V, _sphere_faces(4)[1], 1.0)    # sr-v4 skirt: inactive at the solid start (k = 0)
+    a3 = DesignMap(ds2, disc).vertex_fields(np.zeros(nv), solid_start_xi_a(ds2))[3]
+    assert np.abs(a3 - a2).max() < 1e-3
+    st = dm.forward(np.zeros(nv), xa, as_built=False)
+    chi0, _ = heaviside(np, -disc.phi, disc.eps)
+    V0 = float(chi0.sum()) * disc.h_g ** 3
+    assert abs(dm.volume(st) / V0 - 1) < 1e-3
+    assert np.abs(dm.volume_grad(st)[1]).max() > 0
+    st1 = dm.forward(np.zeros(nv), np.ones(nv), as_built=False)
+    assert np.abs(dm.volume_grad(st1)[1]).max() == 0
+
+
+def test_closure_skirt_properties():
+    """sr-v4 closure skirt: closed vertices keep a = a_cl exactly, the skirt only raises a (closes), it vanishes far
+    from closed vertices, and the largest step of the void half-width (r_MA − a)⁺ across one Γ_h edge (the void end:
+    a saw-tooth wall when it closes within an edge) drops by more than half. The rise of a beyond r_MA, where the void
+    is already closed, is free to stay steep."""
+    ds, disc, V, T, H = _tapered_space()
+    nv = len(V)
+    ds.passive = np.zeros(nv, bool)
+    ds.taper_a = ds.taper_d = None
+    ds.filt = _helmholtz(V, T, 0.3)                                # steep ξ̃ᵃ at the cap border, as in the parts
+    xa = np.where(V[:, 2] > 2.0, 1.0, 0.3)                          # a closed cap
+    f0 = DesignMap(ds, disc).vertex_fields(np.zeros(nv), xa)
+    ds_s = DesignSpace(**{**ds.__dict__, "closure_skirt": _helmholtz(V, T, 1.5)})
+    f1 = DesignMap(ds_s, disc).vertex_fields(np.zeros(nv), xa)
+    xt, a0, a1 = f0[1], f0[3], f1[3]
+    cl = xt >= ds.closure_xi
+    assert cl.any() and (~cl).any()
+    assert np.array_equal(a0[cl], ds.a_cl[cl]) and np.array_equal(a1[cl], ds.a_cl[cl])
+    assert np.all(a1 >= a0 - 1e-12) and np.all(a1 <= np.maximum(ds.a_cl, a0) + 1e-12)
+    far = V[:, 2] < -4.0                                          # ≥ 4 r_c from the closed cap
+    assert np.abs(a1 - a0)[far].max() < 1e-2
+    E = np.unique(np.sort(np.concatenate([T[:, [0, 1]], T[:, [1, 2]], T[:, [2, 0]]]), 1), axis=0)
+    w0, w1 = np.maximum(ds.r_ma - a0, 0), np.maximum(ds.r_ma - a1, 0)
+    j0, j1 = np.abs(w0[E[:, 0]] - w0[E[:, 1]]).max(), np.abs(w1[E[:, 0]] - w1[E[:, 1]]).max()
+    print("max edge step of the void half-width: band", j0, "skirt", j1, "open max", w0.max())
+    assert j1 < 0.5 * j0
+
+
+def test_surface_distance_on_sphere():
+    """Edge-path distance from the north pole vs the geodesic R θ: within [−1 %, +20 %]; no source → ∞."""
+    from cshell.surface import surface_distance
+    V, T = _sphere_faces(4)
+    i = int(np.argmax(V[:, 2]))
+    d = surface_distance(V, T, np.array([i]))
+    geo = R0 * np.arccos(np.clip(V @ V[i] / R0 ** 2, -1, 1))
+    m = geo > 1.0
+    r = d[m] / geo[m]
+    assert r.min() > 0.99 and r.max() < 1.20 and np.median(r) < 1.10, (r.min(), r.max())
+    assert np.all(d[i] == 0)
+    assert np.all(np.isinf(surface_distance(V, T, np.zeros(len(V), bool))))

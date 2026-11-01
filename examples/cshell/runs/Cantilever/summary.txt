@@ -1,26 +1,19 @@
 cshell summary: Cantilever
 
-DECISION: cshell design accepted
-  cshell design accepted: J = +0.4899 > ln(1 + 0.02) with K/K0 ≥ 0.982, P/P0 ≥ 2.711 at every resolution [body-fitted check not run: model exceeds solver capacity; voxel criteria only]
+DECISION: accepted
+  cshell design accepted: J = +0.4783 (optimisation grid), +0.4781 (shifted grid) > ln(1 + g_min) = 0.0198, feasible, export mass-matched and watertight
 
-mass target 63.38 g, final 63.38 g, best-candidate mesh V/V0-1 +4.70e-05
+mass target 63.378 g, final 63.378 g (V/V_target - 1 +1.16e-07, delta +0.0020 mm)
 
-design                source            J    K/K0    P/P0  governing   wall mm
-solid                 rescored    +0.0000   1.000   1.000  buckling    ---
-uniform shell         rescored    +0.2424   0.931   1.744  strength    1.91-1.91
-dshell best           dshell      +0.4788   0.992   2.626  Euler buckling 1.71-1.91
-cshell uniform        optimiser   +0.5189   0.998   2.828  -           1.50-6.44
-cshell dshell         optimiser   +0.5193   0.998   2.830  -           1.50-6.47
-cshell neutral        optimiser   +0.5193   0.999   2.829  -           1.50-6.47
-cshell export         rescored    +0.4900   0.983   2.711  buckling    0.01-6.47
+objective: weighted (J = the run's objective; ln K/K0 separate)
+grid                  J   lnK/K0    K/K0    P/P0    lamB   sigPN  governing  feasible
+optimisation    +0.4783  -0.0252   0.975   2.669   2.746   1.112  buckling   True
+shifted         +0.4781  -0.0258   0.974   2.670   2.747   1.113  buckling   True
+floors: K/K0 ≥ 0.85, P/P0 ≥ 0.85
 
-resolution checks (best export):
-  opt     J +0.4900 K/K0 0.983 P/P0 2.711  pass J/K/P True/True/True
-  shift   J +0.4899 K/K0 0.982 P/P0 2.712  pass J/K/P True/True/True
-  coarse  J +0.4945 K/K0 0.984 P/P0 2.733  pass J/K/P True/True/True
-
-validation: {'ran': False, 'scale_limited': True, 'blocking_miss': False, 'scale': {'solid': '10000746 DOF > validation.max_bodyfit_dof = 4e+06', 'design': '11819688 DOF > validation.max_bodyfit_dof = 4e+06'}, 'why': 'body-fitted check not run: model exceeds solver capacity; decision on the voxel criteria at all three resolutions (Owen, 2026-10-31)'}
-sensitivity: accepted in 100% of the κ_b × σ_f grid
-
-starts: uniform done J +0.5189; dshell done J +0.5193; neutral done J +0.5193
-timings s: starts 0, context 54, param_fe 176, export_baselines 419, export_best 651, rescore_opt 364, rescore_shift 365, rescore_coarse 201, validation 130, total 2366
+export h 0.2 mm: 3582528 faces, watertight True, material bodies 1, shells 2, enclosed voids 1, escape holes 0
+fins removed by the export 92.85 mm³ (check, expected ≈ 0), void → material 19.30 mm³
+wall mm (nominal): min 1.496, p05 1.501, median 1.953, max 40.190; min off the hole rims 1.496
+closed area 2.9% of active, hollow 64.6% of the surface
+timing s: context_s 0, rescore_s 172, export_s 34, finalise_s 376
+peak: GPU 27.18 GiB, host 5.48 GiB; export alone GPU 2.92 GiB, host 5.48 GiB

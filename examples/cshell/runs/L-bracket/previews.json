@@ -1,29 +1,29 @@
 {
   "final_design": {
-    "source": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/FULL/L-bracket/final_design.stl",
+    "source": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/SR_VAL4/L-bracket/final_design.stl",
     "full": {
-      "faces": 29098532,
-      "vertices": 14549066,
-      "volume_mm3": 41955.925882699725,
+      "faces": 1562200,
+      "vertices": 781096,
+      "volume_mm3": 41947.41555501655,
       "boundary_edges": 0,
       "non_manifold_edges": 0,
       "non_manifold_vertices": 0,
-      "connected_components": 1,
+      "connected_components": 5,
       "watertight": true
     },
     "preview": {
       "faces": 500000,
-      "vertices": 249800,
-      "volume_mm3": 41956.3647997534,
+      "vertices": 249996,
+      "volume_mm3": 41947.000692131085,
       "boundary_edges": 0,
       "non_manifold_edges": 0,
       "non_manifold_vertices": 0,
-      "connected_components": 1,
+      "connected_components": 5,
       "watertight": true
     },
-    "rel_volume_change": 1.0461384046145383e-05,
+    "rel_volume_change": -9.890070221896252e-06,
     "preview_bytes": 25000084,
-    "seconds": 582.6643943786621
+    "seconds": 22.04460382461548
   },
   "original": {
     "source": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/FULL/L-bracket/original.stl",
@@ -50,31 +50,5 @@
     "rel_volume_change": -2.6237016373387156e-05,
     "preview_bytes": 25000084,
     "seconds": 347.9198262691498
-  },
-  "uniform_shell": {
-    "source": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/FULL/L-bracket/uniform_shell.stl",
-    "full": {
-      "faces": 35351688,
-      "vertices": 17675758,
-      "volume_mm3": 41946.896743856094,
-      "boundary_edges": 0,
-      "non_manifold_edges": 0,
-      "non_manifold_vertices": 0,
-      "connected_components": 2,
-      "watertight": true
-    },
-    "preview": {
-      "faces": 500000,
-      "vertices": 249914,
-      "volume_mm3": 41944.54638043953,
-      "boundary_edges": 0,
-      "non_manifold_edges": 0,
-      "non_manifold_vertices": 0,
-      "connected_components": 2,
-      "watertight": true
-    },
-    "rel_volume_change": -5.603187837499579e-05,
-    "preview_bytes": 25000084,
-    "seconds": 689.8767311573029
   }
 }
