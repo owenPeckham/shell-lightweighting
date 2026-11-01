@@ -138,3 +138,23 @@ Base branch: `worktree-cshell-solid-pockmarks`. Each developer has its own branc
 **C4. Report** (report): `report.write_report(run_dir) -> path`
 - Reads only the C2/C3 artefacts plus config_used.json.
 - Must also work on the Stage 2 outputs in `examples/cshell/runs/*` through an adapter, which tolerates missing keys and writes a placeholder page for each.
+
+## 8. Formulation change after the investigation (Owen, 2026-11-01)
+Evidence: docs/cshell/research/investigation/FINDINGS.md.
+
+1. **Objective is dshell-style weighted, and it is the default:**
+   - J = 0.5 ln K/K0 + 0.5 ln P/P0 at constant mass, where P is the capacity softmin of strength and global buckling (knock-down 0.85). The weights stay configurable.
+   - Floors K/K0 ≥ 0.85 and P/P0 ≥ 0.85 are MMA constraints, made real by implementing `floors_as_constraints`.
+   - Strength sits only inside the capacity: no σ_PN ≤ σ_PN0 constraint.
+   - finalise decides on the run's own objective: J > ln 1.02 and both floors, on the optimisation and shifted grids.
+   - summary.txt/json report the weighted J, K/K0, P/P0 and the governing mode, and keep that J separate from ln K/K0.
+2. **Growth always runs every quantile** (patience = number of quantiles), then reverts to the best boundary design.
+3. **Closure in the design map:**
+   - Closed regions use the true section depth (raw r_MA) everywhere, so no thin fins remain between voids. The export's fin removal then becomes a check.
+   - The void surface is smoothed through the closure band (ξ̃ᵃ ≥ 0.8). The target is void-surface high-pass RMS no worse than Stage 2.
+4. **Enclosed voids stay hollow:**
+   - Revert the export's fill of voids without a usable escape-hole site.
+   - The STL is one material body whose boundary has 1 outer shell plus 1 shell per unvented void.
+   - Count bodies (material components) and shells separately.
+   - Report unvented voids as a manufacturing warning (trapped MJF powder). This does not change the decision.
+5. **Validation:** re-run the 3 parts into runs_cshell/SR_VAL3. Compare with SR_VAL2, INV/weighted_* and dshell, and measure dimples as in SR_Q2.
