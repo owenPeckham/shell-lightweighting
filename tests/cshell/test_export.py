@@ -321,7 +321,8 @@ def test_axis_aligned_faces_single_body(tmp_path):
     cfg = ex.ExportConfig(h_x=0.1, tile=64, block=16, workers=_workers(), wall_hist=False, write_stl=False,
                           log=lambda *_: None)
     out = ex.baselines(np.asarray(m.vertices), np.asarray(m.faces), str(tmp_path), cfg)
-    assert out["original"]["mesh"]["bodies"] == 1 and out["uniform_shell"]["mesh"]["bodies"] == 2
+    assert out["original"]["mesh"]["bodies"] == 1 and out["uniform_shell"]["mesh"]["shells"] == 2
+    assert out["uniform_shell"]["mesh"]["bodies"] == 1 and out["uniform_shell"]["mesh"]["void_shells"] == 1
     assert abs(out["original"]["mesh"]["volume"] / 1000.0 - 1) < 1e-3
 
 
@@ -333,7 +334,7 @@ def test_uniform_shell_and_original(sphere, tmp_path):
     s = out["uniform_shell"]
     assert abs(s["t_final_mm"] - t_an) < 0.02
     assert s["ok"] and abs(s["mesh"]["volume"] / s["V0_mm3"] - 1) < 2e-3
-    assert s["mesh"]["bodies"] == 2                                       # outer skin and the enclosed original volume
+    assert s["mesh"]["shells"] == 2 and s["mesh"]["bodies"] == 1          # outer skin + the enclosed original volume
     assert abs(s["wall"]["median_nominal"] - t_an) < 0.04
     o = out["original"]
     assert o["ok"] and abs(o["mesh"]["volume"] / V0 - 1) < 2e-3 and o["mass_correction"]["delta"] == 0.0

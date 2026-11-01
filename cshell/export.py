@@ -94,7 +94,8 @@ class ExportConfig:
     mc_halo: int = 16                 # lattice layers around a tile for the ambiguous-face rule (MBB: ≤ 9 iterations)
     min_wall: bool = True             # GPU stage A: void kept ≥ t_min from the outer surface, material between voids
                                       # thinner than t_min − b_v removed (sr-q2; `wall_cap` / `open_void` kernels)
-    fill_unholed: bool = True         # stage C: an enclosed void with no clean escape-hole site is filled (R5)
+    fill_unholed: bool = False        # stage C: fill an enclosed void with no clean hole site (sr-q2 R5; reverted by
+                                      # PLAN_single_run §8: enclosed voids stay hollow, unvented ones are reported)
     mass_correct: bool = True
     mesh_vol_tol: float = 2.0e-4      # secant steps on δ until |V_mesh/V_target − 1| ≤ this (≤ 2 steps)
     target_volume: float | None = None   # V_target (mm³); None: exact volume of the Γ₀ tessellation
@@ -102,10 +103,12 @@ class ExportConfig:
 
     @classmethod
     def from_run_cfg(cls, cfg: dict, **kw) -> "ExportConfig":
+        from .config import void_min_eff
         m = cfg["manufacturing"]
-        base = dict(h_x=cfg["grid"]["export_h_mm"], v_min=m["void_min_mm"], void_min_mm3=m["void_min_mm3"],
+        base = dict(h_x=cfg["grid"]["export_h_mm"], v_min=void_min_eff(cfg), void_min_mm3=m["void_min_mm3"],
                     t_min=m["t_min_mm"], b_v=m["wall_bias_mm"], holes_per_void=m["escape_holes_per_void"],
-                    hole_d=m["escape_hole_diameter_mm"])
+                    hole_d=m["escape_hole_diameter_mm"],
+                    holes=bool((cfg.get("export") or {}).get("escape_holes", False)))   # §8: optional, off by default
         base.update(kw)
         return cls(**base)
 
@@ -771,7 +774,9 @@ def mesh_checks(V: np.ndarray, F: np.ndarray) -> dict:
     """Closed, edge-manifold, consistently oriented surface? V (nv,3), F (nf,3) with shared (welded) vertex ids.
 
     Directed edges must be unique and each must have its reverse. Also: signed volume (float64), Euler number,
-    connected component count (bodies: material components and enclosed voids), degenerate faces.
+    connected component count, degenerate faces. §8 (multi-shell STL): `shells` = connected surface components;
+    each has a signed volume, positive for an outward-facing shell (`bodies`: material bodies, one outer shell each)
+    and negative for an inward-facing one (`void_shells`: enclosed voids, unvented). Total volume = Σ shell volumes.
     """
     F = np.asarray(F, np.int64)
     nf, nv = len(F), len(V)
@@ -784,19 +789,24 @@ def mesh_checks(V: np.ndarray, F: np.ndarray) -> dict:
     pos[pos >= len(d)] = len(d) - 1
     missing = int((d[pos] != r).sum())
     ne = len(np.unique(np.minimum(d // nv, d % nv) * nv + np.maximum(d // nv, d % nv))) if len(d) < 3e7 else -1
-    vol = 0.0
-    for s in range(0, nf, 2_000_000):
-        t = F[s:s + 2_000_000]
-        a, b, c = V[t[:, 0]].astype(np.float64), V[t[:, 1]].astype(np.float64), V[t[:, 2]].astype(np.float64)
-        vol += float(np.einsum("ij,ij->i", a, np.cross(b, c)).sum()) / 6.0
     used = np.unique(F)
     g = sparse.coo_matrix((np.ones(3 * nf), (np.concatenate([F[:, 0], F[:, 1], F[:, 2]]),
                                               np.concatenate([F[:, 1], F[:, 2], F[:, 0]]))), shape=(nv, nv))
     nc, lab = connected_components(g, directed=False)
-    bodies = len(np.unique(lab[used]))
+    fl = lab[F[:, 0]] if nf else np.zeros(0, np.int64)
+    cvol = np.zeros(nc)
+    for s in range(0, nf, 2_000_000):
+        t = F[s:s + 2_000_000]
+        a, b, c = V[t[:, 0]].astype(np.float64), V[t[:, 1]].astype(np.float64), V[t[:, 2]].astype(np.float64)
+        cvol += np.bincount(fl[s:s + 2_000_000], weights=np.einsum("ij,ij->i", a, np.cross(b, c)) / 6.0,
+                            minlength=nc)
+    present = np.unique(lab[used])
+    sv = cvol[present]
     return dict(faces=nf, vertices=int(len(used)), degenerate=deg, duplicate_directed_edges=dup,
                 missing_reverse_edges=missing, watertight_manifold=bool(dup == 0 and missing == 0 and deg == 0),
-                volume=vol, euler=(len(used) - ne + nf if ne >= 0 else None), bodies=bodies)
+                volume=float(cvol.sum()), euler=(len(used) - ne + nf if ne >= 0 else None),
+                shells=int(len(present)), bodies=int((sv > 0).sum()), void_shells=int((sv < 0).sum()),
+                shell_volumes_mm3=sorted((float(x) for x in sv), reverse=True)[:50])
 
 
 def drop_material_islands(V: np.ndarray, F: np.ndarray, V0: float, min_vol: float = 0.0, void_fill: float = 0.0,
@@ -1072,9 +1082,14 @@ class Exporter:
         self.summary["voids"] = dict(total=int(ncomp), enclosed=int((~ext).sum()) if ncomp else 0)
         rows = []
         self.holes_info = []
+        self.summary["voids"]["escape_holes"] = bool(cfg.holes)
         if dz.Vh is None or ncomp == 0 or not (~ext).any() or not cfg.holes:
+            # §8: holes off (default) → enclosed voids stay sealed (one inward shell each), counted, not a failure
             self.summary["voids"]["holes"] = 0
             self.summary["voids"]["without_hole"] = int((~ext).sum()) if ncomp else 0
+            self.summary["voids"]["unvented"] = (int((~ext).sum()) if ncomp else 0) if cfg.holes else None
+            self.summary["voids"]["per_void"] = [dict(id=v["id"], volume_mm3=v["volume_mm3"], holes=0, vented=False)
+                                                 for v in voids if v["enclosed"]]
             self._t("C_holes", t0)
             return
         Vh, Th = dz.Vh, dz.Th
@@ -1190,12 +1205,17 @@ class Exporter:
             self.log(f"[export] {len(unholed)} enclosed void(s) without a clean escape-hole site filled "
                      f"({filled_mm3:.1f} mm³; the mass correction restores the mass)")
             n_without = 0
+        if unholed and not cfg.fill_unholed:              # §8 item 5b: reported (manufacturing warning), kept hollow
+            self.log(f"[export] WARNING: {len(unholed)} enclosed void(s) without a clean escape-hole site stay "
+                     f"sealed (unvented; trapped powder)")
         self.summary["voids"].update(holes=len(holes_p), without_hole=n_without,
+                                     unvented=n_without,
                                      filled_no_hole=len(unholed) if cfg.fill_unholed else 0,
                                      filled_no_hole_mm3=filled_mm3,
                                      enclosed=int(sum(1 for v in voids if v["enclosed"] and not v.get("filled"))),
                                      per_void=[dict(id=v["id"], volume_mm3=v["volume_mm3"], holes=v.get("holes", 0),
-                                                    filled=bool(v.get("filled", False)))
+                                                    filled=bool(v.get("filled", False)),
+                                                    vented=bool(v.get("holes", 0) > 0))
                                                for v in voids if v["enclosed"]])
         self._t("C_holes", t0)
 
@@ -1423,7 +1443,7 @@ class Exporter:
             tids = self.stage_b() if (cfg.clean and self.dz.has_void) else [t for t in self.grid.tile_ids()]
             if not (cfg.clean and self.dz.has_void):
                 self.summary["cleanup"] = {}
-            if cfg.holes and cfg.clean and self.dz.has_void:
+            if cfg.clean and self.dz.has_void:               # stage C labels voids; holes only if cfg.holes
                 self.stage_c(tids)
             ok = self.stage_d()
             if ok or attempt == 1:
@@ -2036,7 +2056,7 @@ class GpuExporter(Exporter):
         tids = self.stage_b() if clean else [t for t in self.grid.tile_ids() if self.store.scalar(t) != 2]
         if not clean:
             self.summary["cleanup"] = {}
-        if cfg.holes and clean:
+        if clean:                                          # stage C labels voids; holes only if cfg.holes
             self.stage_c(tids)
         ok = self.stage_d()
         if getattr(self, "holes", None) is not None and len(self.holes["p"]):

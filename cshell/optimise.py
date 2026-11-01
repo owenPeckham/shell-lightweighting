@@ -42,7 +42,7 @@ from .surface import (DesignSurface, RepeatedFilter, medial_depth, mount_face_id
                       surface_distance)
 
 # C2 history columns first (PLAN_single_run §7), then diagnostics and timings (t_mma = t_pull + t_mmasub + bookkeeping)
-HIST_COLS = ["start", "it", "phase", "growth_step", "R_k", "J", "K_K0", "lamB_ratio", "sig_ratio", "mass_err",
+HIST_COLS = ["start", "it", "phase", "growth_step", "R_k", "J", "K_K0", "P_P0", "lamB_ratio", "sig_ratio", "mass_err",
              "closed_frac", "hollow_allowed_frac", "governing", "lam_ratio", "G_s", "max_dxi", "max_dxi_raw", "move",
              "n_restore", "eig_iters", "eig_converged", "active_dof", "fe_engine", "t_geometry", "t_fe", "t_R", "t_mma",
              "t_pull", "t_mmasub", "t_restore", "t_upload", "t_iter", "gpu_mem_GiB", "gpu_peak_GiB", "host_peak_GiB",
@@ -90,6 +90,25 @@ class Context:
         log(f"[cshell] context: {s.n_vertices} vertices, mounts {len(self.mount_ids)} faces, "
             f"r_MA {np.median(self.r_ma):.2f} mm median (smoothed {r_sm} mm: |Δ| p99 "
             f"{np.percentile(np.abs(self.r_ma - self.r_ma_raw), 99):.3f} mm), {time.time() - t0:.0f} s")
+
+    def section_depth(self) -> np.ndarray:
+        """True section depth per Γ_h vertex (§8 item 3): the largest raw r_MA within design.section_radius_mm
+        (default 3 mm; covers the cells near convex edges, whose closest point is an edge vertex of small r_MA but
+        whose depth is the section's), smoothed with the r_MA filter (design.r_ma_smooth_mm), never below r_MA."""
+        if getattr(self, "_r_sec", None) is None:
+            from scipy.spatial import cKDTree
+            d = self.cfg["design"]
+            R = float(d.get("section_radius_mm", 3.0))
+            X = self.surf.V
+            tree = cKDTree(X)
+            S = tree.sparse_distance_matrix(tree, R, output_type="coo_matrix")
+            rmax = self.r_ma_raw.copy()
+            np.maximum.at(rmax, S.row, self.r_ma_raw[S.col])
+            del S, tree
+            r_sm = float(d.get("r_ma_smooth_mm", 0.0) or 0.0)
+            rs = self.surf.filter(r_sm).apply(rmax) if r_sm > 0 else rmax
+            self._r_sec = np.maximum(rs, self.r_ma)
+        return self._r_sec
 
     def write_bc_faces(self, out_dir: str) -> str:
         """bc_faces.npz (C2): V, T (input tessellation), support (bool per triangle), load (load index per triangle,
@@ -336,6 +355,8 @@ class PhaseModel:
         cons = tuple(o.get("constraints", ())) if typ == "compliance" else ()
         if not cap["buckling"]:
             cons = tuple(x for x in cons if x != "buckling")
+        if typ == "weighted" and o.get("floors_as_constraints", False):   # §8: K/K0 ≥ f_K, P/P0 ≥ f_P (MMA)
+            cons = ("floor_K",) + (("floor_P",) if o["w_capacity"] > 0 else ())
         return Settings(w_K=o["w_stiffness"], w_P=o["w_capacity"], sigma_f=c["material"]["strength_MPa"],
                         knockdown=cap["knockdown"], beta=ccfg.phase_value(cap["softmin_beta"], self.phase, frac),
                         stress_p=ccfg.phase_value(cap["stress_p"], self.phase, frac), stress_q=cap["stress_q"],
@@ -403,10 +424,26 @@ class PhaseModel:
                         modes=None, primal=pr, rho_active=r)
         ev = evaluate_weighted(self.fe, rho_hat, r, m, st, base, c_norm, prev_modes)
         bk = ev.parts["buckling"]
-        return dict(J=ev.J, dJ=ev.dJ, C=ev.C, lam_s=ev.lam_s, mu_tilde=ev.mu_tilde, lam=ev.lam, lam_b=ev.lam_b,
-                    governing=ev.governing, eig_iters=bk.iterations if bk else 0,
-                    eig_converged=bk.converged if bk else True, quantile=ev.parts["stress"].quantile,
-                    sigma_pn=ev.sigma_pn, modes=bk.modes if bk else None, primal=ev.parts["primal"], rho_active=r)
+        out = dict(J=ev.J, dJ=ev.dJ, C=ev.C, lam_s=ev.lam_s, mu_tilde=ev.mu_tilde, lam=ev.lam, lam_b=ev.lam_b,
+                   governing=ev.governing, eig_iters=bk.iterations if bk else 0,
+                   eig_converged=bk.converged if bk else True, quantile=ev.parts["stress"].quantile,
+                   sigma_pn=ev.sigma_pn, modes=bk.modes if bk else None, primal=ev.parts["primal"], rho_active=r,
+                   g={}, dg={}, K_K0=np.nan, P_P0=np.nan, lamB_ratio=np.nan, sig_ratio=np.nan)
+        if base is not None:                               # §8: floors K/K0 ≥ f_K, P/P0 ≥ f_P as g ≤ 0
+            o = self.ctx.cfg["objective"]
+            out["K_K0"] = base["C0"] / ev.C
+            out["P_P0"] = ev.lam / base["lam0"]
+            if np.isfinite(base.get("lam_b0", np.nan)) and np.isfinite(ev.lam_b):
+                out["lamB_ratio"] = ev.lam_b / base["lam_b0"]
+            if np.isfinite(base.get("lam_s0", np.nan)):
+                out["sig_ratio"] = base["lam_s0"] / ev.lam_s * (base.get("c", 1.0) / c_norm)   # σ_PN/σ_PN0 (same c)
+            if "floor_K" in st.constraints:
+                out["g"]["floor_K"] = float(np.log(ev.C / base["C0"]) + np.log(o["floor_stiffness"]))
+                out["dg"]["floor_K"] = ev.parts["dC"] / ev.C
+            if "floor_P" in st.constraints:
+                out["g"]["floor_P"] = float(np.log(o["floor_capacity"]) - np.log(ev.lam / base["lam0"]))
+                out["dg"]["floor_P"] = -ev.parts["dlnlam"]
+        return out
 
     def baseline(self, st: Settings, want_all: bool = False) -> dict:
         """Solid responses through the same pipeline (as-built, b_o) and the initial normalisation c (THEORY §4.4(b)).
@@ -440,7 +477,8 @@ def design_space(ctx: Context, phase: int, D_comp: float, hollow=None, h_g: floa
                               np.full(nv, D_comp)]).clip(0.0)
     if not d["allow_outward"]:
         d_hi[:] = 0.0
-    thin = passive_thin(a_hi, m["t_min_mm"], m["void_min_mm"])
+    v_min = ccfg.void_min_eff(cfg)                 # §8 item 5: ≥ hole_d + clearance when escape holes are on
+    thin = passive_thin(a_hi, m["t_min_mm"], v_min)
     passive = ctx.mount | thin
     r_f = ccfg.phase_value(cfg["filter"]["radius_mm"], phase)
     taper = bool(d.get("taper", False))
@@ -448,17 +486,18 @@ def design_space(ctx: Context, phase: int, D_comp: float, hollow=None, h_g: floa
     H = None if hollow is None else np.asarray(hollow, bool).copy()
     ds = DesignSpace(r_ma=ctx.r_ma, a_hi=a_hi, d_hi=d_hi, area=ctx.surf.A, passive=passive,
                      filt=ctx.surf.filter(r_f, int(cfg["filter"].get("passes", 1))), t_min=m["t_min_mm"],
-                     v_min=m["void_min_mm"], b_v=m["wall_bias_mm"], b_o=m["outer_bias_mm"],
+                     v_min=v_min, b_v=m["wall_bias_mm"], b_o=m["outer_bias_mm"],
                      soft_w=d["inset_soft_mm"], closure_xi=closure_xi(cfg),
-                     closure_band=float(d.get("closure_band", 0.05)))
+                     closure_band=float(d.get("closure_band", 0.1)))
     if d.get("closed_raw_depth", True) and getattr(ctx, "r_ma_raw", None) is not None:
-        # smoothed r_MA under-reaches the local depth (MBB: closed design 1.4 % short of V0, job 7903139): closed
-        # vertices blend to the raw depth; open void surfaces keep the smooth a^hi
-        ds.a_cl = np.maximum(a_hi, ctx.r_ma_raw + d["closure_gamma"] * h_g)
+        # §8 item 3: closed vertices reach the true section depth (the largest raw r_MA within section_radius_mm,
+        # smoothed: `Context.section_depth`), so the closed design has no void anywhere and the void surface in the
+        # closure band blends between two smooth fields
+        ds.a_cl = np.maximum(a_hi, ctx.section_depth() + d["closure_gamma"] * h_g)
     if d.get("void_min_open", True):
-        # sr-fix 2: open voids are at least void_min across (a ≤ r_MA − v_min/2), as the export's opening keeps them;
+        # sr-fix 2: open voids are at least v_min across (a ≤ r_MA − v_min/2), as the export's opening keeps them;
         # thinner voids exist only in the closure band, so the optimiser never counts mass the export fills back
-        ds.a_top = np.minimum(ctx.r_ma - 0.5 * m["void_min_mm"], a_hi)
+        ds.a_top = np.minimum(ctx.r_ma - 0.5 * v_min, a_hi)
     ds.taper_d = taper_weight(dist_p, r_f) if taper else None
     ds.taper_a = taper_a(ctx, passive, H, r_f, dist_p)
     return ds, dict(d_hi_by_comp=d_hi >= D_comp - 1e-9, passive_parts=dict(mount=int(ctx.mount.sum()),
@@ -600,6 +639,25 @@ def evaluate(ctx: Context, xi, phase: int, shift=None, D_comp: float | None = No
     D = float(cfg["design"]["outward_extent_initial_mm"] if D_comp is None else D_comp)
     model = PhaseModel(ctx, ph, D, log, hollow=hollow, shift=shift)
     try:
+        o = cfg["objective"]
+        if o.get("type", "compliance") == "weighted":     # §8: the run's own objective, J = w_K ln K/K0 + w_P ln P/P0
+            st = model.settings(1.0)
+            base = model.baseline(st)
+            nv = ctx.surf.n_vertices
+            xi = np.asarray(xi, float)
+            sab = model.dm.forward(xi[:nv], xi[nv:], as_built=True)
+            fe = model.fe_eval(model.dm.rho(sab), st, base, base["c"])
+            V = model.dm.volume(model.dm.forward(xi[:nv], xi[nv:], as_built=False))
+            tol = float(o.get("feasibility_tol", 1e-3))
+            K, P = base["C0"] / fe["C"], fe["P_P0"]
+            floors = dict(K=bool(np.log(K) >= np.log(o["floor_stiffness"]) - tol),
+                          P=bool(st.w_P == 0 or np.log(P) >= np.log(o["floor_capacity"]) - tol))
+            return dict(objective="weighted", J=fe["J"], J_K=float(np.log(K)), K_K0=K, P_P0=P,
+                        lamB_ratio=fe["lamB_ratio"], sig_ratio=fe["sig_ratio"], mass_err=V / model.V0 - 1.0,
+                        feasible=bool(all(floors.values())), floors=floors,
+                        floor_K=o["floor_stiffness"], floor_P=o["floor_capacity"], governing=fe["governing"],
+                        g=dict(fe["g"]), C=fe["C"], C0=base["C0"], lam=fe["lam"], lam0=base["lam0"], V=V,
+                        V0=model.V0, h_e=model.h_e, origin=np.asarray(model.origin).tolist(), phase=ph)
         cons = ("buckling", "strength") if cfg["capacity"]["buckling"] else ("strength",)
         st = dataclasses.replace(model.settings(1.0), objective="compliance", constraints=cons,
                                  buckling=bool(cfg["capacity"]["buckling"]))
@@ -611,7 +669,9 @@ def evaluate(ctx: Context, xi, phase: int, shift=None, D_comp: float | None = No
         V = model.dm.volume(model.dm.forward(xi[:nv], xi[nv:], as_built=False))
         tol = float(cfg["objective"].get("feasibility_tol", 1e-3))
         feasible = all(v <= tol for v in fe["g"].values())
-        return dict(J=fe["J"], K_K0=base["C0"] / fe["C"], lamB_ratio=fe["lamB_ratio"], sig_ratio=fe["sig_ratio"], mass_err=V / model.V0 - 1.0, feasible=bool(feasible),
+        return dict(objective="compliance", J_K=fe["J"], P_P0=None,
+                    J=fe["J"], K_K0=base["C0"] / fe["C"], lamB_ratio=fe["lamB_ratio"], sig_ratio=fe["sig_ratio"],
+                    mass_err=V / model.V0 - 1.0, feasible=bool(feasible),
                     governing=fe["governing"], g=dict(fe["g"]), C=fe["C"], C0=base["C0"], sigma_pn=fe["sigma_pn"],
                     sigma_pn0=base["sigma_pn0"], mu_tilde=fe["mu_tilde"], mu0=base["mu0"], V=V, V0=model.V0,
                     h_e=model.h_e, origin=np.asarray(model.origin).tolist(), phase=ph)
@@ -796,7 +856,8 @@ class Run:
         min_ips = min(int(gcfg.get("min_iters_per_step", 2)), max_ips)
         step_tol = float(gcfg.get("step_tol", 1e-4))
         g_tol = float(gcfg.get("tol", 1e-3))
-        patience = int(gcfg.get("patience", 2))
+        patience = gcfg.get("patience")                  # §8: None = every quantile runs, then the best boundary
+        patience = len(quant) + 1 if patience is None else int(patience)
         A = ctx.surf.A
         for ph in phases:
             if ph < rs.phase:
@@ -832,7 +893,7 @@ class Run:
                     self.log(f"[cshell] phase {ph} solid: C0 {base['C0']:.4f} N·mm, K0 {ctx.F @ ctx.F / base['C0']:.2f} "
                              f"N/mm, λ_s0 {base['lam_s0']}, λ_b0 {base['lam_b0']}, c {base['c']:.3f}")
                 c_norm = base["c"] if rs.it == 0 or ph != rs.phase else rs.c_norm
-                cons = list(st0.constraints) if st0.objective == "compliance" else []
+                cons = list(st0.constraints)
 
                 def vol(x):
                     return dm.volume(dm.forward(x[:nv], x[nv:], as_built=False))
@@ -993,7 +1054,7 @@ class Run:
                     hours = hours0 + (time.time() - self.t_begin) / 3600
                     row = dict(start=self.start, it=it, phase=ph, growth_step=(gr["step"] - 1) if gr else -1,
                                R_k=gr["R_k"] if gr else np.nan, J=fe["J"], K_K0=base["C0"] / fe["C"],
-                               lamB_ratio=fe.get("lamB_ratio", np.nan),             # λ_B/λ_B0 = μ̃0/μ̃
+                               P_P0=fe.get("P_P0", np.nan), lamB_ratio=fe.get("lamB_ratio", np.nan),
                                sig_ratio=fe.get("sig_ratio", np.nan), mass_err=mass_err, closed_frac=closed_frac,
                                hollow_allowed_frac=hollow_frac, governing=fe["governing"],
                                lam_ratio=fe["lam"] / fe["base_c"]["lam0"] if st.objective == "weighted" and st.w_P > 0
@@ -1006,7 +1067,7 @@ class Run:
                                gpu_mem_GiB=_gpu_mem(), gpu_peak_GiB=fe["gpu_peak"], host_peak_GiB=host_peak_gib(),
                                c_norm=c_norm, sliver_w=w_s, stress_p=st.stress_p, beta=st.beta)
                     self._history(row)
-                    self.log(f"[{self.start}] ph {ph} it {it:3d}  J {fe['J']:+.5f}  K/K0 {row['K_K0']:.4f}  λB/λB0 "
+                    self.log(f"[{self.start}] ph {ph} it {it:3d}  J {fe['J']:+.5f}  K/K0 {row['K_K0']:.4f}  P/P0 {row['P_P0']:.4f}  λB/λB0 "
                              f"{row['lamB_ratio']:.4f}  σ/σ0 {row['sig_ratio']:.4f}  V/V0-1 {mass_err:+.1e}  closed "
                              f"{closed_frac:.3f}  H {hollow_frac:.3f}  |dξ̃| {dxi:.4f}  FE {fe['t_fe']:.1f}s "
                              f"it {row['t_iter']:.1f}s")

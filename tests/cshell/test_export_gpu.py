@@ -249,18 +249,28 @@ def test_min_wall_removes_closure_fins(fin):
         assert abs(s["mesh"]["volume_rel"]) <= 1e-3
 
 
-def test_void_without_hole_site_is_filled(tmp_path):
-    """A void narrower than the hole's inner cap (ball of diameter 3.6 < 2 (r + h) = 4.2, hole_d 4) gets no clean escape-hole
-    site: it is filled (one body, no enclosed void) and δ restores the mass; without the fill it stays sealed."""
+def test_hollow_sphere_multi_shell(tmp_path):
+    """§8 (escape holes optional, off by default): a hollow sphere without holes exports as 1 material body with
+    2 shells (outer + inward-facing void shell), watertight, the signed volume = outer − void, and the mass correction
+    converges; with holes on, a void too narrow for the hole's inner cap (3.6 < 2 (r + h) = 4.2, hole_d 4) is
+    reported unvented, not filled (fill_unholed off); the sr-q2 fill stays available explicitly."""
     V, T = _sphere(sub=3, R=6.0)
     nv = len(V)
     dz = ex.Design(V, T, V, T, d=np.zeros(nv), a=np.full(nv, 4.2), d_hi=np.full(nv, 3.0),
                    active=np.ones(nv, bool), closed=np.zeros(nv, bool))
     kw = dict(void_min_mm3=5.0, wall_samples=5000, hole_d=4.0)
-    sealed = _run(dz, tmp_path, "sealed", fill_unholed=False, **kw)
-    filled = _run(dz, tmp_path, "filled", **kw)
+    off = _run(dz, tmp_path, "off", holes=False, **kw)
+    m = off["mesh"]
+    print("holes off:", m["shells"], m["bodies"], m["void_shells"], m["shell_volumes_mm3"], off["mass_correction"])
+    assert m["watertight_manifold"] and m["shells"] == 2 and m["bodies"] == 1 and m["void_shells"] == 1
+    assert abs(sum(m["shell_volumes_mm3"]) - m["volume"]) < 1e-6 * abs(m["volume"])
+    assert m["shell_volumes_mm3"][1] < 0 and abs(m["volume_rel"]) <= 1e-3 and off["ok"]
+    assert off["mass_correction"]["ok"] and not off["mass_correction"].get("fail")
+    sealed = _run(dz, tmp_path, "sealed", holes=True, **kw)            # holes on, no site: reported, kept hollow
+    assert sealed["voids"]["holes"] == 0 and sealed["voids"]["without_hole"] == 1
+    assert sealed["mesh"]["shells"] == 2 and sealed["mesh"]["bodies"] == 1 and sealed["voids"]["enclosed"] == 1
+    filled = _run(dz, tmp_path, "filled", holes=True, fill_unholed=True, **kw)
     print(sealed["voids"], sealed["mesh"]["bodies"], filled["voids"], filled["mesh"]["bodies"])
-    assert sealed["voids"]["holes"] == 0 and sealed["mesh"]["bodies"] == 2
     assert filled["voids"]["filled_no_hole"] == 1 and filled["voids"]["enclosed"] == 0
     assert filled["mesh"]["bodies"] == 1 and filled["ok"]
     assert abs(filled["mesh"]["volume_rel"]) <= 1e-3                   # material conserved

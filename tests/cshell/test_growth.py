@@ -17,8 +17,35 @@ C2_COLS = ["it", "phase", "growth_step", "R_k", "J", "K_K0", "lamB_ratio", "sig_
 
 def _cfg(extra):
     from cshell import config
-    base = {"grid": {"phases": [{"h_e": 0.8, "h_g": 0.2}]}, "optimiser": {"starts": ["solid"]}}
+    # the C2 compliance contract (§4) is tested here; the §8 weighted default in test_weighted_floors_run
+    base = {"grid": {"phases": [{"h_e": 0.8, "h_g": 0.2}]}, "optimiser": {"starts": ["solid"]},
+            "objective": {"type": "compliance", "constraints": ["buckling", "strength"]}}
     return config.load(str(ROOT / "examples/cshell/bench/B3_column.json"), {**base, **extra})
+
+
+def test_weighted_floors_run(tmp_path):
+    """§8 defaults: weighted objective with the K/K0 and P/P0 floors as MMA constraints; every quantile runs
+    (patience None), then the best boundary design; evaluate() scores the run's own objective."""
+    from cshell import config
+    from cshell.optimise import Context, Run, evaluate, load_design
+    cfg = config.load(str(ROOT / "examples/cshell/bench/B3_column.json"), {
+        "grid": {"phases": [{"h_e": 0.8, "h_g": 0.2}]},
+        "growth": {"quantiles": [0.3, 0.6, 1.0], "max_iters_per_step": 3, "tol": 10.0}})   # every gain "low"
+    assert cfg["objective"]["type"] == "weighted" and cfg["growth"]["patience"] is None
+    ctx = Context(cfg)
+    res = Run(cfg, "solid", str(tmp_path)).run(ctx)
+    g = res["phase_0"]["growth"]
+    assert len(g["J_b"]) == 4 and g["steps"] == 3                      # all quantiles despite low gains
+    with open(tmp_path / "history.csv") as f:
+        hist = list(csv.DictReader(f))
+    assert all(np.isfinite(float(r["P_P0"])) and np.isfinite(float(r["K_K0"])) for r in hist)
+    dsg = load_design(str(tmp_path))
+    r = evaluate(ctx, dsg["xi"], 0, hollow=dsg["hollow"], D_comp=dsg["D_comp"])
+    assert r["objective"] == "weighted" and set(r["floors"]) == {"K", "P"}
+    assert r["J"] == pytest.approx(0.5 * np.log(r["K_K0"]) + 0.5 * np.log(r["P_P0"]), abs=1e-6)
+    # the run's stress normalisation c drifts (Le et al.); evaluate uses the solid's c: J agrees to the c effect
+    assert r["J"] == pytest.approx(g["best_J"], abs=5e-3) and r["J_K"] == pytest.approx(np.log(r["K_K0"]))
+    assert r["feasible"] == (r["K_K0"] >= 0.85 - 1e-3 and r["P_P0"] >= 0.85 - 1e-3)
 
 
 @pytest.fixture(scope="module")

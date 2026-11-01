@@ -12,7 +12,7 @@ Steps (one GPU, a few GiB):
      clean-up, escape holes, mass correction δ (Brent on the ψ volume, then secant steps on the mesh volume against
      the solid's exact volume), Warp marching cubes, checks, final_design.stl, escape_holes.csv, wall_thickness.csv.
   4. Decision: accepted iff J > ln(1 + min_gain) on the optimisation grid and on the shifted grid, the design is
-     feasible on the shifted grid (C2 `feasible`: buckling and strength constraints) and the export passed
+     feasible on both grids for the run's own objective (§8: weighted → floors K/K0, P/P0; compliance → the λ_B, σ_PN constraints) and the export passed
      (`collect.export_verdict`: mass matched, watertight, |V_STL/V_target − 1| ≤ 2e-3). final_design.stl is always
      the design; `decision.accepted` says whether it replaces the solid.
   5. summary.json / summary.txt (C3 keys below), then `report.write_report(out_dir)`; a report failure is logged and
@@ -136,12 +136,23 @@ def closed_threshold(cfg: dict) -> float:
     return float((cfg.get("export") or {}).get("closed_thr", 0.9))
 
 
+def _infeasible_why(r: dict) -> str:
+    if r.get("objective") == "weighted":
+        return (f"floors violated (K/K0 {r.get('K_K0')}, P/P0 {r.get('P_P0')} against {r.get('floor_K')}, "
+                f"{r.get('floor_P')}; governing {r.get('governing')})")
+    return (f"constraints violated (λ_B/λ_B0 {r.get('lamB_ratio')}, σ_PN/σ_PN0 {r.get('sig_ratio')}, governing "
+            f"{r.get('governing')})")
+
+
 def decide(opt: dict, shift: dict | None, export_ok: bool, export_why: str, crit: float) -> tuple:
-    """(accepted, reason) per §3: J > ln(1 + g) on both grids, feasible on the shifted grid, export passed."""
+    """(accepted, reason) on the run's own objective (§8): J > ln(1 + g) and feasible (weighted: floors K/K0, P/P0;
+    compliance: the λ_B, σ_PN constraints) on the optimisation and the shifted grid, and the export passed."""
     why = []
     J = opt.get("J")
     if J is None or not np.isfinite(J) or not J > crit:
         why.append(f"optimiser J = {J if J is not None else float('nan'):+.4f} ≤ ln(1 + g_min) = {crit:.4f}")
+    if opt.get("feasible") is False:
+        why.append("optimisation grid: " + _infeasible_why(opt))
     if shift is None:
         why.append("shifted-grid re-score not run")
     elif shift.get("error"):
@@ -151,8 +162,7 @@ def decide(opt: dict, shift: dict | None, export_ok: bool, export_why: str, crit
         if Js is None or not np.isfinite(Js) or not Js > crit:
             why.append(f"shifted grid: J = {Js if Js is not None else float('nan'):+.4f} ≤ {crit:.4f}")
         if not shift.get("feasible", False):
-            why.append(f"shifted grid: constraints violated (λ_B/λ_B0 {shift.get('lamB_ratio')}, σ_PN/σ_PN0 "
-                       f"{shift.get('sig_ratio')}, governing {shift.get('governing')})")
+            why.append("shifted grid: " + _infeasible_why(shift))
     if not export_ok:
         why.append(f"export failed: {export_why}")
     if why:
@@ -170,14 +180,22 @@ def summary_text(S: dict) -> str:
          f"  {S['decision']['reason']}", "",
          f"mass target {g(m.get('target_g'), '{:.3f}')} g, final {g(m.get('final_g'), '{:.3f}')} g "
          f"(V/V_target - 1 {g(m.get('error'), '{:+.2e}')}, delta {g(m.get('delta_mm'), '{:+.4f}')} mm)", "",
-         f"{'grid':<14}{'J':>9}{'K/K0':>8}{'lamB':>8}{'sigPN':>8}  feasible",
-         f"{'optimisation':<14}{g(o.get('J')):>9}{g(o.get('K_K0'), '{:.3f}'):>8}{g(o.get('lamB_ratio'), '{:.3f}'):>8}"
-         f"{g(o.get('sig_ratio'), '{:.3f}'):>8}",
-         f"{'shifted':<14}{g(s.get('J')):>9}{g(s.get('K_K0'), '{:.3f}'):>8}{g(s.get('lamB_ratio'), '{:.3f}'):>8}"
-         f"{g(s.get('sig_ratio'), '{:.3f}'):>8}  {s.get('feasible')}{'  ' + s['error'] if s.get('error') else ''}",
+         f"objective: {o.get('objective') or s.get('objective') or '-'} (J = the run's objective; ln K/K0 separate)",
+         f"{'grid':<14}{'J':>9}{'lnK/K0':>9}{'K/K0':>8}{'P/P0':>8}{'lamB':>8}{'sigPN':>8}  {'governing':<10} feasible",
+         *(f"{lab:<14}{g(r.get('J')):>9}{g(r.get('J_K')):>9}{g(r.get('K_K0'), '{:.3f}'):>8}"
+           f"{g(r.get('P_P0'), '{:.3f}'):>8}{g(r.get('lamB_ratio'), '{:.3f}'):>8}{g(r.get('sig_ratio'), '{:.3f}'):>8}"
+           f"  {str(r.get('governing') or '-'):<10} {r.get('feasible')}{'  ' + r['error'] if r.get('error') else ''}"
+           for lab, r in (("optimisation", o), ("shifted", s))),
+         *([f"floors: K/K0 ≥ {o.get('floor_K')}, P/P0 ≥ {o.get('floor_P')}"] if o.get("objective") == "weighted"
+           else []),
          "",
-         f"export h {e.get('h_mm')} mm: {e.get('faces')} faces, watertight {e.get('watertight')}, bodies "
-         f"{e.get('bodies')}, enclosed voids {(e.get('voids') or {}).get('enclosed')}, escape holes {e.get('holes')}",
+         f"export h {e.get('h_mm')} mm: {e.get('faces')} faces, watertight {e.get('watertight')}, material bodies "
+         f"{e.get('bodies')}, shells {e.get('shells')}, enclosed voids {(e.get('voids') or {}).get('enclosed')}, "
+         f"escape holes {e.get('holes')}" + (f", UNVENTED voids {(e.get('voids') or {}).get('unvented')} (trapped "
+                                            f"powder: manufacturing warning)"
+                                            if (e.get('voids') or {}).get('unvented') else ""),
+         f"fins removed by the export {g((e.get('min_wall') or {}).get('fins_removed_mm3'), '{:.2f}')} mm³ (check, "
+         f"expected ≈ 0), void → material {g((e.get('min_wall') or {}).get('void_to_material_mm3'), '{:.2f}')} mm³",
          f"wall mm (nominal): min {g(w.get('min'), '{:.3f}')}, p05 {g(w.get('p05'), '{:.3f}')}, median "
          f"{g(w.get('median'), '{:.3f}')}, max {g(w.get('max'), '{:.3f}')}; min off the hole rims "
          f"{g(w.get('min_off_rims'), '{:.3f}')}",
@@ -211,24 +229,37 @@ def _evaluate_fn(evaluate):
     return fn
 
 
-def rescore_shift(ctx, xi, phase: int, D_comp: float, evaluate=None, log=print, hollow=None) -> dict:
-    """C2 evaluate on the final-phase grid shifted by ½ h_e in x, y, z. Errors are recorded, not raised."""
+# keys of a C2 score kept in summary.json opt/shift (§8: the run's own objective J; J_K = ln K/K0 kept separate)
+SCORE_KEYS = ("objective", "J", "J_K", "K_K0", "P_P0", "lamB_ratio", "sig_ratio", "mass_err", "governing", "floor_K",
+              "floor_P")
+
+
+def score(ctx, xi, phase: int, D_comp: float, evaluate=None, log=print, hollow=None, shifted: bool = True) -> dict:
+    """C2 evaluate on the final-phase grid (shifted by ½ h_e in x, y, z, or the optimisation grid itself). Errors are
+    recorded, not raised."""
     h_e = float(ctx.cfg["grid"]["phases"][phase]["h_e"])
-    s = 0.5 * h_e
+    s = 0.5 * h_e if shifted else 0.0
+    label = f"shifted grid (+{s:g} mm)" if shifted else "optimisation grid"
     t0 = time.time()
     try:
-        r = dict(_evaluate_fn(evaluate)(ctx, xi, phase, shift=(s, s, s), D_comp=D_comp, **_hk(hollow)))
-        out = {k: r.get(k) for k in ("J", "K_K0", "lamB_ratio", "sig_ratio", "mass_err", "governing")}
+        r = dict(_evaluate_fn(evaluate)(ctx, xi, phase, shift=(s, s, s) if shifted else None, D_comp=D_comp,
+                                        **_hk(hollow)))
+        out = {k: r.get(k) for k in SCORE_KEYS}
         out["feasible"] = bool(r.get("feasible", False))
         out["error"] = None
     except Exception as e:                                # recorded; the decision rejects
-        log(f"[finalise] shifted-grid re-score FAILED: {e!r}")
-        out = dict(J=None, K_K0=None, lamB_ratio=None, sig_ratio=None, mass_err=None, governing=None, feasible=False,
-                   error=repr(e)[:300])
+        log(f"[finalise] {label} re-score FAILED: {e!r}")
+        out = dict({k: None for k in SCORE_KEYS}, feasible=False, error=repr(e)[:300])
     out.update(shift_mm=[s, s, s], seconds=time.time() - t0)
-    log(f"[finalise] shifted grid (+{s:g} mm): J {out['J']} K/K0 {out['K_K0']} lamB {out['lamB_ratio']} sig "
-        f"{out['sig_ratio']} feasible {out['feasible']} ({out['seconds']:.0f} s)")
+    log(f"[finalise] {label}: {out.get('objective')} J {out['J']} (ln K/K0 {out.get('J_K')}) K/K0 {out['K_K0']} P/P0 "
+        f"{out.get('P_P0')} lamB {out['lamB_ratio']} sig {out['sig_ratio']} governing {out['governing']} feasible "
+        f"{out['feasible']} ({out['seconds']:.0f} s)")
     return out
+
+
+def rescore_shift(ctx, xi, phase: int, D_comp: float, evaluate=None, log=print, hollow=None) -> dict:
+    """`score` on the shifted grid."""
+    return score(ctx, xi, phase, D_comp, evaluate, log, hollow, shifted=True)
 
 
 def sensitivity(ctx, xi, phase: int, D_comp: float, out_dir: str, evaluate=None, log=print, hollow=None) -> dict:
@@ -389,6 +420,13 @@ def finalise(run_dir: str, ctx=None, *, out_dir: str | None = None, rescore: boo
             _free_device()
             hwm_reset()
             pkr = _peak_gpu()
+            # §8: the final design (the best growth boundary, possibly not the last history row) scored with the
+            # run's own objective on the optimisation grid; history-derived values kept as opt_history
+            o_s = score(ctx, xi, last, D_comp, evaluate, log, hollow, shifted=False)
+            _free_device()
+            if not o_s.get("error"):
+                opt_hist = {k: opt.get(k) for k in ("J", "K_K0", "lamB_ratio", "sig_ratio", "feasible")}
+                opt.update({k: o_s.get(k) for k in SCORE_KEYS}, feasible=o_s["feasible"], history=opt_hist)
             shift = rescore_shift(ctx, xi, last, D_comp, evaluate, log, hollow)
             peak_rescore = dict(gpu_gib=pkr.stop() if pkr is not None else None, host_gib=hwm_gib())
             shift["peak"] = peak_rescore
@@ -457,7 +495,8 @@ def finalise(run_dir: str, ctx=None, *, out_dir: str | None = None, rescore: boo
                       delta_mm=mc.get("delta"), V_target_mm3=V0, V_final_mm3=Vf, density_g_mm3=rho),
             opt=opt, shift=shift,
             export=dict(h_mm=h, faces=mesh.get("faces"), watertight=mesh.get("watertight_manifold"),
-                        bodies=mesh.get("bodies"), volume_mm3=Vf, volume_rel=mesh.get("volume_rel"),
+                        bodies=mesh.get("bodies"), shells=mesh.get("shells"), void_shells=mesh.get("void_shells"),
+                        shell_volumes_mm3=mesh.get("shell_volumes_mm3"), volume_mm3=Vf, volume_rel=mesh.get("volume_rel"),
                         holes=(ex.get("voids") or {}).get("holes", 0), voids=ex.get("voids") or dict(total=0, enclosed=0),
                         wall=dict(min=w.get("min_nominal"), p05=w.get("p05_nominal"), median=w.get("median_nominal"),
                                   max=w.get("max_nominal"), min_as_built=w.get("min_as_built"),
