@@ -15,7 +15,7 @@ from pathlib import Path
 
 import pymeshlab
 
-NAMES = ("final_design", "original", "uniform_shell")
+NAMES = ("final_design",)   # the original solid is unchanged between runs: keep the existing original_preview.stl
 
 
 def measures(ms):
@@ -48,10 +48,12 @@ def main():
     ap.add_argument("out_dir", type=Path)
     ap.add_argument("--faces", type=int, default=500_000)
     ap.add_argument("--max-dvol", type=float, default=0.005)
+    ap.add_argument("--names", nargs="+", default=list(NAMES))
     a = ap.parse_args()
     a.out_dir.mkdir(parents=True, exist_ok=True)
-    report = {}
-    for name in NAMES:
+    pj = a.out_dir / "previews.json"   # entries for other meshes (e.g. original) are kept
+    report = json.loads(pj.read_text()) if pj.exists() else {}
+    for name in a.names:
         src = a.run_dir / f"{name}.stl"
         if not src.exists():
             print(f"[skip] {src} missing", flush=True)
@@ -82,7 +84,7 @@ def main():
                         "preview_bytes": out.stat().st_size, "seconds": time.time() - t0}
         print(f"[{name}] wrote {out} ({out.stat().st_size / 1e6:.1f} MB)", flush=True)
         del ms, full, dm
-    (a.out_dir / "previews.json").write_text(json.dumps(report, indent=2))
+    pj.write_text(json.dumps(report, indent=2))
 
 
 if __name__ == "__main__":

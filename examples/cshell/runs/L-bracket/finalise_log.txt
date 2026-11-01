@@ -1,0 +1,20 @@
+[finalise] design: start solid (xi_solid_phase1.npy, D_comp 4 mm), optimiser J +0.0687
+[finalise] optimisation grid: weighted J 0.06868469259908251 (ln K/K0 0.08692175357901202) K/K0 1.0908113242968438 P/P0 1.051741783898513 lamB 1.062008272804745 sig 0.9508037340806524 governing strength feasible True (136 s)
+[finalise] shifted grid (+0.2 mm): weighted J 0.06997898536266922 (ln K/K0 0.08691677194577038) K/K0 1.0908058902884255 P/P0 1.05447308722875 lamB 1.0606663674580137 sig 0.9483409499994719 governing strength feasible True (155 s)
+[finalise] shifted-grid re-score peak: GPU 12.89776611328125 GiB, host 16.004150390625 GiB
+[export] min wall: void → material 1.84 mm³ (≥ 1.5 mm from the outside), fins removed 125.94 mm³ (< 1.30 mm between voids)
+[export] A_geometry_gpu: 3.51 s
+[export] B2_fill_islands: 1.22 s
+[export] cleanup: {'opening': 'smooth distance-based ψ (GPU)', 'void_raw_mm3': 4774.432000000001, 'opening_removed_mm3': 394.8320000000001, 'void_components_after_opening': 4, 'enclosed_voids_filled': 0, 'enclosed_filled_mm3': 0.0, 'material_components': 1, 'islands_removed': 0, 'islands_removed_mm3': 0.0, 'void_clean_mm3': 4503.704000000001}
+[export] C_holes: 0.43 s
+[export] D_mass: 1.29 s
+[export] E1_marching_cubes_0: 1.23 s
+[export] E2_weld_checks: 3.81 s
+[export] E1_marching_cubes_1: 1.1 s
+[export] E2_weld_checks: 3.84 s
+[export] E3_stl: 0.12 s
+[export] E4_wall_thickness: 1.59 s
+[finalise] export: 1562200 faces, watertight True, bodies 1, V/V_target-1 +4.57e-06, delta -0.0269 mm, 19 s, peak GPU 1.97772216796875 GiB host 5.23 GiB; ok
+[finalise] DECISION: cshell design accepted: J = +0.0687 (optimisation grid), +0.0700 (shifted grid) > ln(1 + g_min) = 0.0198, feasible, export mass-matched and watertight
+[finalise] report: /projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/SR_VAL4/L-bracket/report.pdf
+[finalise] done in 321 s

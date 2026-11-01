@@ -1,11 +1,11 @@
 #!/bin/bash
 # Decimated preview STLs for one part (CPU job). From the repo root:
-#   sbatch --mem=160G examples/cshell/runs/make_previews.sh <full_run_dir> <part>
-# e.g. <full_run_dir> = /projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/FULL/MBB
+#   sbatch --mem=48G examples/cshell/runs/make_previews.sh <full_run_dir> <part>
+# e.g. <full_run_dir> = /projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/SR_VAL4/MBB
 #SBATCH --job-name=cshell_previews
-#SBATCH --cpus-per-task=72
-#SBATCH --mem=160G
-#SBATCH --time=03:00:00
+#SBATCH --cpus-per-task=8
+#SBATCH --mem=48G
+#SBATCH --time=00:40:00
 #SBATCH --output=logs/%x_%j.out
 set -euo pipefail
 source cshell/cluster/env.sh; trap 'rm -rf "$TMPDIR"' EXIT
