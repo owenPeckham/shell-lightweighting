@@ -81,6 +81,8 @@ class DesignSpace:
     a_cl: Any = None             # closed inset ≥ a_hi (None: a_hi); reached exactly for ξ̃ᵃ ≥ closure_xi (inset_map)
     a_top: Any = None            # top of the open branch, r_MA − v_min/2 (None: a_hi; inset_map)
     closure_band: float = 0.05   # w: a blends from the open branch to a_cl over ξ̃ᵃ ∈ [ξ_c − w, ξ_c]
+    closure_skirt: Any = None    # Helmholtz filter F_c (apply/adjoint) of the closure skirt (None: off; `closure_skirt`)
+    skirt_gain: float = 2.5      # κ: G = S(κ F_c k); κ ≥ 2 makes G = 1 on the border of a large closed region
 
     def tau_d(self, xp=np):
         return xp.asarray(self.taper_d) if self.taper_d is not None else (~xp.asarray(self.passive)).astype(float)
@@ -129,6 +131,7 @@ class State:
     cl: Any = None               # closed vertices (1.0 where ξ̃ᵃ ≥ closure_xi) for the cell closure rule; None: off
     dadlo: Any = None            # ∂a/∂a_lo; None: 1 − ξ̂ᵃ
     dadxt: Any = None            # ∂a/∂ξ̃ᵃ at fixed d; None: (a_hi − a_lo) dξ̂ᵃ/dξ̃ᵃ
+    skirt: Any = None            # closure-skirt partials (`closure_skirt`); None: off (a = the inset map's a)
 
 
 def closure_projection(xp, xt, xi_c):
@@ -164,10 +167,37 @@ def design_vertex_fields(xp, ds: "DesignSpace", xi_d, xi_a) -> dict:
     d = ds.d_hi * xt_d
     a_lo, da_lo = softplus(xp, ds.t_min - d, ds.soft_w)          # D1; da_lo/dd = −σ
     a, dadlo, dadxt = inset_map(xp, ds, xt_a, xh_a, dxh, a_lo)
+    sk = None
+    if ds.closure_skirt is not None:
+        a, sk = closure_skirt(xp, ds, a)
     # export closure rule (sr-fix 2): closed vertices; a cell with every positive-weight vertex closed has no void
     cl = None if (ds.closure_xi is None or ds.a_top is None) else (xt_a >= ds.closure_xi).astype(float)
     return dict(xt_d=xt_d, xt_a=xt_a, xh_a=xh_a, dxh_a=dxh, d=d, a=a, a_lo=a_lo, da_lo=-da_lo, dadlo=dadlo,
-                dadxt=dadxt, cl=cl)
+                dadxt=dadxt, cl=cl, skirt=sk)
+
+
+def closure_skirt(xp, ds: "DesignSpace", a0):
+    """sr-v4 (PLAN_single_run §8 item 3, fins and void roughness at closure borders): the inset map closes a vertex
+    over the band ξ̃ᵃ ∈ [ξ_c − w, ξ_c], which on Γ_h is narrower than one triangle (ξ̃ᵃ varies over the filter radius,
+    a by a_cl − a_open ~ 2-15 mm), so the void ended in a wall that followed the triangle and closest-point borders:
+    a saw-tooth whose material teeth the export removed as fins. The skirt spreads closure over the surface:
+      k = S((a0 − r_MA)/(a_cl − r_MA))   closedness: 0 while a0 ≤ r_MA (open, also the solid start), 1 at a0 = a_cl,
+      G = S(κ F_c k)                     F_c: Helmholtz filter of radius closure_skirt_mm (G = 1 on a closed border),
+      a = a0 + (a_cl − a0) G.
+    Closed vertices keep a = a_cl exactly; next to a closed region a rises smoothly to a_cl over ~2 r_c, so the void
+    tapers to a cap resolved by the mesh. Returns (a, partials for `closure_skirt_adjoint`)."""
+    a_cl = ds.a_hi if ds.a_cl is None else ds.a_cl
+    span = xp.maximum(a_cl - ds.r_ma, 1e-9)
+    k, dk = smoothstep(xp, (a0 - ds.r_ma) / span)
+    z = ds.skirt_gain * ds.closure_skirt.apply(k)
+    G, dG = smoothstep(xp, z)
+    cap = a_cl - a0
+    return a0 + cap * G, dict(G=G, w=ds.skirt_gain * dG * cap, dk=dk / span)
+
+
+def closure_skirt_adjoint(ds: "DesignSpace", sk: dict, g_a):
+    """∂R/∂a0 from ∂R/∂a through the closure skirt: g_a (1 − G) + k′ ⊙ F_cᵀ (κ S′(κ F_c k) (a_cl − a0) g_a)."""
+    return g_a * (1.0 - sk["G"]) + sk["dk"] * ds.closure_skirt.adjoint(sk["w"] * g_a)
 
 
 def inset_map(xp, ds: "DesignSpace", xt_a, xh_a, dxh, a_lo):
@@ -243,7 +273,8 @@ class DesignMap:
         else:
             a_used, dab, b_o = a, xp.ones_like(a), 0.0
         st = State(xt_d, xt_a, d, a, a_used, a_lo, da_lo, dab, None, None, None, None, as_built, b_o,
-                   xh_a=f["xh_a"], dxh_a=f["dxh_a"], dadlo=f["dadlo"], dadxt=f["dadxt"], cl=f["cl"])
+                   xh_a=f["xh_a"], dxh_a=f["dxh_a"], dadlo=f["dadlo"], dadxt=f["dadxt"], cl=f["cl"],
+                   skirt=f["skirt"])
         return self._cells(st)
 
     def _cells(self, st: State) -> State:
@@ -314,6 +345,8 @@ class DesignMap:
         xp, ds = self.xp, self.ds
         xh = st.xit_a if st.xh_a is None else st.xh_a
         g_a = g_aused * st.dab_da
+        if st.skirt is not None:
+            g_a = closure_skirt_adjoint(ds, st.skirt, g_a)            # ∂/∂a0, a0 = the inset map's a
         dadlo = (1.0 - xh) if st.dadlo is None else st.dadlo          # ∂a/∂a_lo (inset_map)
         g_d = g_d + g_a * st.da_lo * dadlo
         g_xt_d = g_d * ds.d_hi * ds.tau_d(xp)                         # ξ̃ᵈ = τ_d clip(Fξᵈ)

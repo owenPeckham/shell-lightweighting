@@ -504,6 +504,11 @@ def design_space(ctx: Context, phase: int, D_comp: float, hollow=None, h_g: floa
         # sr-fix 2: open voids are at least v_min across (a ≤ r_MA − v_min/2), as the export's opening keeps them;
         # thinner voids exist only in the closure band, so the optimiser never counts mass the export fills back
         ds.a_top = np.minimum(ctx.r_ma - 0.5 * v_min, a_hi)
+    r_c = float(d.get("closure_skirt_mm", 0.0) or 0.0)
+    if r_c > 0 and ds.closure_xi is not None:
+        # sr-v4: closure spreads over the surface (design.closure_skirt), so the void ends in a mesh-resolved taper
+        # instead of a saw-tooth wall along the triangle borders of the closure band (export fins)
+        ds.closure_skirt = ctx.surf.filter(r_c)
     ds.taper_d = taper_weight(dist_p, r_f) if taper else None
     ds.taper_a = taper_a(ctx, passive, H, r_f, dist_p)
     return ds, dict(d_hi_by_comp=d_hi >= D_comp - 1e-9, passive_parts=dict(mount=int(ctx.mount.sum()),

@@ -275,3 +275,115 @@ def test_hollow_sphere_multi_shell(tmp_path):
     assert filled["mesh"]["bodies"] == 1 and filled["ok"]
     assert abs(filled["mesh"]["volume_rel"]) <= 1e-3                   # material conserved
     assert filled["mass_correction"]["delta"] < sealed["mass_correction"]["delta"]   # filled void paid by δ < 0
+
+
+# ---- sr-v4 (PLAN_single_run §8 item 3): closure skirt; fins and void-surface roughness at a closure border --------
+def _disc_problem(skirt: float):
+    """Disc R 12, thickness 8 (r_MA = 4 on the caps), Γ_h = Γ₀ remeshed to ≤ 0.75 mm edges. The inset comes from the
+    optimiser's map (`design.design_vertex_fields`, identity filter so ξ̃ᵃ is prescribed): open (ξ̃ᵃ = 0.5, a ≈ a_top,
+    a ≈ 2.3, void ≈ 3.4 mm across) inside ρ < 5, closed (ξ̃ᵃ = 1, a = a_cl) beyond ρ ≈ 8, a smooth ξ̃ᵃ ramp in between (as after the
+    design filter), the side wall passive. Without the skirt the band ξ̃ᵃ ∈ [0.8, 0.9] spans less than a triangle."""
+    from cshell.design import DesignSpace, design_vertex_fields
+    from cshell.surface import HelmholtzFilter
+    import igl
+    m = trimesh.creation.cylinder(radius=12.0, height=8.0, sections=128)
+    V, T = trimesh.remesh.subdivide_to_size(m.vertices, m.faces, max_edge=0.75, max_iter=20)
+    m = trimesh.Trimesh(V, T, process=True)
+    m.merge_vertices()
+    V, T = np.asarray(m.vertices, float), np.asarray(m.faces, np.int64)
+    nv = len(V)
+    L = -igl.cotmatrix(V, T)
+    M = igl.massmatrix(V, T, igl.MASSMATRIX_TYPE_VORONOI)
+
+    class _Id:
+        def apply(self, x):
+            return np.asarray(x, float)
+
+        adjoint = apply
+    rho = np.hypot(V[:, 0], V[:, 1])
+    passive = np.abs(V[:, 2]) < 4.0 - 1e-6                              # side wall
+    r = np.full(nv, 4.0)
+    ds = DesignSpace(r_ma=r, a_hi=r + 0.3, d_hi=np.zeros(nv), area=np.asarray(M.diagonal()), passive=passive,
+                     filt=_Id(), closure_xi=0.9, a_cl=r + 0.3, a_top=r - 1.5, closure_band=0.1)
+    if skirt > 0:
+        ds.closure_skirt = HelmholtzFilter(M, L, skirt)
+    u = np.clip((rho - 5.0) / 3.0, 0.0, 1.0)
+    xi_a = 0.5 + 0.5 * u * u * (3 - 2 * u)
+    f = design_vertex_fields(np, ds, np.zeros(nv), xi_a)
+    closed = f["xt_a"] >= 0.9
+    dz = ex.Design(V, T, V, T, d=f["d"], a=f["a"], d_hi=np.zeros(nv), active=~passive, closed=closed)
+    return dz, V, T
+
+
+def _void_roughness(stl, V0, T0, sigma=1.0):
+    """(flat, rim, loops): roughness in µm of the exported void. flat: high-pass RMS of the void-surface height −φ by
+    the SR_Q2 method (Gaussian-weighted mean of same-side neighbours within 2.5 σ subtracted) over the void faces at
+    ρ < 1.5 (the open, flat part, ≥ 2.5 mm from the void end: ideally 0, so this is the export's own roughness). rim: high-pass RMS (Gaussian σ of
+    arc length) of the radius of the void's outline in the mid-plane z = 0, i.e. of where the void ends (the closure
+    border): a saw-tooth end gives a large value, a smooth taper a small one."""
+    import igl
+    from scipy.ndimage import gaussian_filter1d
+    from scipy.spatial import cKDTree
+    m = trimesh.load(stl)
+    X = m.triangles_center
+    nrm, area = m.face_normals, m.area_faces
+    S, I, _ = igl.signed_distance(X, V0, T0)[:3]
+    N0 = trimesh.Trimesh(V0, T0, process=False).face_normals
+    ids = np.flatnonzero(np.einsum("ij,ij->i", nrm, N0[I]) < -0.5)
+    kd = cKDTree(X[ids])
+    ev = ids[np.hypot(X[ids, 0], X[ids, 1]) < 1.5]
+    res = np.zeros(len(ev))
+    for n_, (j, lst) in enumerate(zip(ev, kd.query_ball_point(X[ev], 2.5 * sigma))):
+        k = ids[np.asarray(lst, np.int64)]
+        k = k[nrm[k] @ nrm[j] > 0.5]
+        w = area[k] * np.exp(-0.5 * np.sum((X[k] - X[j]) ** 2, 1) / sigma ** 2)
+        res[n_] = -S[j] + np.sum(w * S[k]) / np.sum(w)
+    flat = 1e3 * float(np.sqrt(np.sum(area[ev] * res ** 2) / np.sum(area[ev])))
+    sec = m.section(plane_origin=[0, 0, 1e-3], plane_normal=[0, 0, 1])
+    loops = [p for p in sec.discrete if np.hypot(p[:, 0], p[:, 1]).max() < 11.0 and len(p) > 20]
+    hp = []
+    for p in loops:
+        p = np.vstack([p, p[:1]])
+        s = np.r_[0.0, np.cumsum(np.linalg.norm(np.diff(p, axis=0), axis=1))]
+        su = np.arange(0.0, s[-1], 0.02)
+        rho = np.interp(su, s, np.hypot(p[:, 0], p[:, 1]))
+        hp.append(rho - gaussian_filter1d(rho, sigma / 0.02, mode="wrap"))
+    rim = 1e3 * float(np.sqrt(np.mean(np.concatenate(hp) ** 2))) if hp else float("nan")
+    return flat, rim, len(loops)
+
+
+@pytest.fixture(scope="module")
+def closure_border(tmp_path_factory):
+    out = tmp_path_factory.mktemp("closure_border")
+    R = {}
+    for name, rc in (("band", 0.0), ("skirt", 1.5)):
+        dz, V, T = _disc_problem(rc)
+        s = _run(dz, out, name, t_min=1.5, b_v=0.2, v_min=3.0, void_min_mm3=5.0, mass_correct=False,
+                 wall_samples=5000)
+        R[name] = (s, _void_roughness(str(out / name / "final_design.stl"), V, T))
+    return R
+
+
+def test_closure_skirt_removes_fins(closure_border):
+    """The export's fin removal is a check: with the skirt the design has (almost) no material between voids thinner
+    than t_min − b_v (≤ 0.1 % of the void, < 1 % of the band-only design's); without it (closure inside the band
+    only) the saw-tooth void end has fins."""
+    for k, (s, rough) in closure_border.items():
+        print(k, "fins", s["min_wall"]["fins_removed_mm3"], "opened", s["cleanup"].get("opening_removed_mm3"),
+              "void", s["cleanup"].get("void_clean_mm3"), "roughness µm (flat, rim, loops)", rough)
+        assert s["mesh"]["watertight_manifold"] and s["mesh"]["bodies"] == 1
+    band, skirt = closure_border["band"][0], closure_border["skirt"][0]
+    void = skirt["cleanup"]["void_clean_mm3"]
+    assert band["min_wall"]["fins_removed_mm3"] > 1e-2 * void           # discriminates: fins without the skirt
+    assert skirt["min_wall"]["fins_removed_mm3"] <= min(1e-3 * void, 1e-2 * band["min_wall"]["fins_removed_mm3"])
+
+
+def test_closure_skirt_void_roughness(closure_border):
+    """Void roughness at the closure border: with the skirt the void end loses its saw-tooth (rim high-pass RMS
+    < ½ of the band-only design's). The flat-region RMS is printed only: on this 0.1 mm disc it is 36-42 µm with and
+    without the skirt (an export-level effect, not the closure mechanism; the parts' STL void RMS is measured by the
+    SR_Q2 script)."""
+    (fb, rb, nb), (fs, rs, ns) = closure_border["band"][1], closure_border["skirt"][1]
+    print("flat µm: band", fb, "skirt", fs, "| rim µm: band", rb, "skirt", rs)
+    assert nb >= 1 and ns >= 1
+    assert rs < 0.5 * rb

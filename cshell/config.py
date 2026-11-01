@@ -33,6 +33,7 @@ DEFAULTS = {
                "section_radius_mm": 3.0,    # section depth = max raw r_MA within this radius, smoothed (Context)
                "void_min_open": True,       # open voids ≥ void_min across: a ≤ r_MA − void_min/2 off the closure band
                "closure_band": 0.1,         # a blends open → closed over ξ̃ᵃ ∈ [closed_thr − band, closed_thr] (§8: 0.8-0.9)
+               "closure_skirt_mm": 1.5,     # sr-v4: closure spreads over ~2 r_c of Γ_h (design.closure_skirt); 0 = off
                "taper": True},              # d → 0 (and a → closed) towards passive regions over r_f (§2); False = hard
     "grid": {"phases": [{"h_e": 0.8, "h_g": 0.2}, {"h_e": 0.4, "h_g": 0.1}], "export_h_mm": 0.05,
              "rho_min": 1e-6, "tessellation_mm": 0.02, "active_margin_mm": 0.5,    # FE active-set dilation

@@ -162,10 +162,14 @@ def _tapered_space(closure=0.9):
     return ds, disc, V, T, H
 
 
+@pytest.mark.parametrize("skirt", [False, True])
 @pytest.mark.parametrize("as_built", [False, True])
-def test_directional_with_taper_and_projection(as_built):
-    """∂/∂ξ through F², τ_d, τ_a and the closure projection: FD agreement < 1e-6, Taylor slope ≈ 2."""
+def test_directional_with_taper_and_projection(as_built, skirt):
+    """∂/∂ξ through F², τ_d, τ_a, the closure projection and (sr-v4) the closure skirt: FD agreement < 1e-6, Taylor
+    slope ≈ 2."""
     ds, disc, V, T, H = _tapered_space()
+    if skirt:
+        ds.closure_skirt = _helmholtz(V, T, 1.0)
     dm = DesignMap(ds, disc)
     rng = np.random.default_rng(3)
     nv = len(V)
@@ -181,6 +185,8 @@ def test_directional_with_taper_and_projection(as_built):
     f0, st = fun(xd, xa)
     xc, w = ds.closure_xi, ds.closure_band                        # the closure band is exercised
     assert np.any((st.xit_a > xc - w) & (st.xit_a < xc))
+    if skirt:                                                      # the skirt is exercised (0 < G < 1 somewhere)
+        assert np.any((st.skirt["G"] > 0.05) & (st.skirt["G"] < 0.95))
     gv, gr = dm.volume_grad(st), dm.pull_rho_hat(st, gE)
     pred = np.array([gv[0] @ dd + gv[1] @ da, gr[0] @ dd + gr[1] @ da])
     h = 1e-6
@@ -276,6 +282,9 @@ def test_solid_start_gradient_nonzero():
     ds2.passive = np.zeros(nv, bool)
     a2 = DesignMap(ds2, disc).vertex_fields(np.zeros(nv), solid_start_xi_a(ds2))[3]
     assert np.abs(a2 - ds2.r_ma).max() < 0.05                     # F² ξ ≈ target (projected Richardson)
+    ds2.closure_skirt = _helmholtz(V, _sphere_faces(4)[1], 1.0)    # sr-v4 skirt: inactive at the solid start (k = 0)
+    a3 = DesignMap(ds2, disc).vertex_fields(np.zeros(nv), solid_start_xi_a(ds2))[3]
+    assert np.abs(a3 - a2).max() < 1e-3
     st = dm.forward(np.zeros(nv), xa, as_built=False)
     chi0, _ = heaviside(np, -disc.phi, disc.eps)
     V0 = float(chi0.sum()) * disc.h_g ** 3
@@ -283,6 +292,34 @@ def test_solid_start_gradient_nonzero():
     assert np.abs(dm.volume_grad(st)[1]).max() > 0
     st1 = dm.forward(np.zeros(nv), np.ones(nv), as_built=False)
     assert np.abs(dm.volume_grad(st1)[1]).max() == 0
+
+
+def test_closure_skirt_properties():
+    """sr-v4 closure skirt: closed vertices keep a = a_cl exactly, the skirt only raises a (closes), it vanishes far
+    from closed vertices, and the largest step of the void half-width (r_MA − a)⁺ across one Γ_h edge (the void end:
+    a saw-tooth wall when it closes within an edge) drops by more than half. The rise of a beyond r_MA, where the void
+    is already closed, is free to stay steep."""
+    ds, disc, V, T, H = _tapered_space()
+    nv = len(V)
+    ds.passive = np.zeros(nv, bool)
+    ds.taper_a = ds.taper_d = None
+    ds.filt = _helmholtz(V, T, 0.3)                                # steep ξ̃ᵃ at the cap border, as in the parts
+    xa = np.where(V[:, 2] > 2.0, 1.0, 0.3)                          # a closed cap
+    f0 = DesignMap(ds, disc).vertex_fields(np.zeros(nv), xa)
+    ds_s = DesignSpace(**{**ds.__dict__, "closure_skirt": _helmholtz(V, T, 1.5)})
+    f1 = DesignMap(ds_s, disc).vertex_fields(np.zeros(nv), xa)
+    xt, a0, a1 = f0[1], f0[3], f1[3]
+    cl = xt >= ds.closure_xi
+    assert cl.any() and (~cl).any()
+    assert np.array_equal(a0[cl], ds.a_cl[cl]) and np.array_equal(a1[cl], ds.a_cl[cl])
+    assert np.all(a1 >= a0 - 1e-12) and np.all(a1 <= np.maximum(ds.a_cl, a0) + 1e-12)
+    far = V[:, 2] < -4.0                                          # ≥ 4 r_c from the closed cap
+    assert np.abs(a1 - a0)[far].max() < 1e-2
+    E = np.unique(np.sort(np.concatenate([T[:, [0, 1]], T[:, [1, 2]], T[:, [2, 0]]]), 1), axis=0)
+    w0, w1 = np.maximum(ds.r_ma - a0, 0), np.maximum(ds.r_ma - a1, 0)
+    j0, j1 = np.abs(w0[E[:, 0]] - w0[E[:, 1]]).max(), np.abs(w1[E[:, 0]] - w1[E[:, 1]]).max()
+    print("max edge step of the void half-width: band", j0, "skirt", j1, "open max", w0.max())
+    assert j1 < 0.5 * j0
 
 
 def test_surface_distance_on_sphere():
