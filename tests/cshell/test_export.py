@@ -361,6 +361,7 @@ def test_b2_rod_end_to_end(tmp_path):
     ctx = Context(cfg, log=lambda *_: None)
     nv = ctx.surf.n_vertices
     xi = np.concatenate([np.full(nv, 0.5), np.zeros(nv)])               # ξᵈ = 0.5, ξᵃ = 0
-    s = ex.export_design(ctx, xi, str(tmp_path), h_x=0.1, tile=64, block=16, workers=_workers(), log=lambda *_: None)
+    s = ex.export_design(ctx, xi, str(tmp_path), h_x=0.1, tile=64, block=16, workers=_workers(), log=lambda *_: None,
+                         holes=True)                                    # escape holes are opt-in (§8)
     assert s["mesh"]["watertight_manifold"] and abs(s["mesh"]["volume"] / s["V0_mm3"] - 1) <= 2e-3
-    assert s["voids"]["without_hole"] == 0 and s["mesh"]["bodies"] == 1
+    assert s["voids"]["without_hole"] == 0 and s["mesh"]["bodies"] == 1 and s["mesh"]["shells"] == 1

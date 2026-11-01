@@ -419,9 +419,15 @@ class PhaseModel:
             dC = self.fe.dC_drho_hat(pr)
             J = 0.0 if base is None else float(np.log(base["C0"] / pr.compliance))
             dJ = -dC / pr.compliance
-            return dict(J=J, dJ=dJ, C=pr.compliance, lam_s=np.nan, mu_tilde=0.0, lam=np.nan, lam_b=np.inf,
-                        governing="stiffness", eig_iters=0, eig_converged=True, quantile=np.nan, sigma_pn=np.nan,
-                        modes=None, primal=pr, rho_active=r)
+            out = dict(J=J, dJ=dJ, C=pr.compliance, lam_s=np.nan, mu_tilde=0.0, lam=np.nan, lam_b=np.inf,
+                       governing="stiffness", eig_iters=0, eig_converged=True, quantile=np.nan, sigma_pn=np.nan,
+                       modes=None, primal=pr, rho_active=r, g={}, dg={}, P_P0=np.nan, lamB_ratio=np.nan,
+                       sig_ratio=np.nan, K_K0=np.nan if base is None else base["C0"] / pr.compliance)
+            if base is not None and "floor_K" in st.constraints:
+                out["g"]["floor_K"] = float(np.log(pr.compliance / base["C0"])
+                                            + np.log(self.ctx.cfg["objective"]["floor_stiffness"]))
+                out["dg"]["floor_K"] = dC / pr.compliance
+            return out
         ev = evaluate_weighted(self.fe, rho_hat, r, m, st, base, c_norm, prev_modes)
         bk = ev.parts["buckling"]
         out = dict(J=ev.J, dJ=ev.dJ, C=ev.C, lam_s=ev.lam_s, mu_tilde=ev.mu_tilde, lam=ev.lam, lam_b=ev.lam_b,

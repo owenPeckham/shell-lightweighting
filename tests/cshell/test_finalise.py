@@ -104,12 +104,15 @@ def test_finalise_accepts_and_writes_c3_summary(tmp_path, mocks):
         assert k in S, k
     assert S["decision"]["accepted"] is True, S["decision"]
     h_e = cfg["grid"]["phases"][-1]["h_e"]
-    ev = mocks["evaluate"][0]
+    e0, ev = mocks["evaluate"][0], mocks["evaluate"][1]     # §8: optimisation grid first, then the shifted grid
+    assert e0["shift"] is None and e0["phase"] == ev["phase"] and e0["D_comp"] == 6.0
     assert ev["phase"] == len(cfg["grid"]["phases"]) - 1 and ev["D_comp"] == 6.0
     assert np.allclose(ev["shift"], [0.5 * h_e] * 3)
     assert mocks["export"][0]["h_x"] == 0.2 and mocks["export"][0]["D_comp"] == 6.0
-    assert S["opt"]["J"] == pytest.approx(0.2) and S["opt"]["K_K0"] == pytest.approx(1.1)
-    assert S["opt"]["lamB_ratio"] == pytest.approx(1.02) and S["opt"]["sig_ratio"] == pytest.approx(0.97)
+    assert S["opt"]["J"] == pytest.approx(0.3) and S["opt"]["K_K0"] == pytest.approx(1.09)   # the final design, scored
+    H = S["opt"]["history"]                                   # the history's last row, kept for reference
+    assert H["J"] == pytest.approx(0.2) and H["K_K0"] == pytest.approx(1.1)
+    assert H["lamB_ratio"] == pytest.approx(1.02) and H["sig_ratio"] == pytest.approx(0.97)
     for k in ("J", "K_K0", "lamB_ratio", "sig_ratio", "feasible"):
         assert k in S["shift"], k
     for k in ("h_mm", "faces", "watertight", "volume_mm3", "holes", "voids", "wall"):
@@ -169,8 +172,8 @@ def test_out_dir_leaves_run_dir_untouched_legacy_run(tmp_path, mocks):
     S = fin.finalise(str(rd), ctx=_ctx(cfg), out_dir=str(out), evaluate=_evaluate(mocks))
     assert {p: p.stat().st_mtime_ns for p in rd.rglob("*")} == before
     assert (out / "config_used.json").exists() and (out / "history.csv").exists() and (out / "summary.json").exists()
-    assert S["opt"]["start"] == "neutral" and S["opt"]["K_K0"] == pytest.approx(1 / 0.9)
-    assert S["opt"]["lamB_ratio"] is None                                  # not in a Stage 2 history
+    assert S["opt"]["start"] == "neutral" and S["opt"]["history"]["K_K0"] == pytest.approx(1 / 0.9)
+    assert S["opt"]["history"]["lamB_ratio"] is None                       # not in a Stage 2 history
     assert mocks["export"][0]["out_dir"] == str(out)
     assert mocks["export"][0]["closed_thr"] == 0.9                       # config export.closed_thr (single chain)
 
