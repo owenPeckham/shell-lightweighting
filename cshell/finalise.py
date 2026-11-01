@@ -30,7 +30,8 @@ summary.json ("cshell.summary/2", units mm, g, s, GiB; null when not computed)
   opt {J, K_K0, lamB_ratio, sig_ratio, mass_err, start, xi_file, phase, D_comp}
   shift {J, K_K0, lamB_ratio, sig_ratio, feasible, governing, mass_err, shift_mm, seconds, error}
   export {h_mm, faces, watertight, bodies, volume_mm3, volume_rel, holes, voids {total, enclosed, holes, without_hole, per_void}, wall {min, p05, median,
-          max, min_as_built} (nominal, mm, ray casting), delta_mm, opening_removed_mm3, ok, why, file}
+          max, min_as_built, min_off_rims} (nominal, mm, ray casting; min_off_rims: samples off the escape-hole bores
+          and lips), min_wall (export min-wall step: void_to_material_mm3, fins_removed_mm3), delta_mm, opening_removed_mm3, ok, why, file}
   closed_area_frac (closed share of the active Γ_h area), hollow_area_frac (share of the whole Γ_h area over an open
   void), timing {phase_s [Σ t_geometry + t_fe + t_mma + t_restore per phase], finalise_s, export_s, rescore_s,
   context_s}, peak {gpu_gib, host_gib} (whole job: optimiser history and finalise), peak_export {gpu_gib, host_gib}
@@ -178,7 +179,8 @@ def summary_text(S: dict) -> str:
          f"export h {e.get('h_mm')} mm: {e.get('faces')} faces, watertight {e.get('watertight')}, bodies "
          f"{e.get('bodies')}, enclosed voids {(e.get('voids') or {}).get('enclosed')}, escape holes {e.get('holes')}",
          f"wall mm (nominal): min {g(w.get('min'), '{:.3f}')}, p05 {g(w.get('p05'), '{:.3f}')}, median "
-         f"{g(w.get('median'), '{:.3f}')}, max {g(w.get('max'), '{:.3f}')}",
+         f"{g(w.get('median'), '{:.3f}')}, max {g(w.get('max'), '{:.3f}')}; min off the hole rims "
+         f"{g(w.get('min_off_rims'), '{:.3f}')}",
          f"closed area {g(S.get('closed_area_frac'), '{:.1%}')} of active, hollow {g(S.get('hollow_area_frac'), '{:.1%}')}"
          " of the surface",
          "timing s: " + ", ".join(f"{k} {v:.0f}" for k, v in S["timing"].items() if isinstance(v, (int, float))),
@@ -458,7 +460,9 @@ def finalise(run_dir: str, ctx=None, *, out_dir: str | None = None, rescore: boo
                         bodies=mesh.get("bodies"), volume_mm3=Vf, volume_rel=mesh.get("volume_rel"),
                         holes=(ex.get("voids") or {}).get("holes", 0), voids=ex.get("voids") or dict(total=0, enclosed=0),
                         wall=dict(min=w.get("min_nominal"), p05=w.get("p05_nominal"), median=w.get("median_nominal"),
-                                  max=w.get("max_nominal"), min_as_built=w.get("min_as_built")),
+                                  max=w.get("max_nominal"), min_as_built=w.get("min_as_built"),
+                                  min_off_rims=(ex.get("wall_off_rims") or {}).get("min_nominal")),
+                        min_wall=ex.get("min_wall"),
                         delta_mm=mc.get("delta"), mesh_steps=mc.get("mesh_steps"),
                         opening_removed_mm3=(ex.get("cleanup") or {}).get("opening_removed_mm3"),
                         closed_thr=thr, ok=export_ok, why=export_why or None, file="final_design.stl",

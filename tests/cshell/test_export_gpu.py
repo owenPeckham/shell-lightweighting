@@ -136,3 +136,132 @@ def test_ambiguous_faces_cupy_equals_numpy():
     ra = ex.resolve_ambiguous_faces(a, np.float32(1e-3))
     rb = ex.resolve_ambiguous_faces(b, np.float32(1e-3))
     assert ra == rb and np.array_equal(a, b.get())
+
+
+# ---------------------------------------------------------------------------------------------------------------------
+# sr-q2: minimum wall (wall_cap + material opening) and voids without a clean escape-hole site
+# ---------------------------------------------------------------------------------------------------------------------
+def test_wall_cap_kernel_tilted_plane():
+    """Outside {n·x > 0}, void branch p = −n·x − 1 (wall 1.0 along n): wall_cap moves the void wall to n·x = −t_min
+    (true normal distance, any tilt) within h/2, and leaves cells beyond the search radius unchanged."""
+    import cupy as cp
+    h, tmin = 0.1, 1.5
+    Rw = int(math.ceil((tmin + h) / h)) + 2
+    rng_ = np.arange(-Rw, Rw + 1)
+    D = np.stack(np.meshgrid(rng_, rng_, rng_, indexing="ij"), -1).reshape(-1, 3)
+    q2 = (D * D).sum(1)
+    sel = q2 <= Rw * Rw
+    o = np.argsort(q2[sel], kind="stable")
+    off = cp.asarray(np.ascontiguousarray(D[sel][o], np.int32))
+    offd = cp.asarray((np.sqrt(q2[sel][o]) * h).astype(np.float32))
+    k = ex._gpu_module().get_function("wall_cap")
+    H, n = Rw, 48
+    m = n + 2 * H
+    x = (np.arange(m) - m / 2 + 0.5) * h
+    X = np.stack(np.meshgrid(x, x, x, indexing="ij"), -1)
+    for nv in ([1.0, 0, 0], [1.0, 1.0, 0], [1.0, 0.6, 0.3]):
+        nv = np.asarray(nv) / np.linalg.norm(nv)
+        s = X @ nv
+        O = s.astype(np.float32)
+        p = (-s - 1.0)[(slice(H, H + n),) * 3].astype(np.float32)
+        out, dm = cp.empty(n ** 3, cp.float32), cp.empty(n ** 3, cp.float32)
+        k(*ex._launch(n ** 3), (cp.asarray(O), cp.asarray(p), np.int32(m), np.int32(m), np.int32(H), np.int32(n),
+                                np.int32(n), np.int32(n), off, offd, np.int32(len(offd)), np.float32(tmin),
+                                np.float32(h), out, dm))
+        out = out.get().reshape(n, n, n)
+        sc = s[(slice(H, H + n),) * 3]
+        near = np.abs(sc + tmin) < h                                    # around the new wall: distance-like
+        assert np.max(np.abs(out[near] - (-sc[near] - tmin))) < 0.5 * h, nv
+        clear = np.abs(sc + tmin) > 0.5 * h                             # void exactly beyond t_min (sign)
+        assert np.array_equal((out > 0)[clear], (sc < -tmin)[clear]), nv
+        deep = sc < -(tmin + 2 * h + Rw * h)                            # beyond the search radius: unchanged
+        if deep.any():
+            assert np.allclose(out[deep], p[deep])
+        assert np.all(out <= p + 1e-6)                                  # only ever removes void
+
+
+def _sphere(sub=4, R=8.0):
+    m = trimesh.creation.icosphere(subdivisions=sub, radius=R)
+    return np.asarray(m.vertices), np.asarray(m.faces)
+
+
+def _run(dz, tmp_path, name, **kw):
+    V = dz.Vh
+    cfg = ex.ExportConfig(**{**dict(h_x=0.1, tile=64, block=16, wall_samples=40000, log=print), **kw})
+    return ex.GpuExporter(dz, cfg, normals=V / np.linalg.norm(V, axis=1, keepdims=True)).run(str(tmp_path / name))
+
+
+@pytest.fixture(scope="module")
+def tilted(tmp_path_factory):
+    """Sphere R 8 whose outer offset d steps from 0 to 1.4 mm across the equator over 1 mm (slope ≈ 1.4) with
+    a = 1.6 − d: the wall a + d = 1.6 along the radius, ≈ 1.6/√(1 + 1.4²) ≈ 0.93 mm normal to the tilted band."""
+    V, T = _sphere()
+    nv = len(V)
+    u = np.clip((V[:, 2] + 0.5) / 1.0, 0, 1)
+    d = 1.4 * u * u * (3 - 2 * u)
+    a = 1.6 - d
+    dz = ex.Design(V, T, V, T, d=d, a=a, d_hi=np.full(nv, 3.0), active=np.ones(nv, bool), closed=np.zeros(nv, bool))
+    out = tmp_path_factory.mktemp("tilted")
+    kw = dict(t_min=1.2, b_v=0.2, void_min_mm3=5.0, mass_correct=False)   # V ≠ the solid's: no δ (geometry only)
+    return _run(dz, out, "off", min_wall=False, **kw), _run(dz, out, "on", **kw)
+
+
+def test_min_wall_tilted_band(tilted):
+    off, on = tilted
+    lim = 1.2 - 0.2                                                     # t_min − b_v
+    print("off", off["wall_off_rims"], "on", on["wall_off_rims"], on["min_wall"])
+    assert off["wall_off_rims"]["min_nominal"] < lim                   # discriminates: thin walls without the cap
+    for s in (off, on):
+        assert s["mesh"]["watertight_manifold"] and s["mesh"]["bodies"] == 1
+    assert on["min_wall"]["void_to_material_mm3"] > 0
+    assert on["wall_off_rims"]["min_nominal"] >= lim                    # every wall off the hole rims ≥ t_min − b_v
+    assert on["wall_off_rims"]["n_nominal_below_t_min_minus_b_v"] == 0
+
+
+@pytest.fixture(scope="module")
+def fin(tmp_path_factory):
+    """Hollow sphere (d 0.9, a 2) with one closed vertex 2-ring at the north pole: the closure rule (cells whose
+    closest triangle is wholly closed have no void) leaves a cone of material, ~1 mm wide at the wall, through the
+    void to the centre (the SR_VAL2 MBB/Cantilever void-void fins)."""
+    V, T = _sphere()
+    nv = len(V)
+    top = int(np.argmax(V[:, 2]))
+    closed = np.zeros(nv, bool)
+    closed[top] = True
+    for _ in range(2):
+        closed |= np.isin(np.arange(nv), T[np.isin(T, np.flatnonzero(closed)).any(1)].ravel())
+    dz = ex.Design(V, T, V, T, d=np.full(nv, 0.9), a=np.full(nv, 2.0), d_hi=np.full(nv, 3.0),
+                   active=np.ones(nv, bool), closed=closed)
+    out = tmp_path_factory.mktemp("fin")
+    return _run(dz, out, "off", min_wall=False), _run(dz, out, "on")
+
+
+def test_min_wall_removes_closure_fins(fin):
+    off, on = fin
+    print("off", off["wall_off_rims"], off["wall"]["min_nominal"], "on", on["wall_off_rims"], on["wall"]["min_nominal"],
+          on["min_wall"])
+    lim = 1.5 - 0.2
+    assert off["wall_off_rims"]["min_nominal"] < lim                   # the fin is there without the fix
+    assert on["min_wall"]["fins_removed_mm3"] > 0
+    assert on["wall_off_rims"]["min_nominal"] >= lim
+    for s in (off, on):
+        assert s["ok"] and s["mesh"]["watertight_manifold"] and s["mesh"]["bodies"] == 1
+        assert abs(s["mesh"]["volume_rel"]) <= 1e-3
+
+
+def test_void_without_hole_site_is_filled(tmp_path):
+    """A void narrower than the hole's inner cap (ball of diameter 3.6 < 2 (r + h) = 4.2, hole_d 4) gets no clean escape-hole
+    site: it is filled (one body, no enclosed void) and δ restores the mass; without the fill it stays sealed."""
+    V, T = _sphere(sub=3, R=6.0)
+    nv = len(V)
+    dz = ex.Design(V, T, V, T, d=np.zeros(nv), a=np.full(nv, 4.2), d_hi=np.full(nv, 3.0),
+                   active=np.ones(nv, bool), closed=np.zeros(nv, bool))
+    kw = dict(void_min_mm3=5.0, wall_samples=5000, hole_d=4.0)
+    sealed = _run(dz, tmp_path, "sealed", fill_unholed=False, **kw)
+    filled = _run(dz, tmp_path, "filled", **kw)
+    print(sealed["voids"], sealed["mesh"]["bodies"], filled["voids"], filled["mesh"]["bodies"])
+    assert sealed["voids"]["holes"] == 0 and sealed["mesh"]["bodies"] == 2
+    assert filled["voids"]["filled_no_hole"] == 1 and filled["voids"]["enclosed"] == 0
+    assert filled["mesh"]["bodies"] == 1 and filled["ok"]
+    assert abs(filled["mesh"]["volume_rel"]) <= 1e-3                   # material conserved
+    assert filled["mass_correction"]["delta"] < sealed["mass_correction"]["delta"]   # filled void paid by δ < 0
