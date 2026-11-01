@@ -501,7 +501,7 @@ def finalise(run_dir: str, ctx=None, *, out_dir: str | None = None, rescore: boo
                         wall=dict(min=w.get("min_nominal"), p05=w.get("p05_nominal"), median=w.get("median_nominal"),
                                   max=w.get("max_nominal"), min_as_built=w.get("min_as_built"),
                                   min_off_rims=(ex.get("wall_off_rims") or {}).get("min_nominal")),
-                        min_wall=ex.get("min_wall"),
+                        min_wall={k: v for k, v in (ex.get("min_wall") or {}).items() if k != "fin_points"},
                         delta_mm=mc.get("delta"), mesh_steps=mc.get("mesh_steps"),
                         opening_removed_mm3=(ex.get("cleanup") or {}).get("opening_removed_mm3"),
                         closed_thr=thr, ok=export_ok, why=export_why or None, file="final_design.stl",

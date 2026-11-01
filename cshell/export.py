@@ -1762,7 +1762,7 @@ class GpuExporter(Exporter):
         cM = (slice(E1, E1 + n),) * 3          # core in the void ψ box
         b2 = (slice(R_v, R_v + n2),) * 3       # material-depth box in the void ψ box
         o2 = (slice(Hw - M, Hw + n + M),) * 3  # material-depth box in the region
-        wall_added, fins_removed = 0, 0
+        wall_added, fins_removed, fin_pts = 0, 0, []
         ext = dz.V0.max(0) - dz.V0.min(0)
         band_out = dz.d_out_max + delta_shell + 3.0 * h       # beyond: o > Δ + 2h for every δ in the bracket
         maxd = max(band_out + h, 0.5 * float(ext.min()) + 2.0 * h)   # interior points lie within ½ min extent of Γ₀
@@ -1848,7 +1848,13 @@ class GpuExporter(Exporter):
                         np.float32(floor_), Mo))
                     Mo = Mo.reshape(n, n, n)
                     P = cp.maximum(Pc[cM], cp.minimum(-Mo, Dm[cM]))
-                    fins_removed += int(((Pc[cM] <= 0) & (O[core] <= 0) & (P > 0)).sum())
+                    fmask = (Pc[cM] <= 0) & (O[core] <= 0) & (P > 0)
+                    nfin = int(fmask.sum())
+                    fins_removed += nfin
+                    if nfin and len(fin_pts) < 20000:          # §8 check: where the export still removes fins
+                        ijk = cp.stack(cp.nonzero(fmask), 1)[:: max(1, nfin // 200)].get()
+                        fin_pts.extend((lo_core + ijk * h).tolist())
+                    del fmask
                     del Pc, Dm, Sm, Mo
                 else:
                     P = cp.ascontiguousarray(Pe[cM])
@@ -1872,7 +1878,8 @@ class GpuExporter(Exporter):
                             min_wall=dict(on=mw, t_min_outer=cfg.t_min if mw else None,
                                           t_min_between_voids=2 * r_m if mw else None, R_w=R_w, R_m=M,
                                           void_to_material_mm3=wall_added * h ** 3,
-                                          fins_removed_mm3=fins_removed * h ** 3),
+                                          fins_removed_mm3=fins_removed * h ** 3,
+                                          fin_points=fin_pts[:20000]),
                             n_shell_cells=int(sum(len(s[0]) for s in self.S_out.values())),
                             n_void_wall_cells=int(sum(len(p[0]) for p in self.P_in.values())))
         if mw:
