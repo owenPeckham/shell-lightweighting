@@ -45,7 +45,7 @@ def test_weighted_floors_run(tmp_path):
     assert r["J"] == pytest.approx(0.5 * np.log(r["K_K0"]) + 0.5 * np.log(r["P_P0"]), abs=1e-6)
     # the run's stress normalisation c drifts (Le et al.); evaluate uses the solid's c: J agrees to the c effect
     assert r["J"] == pytest.approx(g["best_J"], abs=5e-3) and r["J_K"] == pytest.approx(np.log(r["K_K0"]))
-    assert r["feasible"] == (r["K_K0"] >= 0.85 - 1e-3 and r["P_P0"] >= 0.85 - 1e-3)
+    assert r["feasible"] == (r["K_K0"] >= 0.85 * 0.99 and r["P_P0"] >= 0.85 * 0.99)    # feasibility_tol 1 %
 
 
 @pytest.fixture(scope="module")

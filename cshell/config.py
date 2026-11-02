@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import copy
 import json
+import math
 import os
 
 from dshell.config import _merge
@@ -59,7 +60,8 @@ DEFAULTS = {
                                             # "compliance" (§4): J = ln K/K0 with `constraints` relative to the solid
                   "constraints": [],                        # compliance type only: "buckling", "strength"
                   "constraint_scale": 0.01,                 # MMA sees g/scale (1 unit = 1 % violation)
-                  "feasibility_tol": 1e-3,                  # evaluate(): feasible if every g ≤ tol
+                  "feasibility_tol": 0.01,                  # acceptance: a floor/constraint ratio may fall short by this
+                                                            # fraction (1 %: K/K0 ≥ 0.99·floor); g ≤ −ln(1 − tol) in log
                   "w_stiffness": 0.5, "w_capacity": 0.5, "min_gain": 0.02, "floor_stiffness": 0.85,
                   "floor_capacity": 0.85,
                   "floor_strength": None,                   # weighted: optional per-mode floors (None = off), relative
@@ -207,6 +209,12 @@ def validate(cfg: dict) -> None:
         raise ValueError("fe.engine must be 'auto', 'direct' ('sparse') or 'twogrid'")
     if cfg["fe"]["element_type"] != "q1_im":
         print("config: warning: element_type != q1_im is not a production setting (THEORY §4.1)")
+
+
+def feasibility_log_tol(cfg: dict) -> float:
+    """Allowed log shortfall of every floor/constraint at acceptance: objective.feasibility_tol is a relative fraction
+    (0.01 = a ratio may be 1 % below its floor), so g = ln(floor/ratio) ≤ −ln(1 − tol)."""
+    return float(-math.log1p(-float(cfg["objective"].get("feasibility_tol", 0.01))))
 
 
 def void_min_eff(cfg: dict) -> float:

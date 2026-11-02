@@ -1,10 +1,10 @@
 {
   "final_design": {
-    "source": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/SR_ESC1/Cantilever/final_design.stl",
+    "source": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/SR_ESC1b/Cantilever/final_design.stl",
     "full": {
-      "faces": 3360836,
-      "vertices": 1680410,
-      "volume_mm3": 60940.75893553938,
+      "faces": 3353652,
+      "vertices": 1676818,
+      "volume_mm3": 60940.7634011469,
       "boundary_edges": 0,
       "non_manifold_edges": 0,
       "non_manifold_vertices": 0,
@@ -14,16 +14,16 @@
     "preview": {
       "faces": 500000,
       "vertices": 249992,
-      "volume_mm3": 60940.32619546713,
+      "volume_mm3": 60940.20819171175,
       "boundary_edges": 0,
       "non_manifold_edges": 0,
       "non_manifold_vertices": 0,
       "connected_components": 1,
       "watertight": true
     },
-    "rel_volume_change": -7.100995783493325e-06,
+    "rel_volume_change": -9.110641287835008e-06,
     "preview_bytes": 25000084,
-    "seconds": 57.70189714431763
+    "seconds": 58.07540965080261
   },
   "original": {
     "source": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/FULL/Cantilever/original.stl",

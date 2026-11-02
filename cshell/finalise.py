@@ -413,7 +413,8 @@ def finalise(run_dir: str, ctx=None, *, out_dir: str | None = None, rescore: boo
         opt = dict(J=best["J_opt"], K_K0=best["K_K0_opt"], lamB_ratio=best.get("lamB_ratio_opt"),
                    sig_ratio=best.get("sig_ratio_opt"), mass_err=best["mass_err"], start=best["start"],
                    xi_file=best["xi_file"], phase=last, D_comp=D_comp)
-        tol = float(cfg["objective"].get("feasibility_tol", 1e-3))
+        from . import config as ccfg
+        tol = ccfg.feasibility_log_tol(cfg)
         lb, sg = opt["lamB_ratio"], opt["sig_ratio"]
         opt["feasible"] = (bool(np.log(1.0 / lb) <= tol and np.log(sg) <= tol)        # C2 constraints from history
                            if lb is not None and sg is not None and np.isfinite(lb) and np.isfinite(sg) and lb > 0

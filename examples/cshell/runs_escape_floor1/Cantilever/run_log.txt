@@ -1,317 +1,294 @@
-[cshell] phase 0: h_e 0.8 h_g 0.2, band 28.2 M cells, element box (212, 187, 187), passive {'mount': 21494, 'thin': 11092}, V0 60957.7 mm³, closed-design V/V0-1 -2.22e-16, stress mask {'r_ex_mm': {10: 2.59, 17: 2.56, 25: 2.56, 33: 2.56, 42: 7.36}, 'n_vertices': {10: 490, 17: 489, 25: 484, 33: 495, 42: 1730}, 'excluded': 0.0084}, 9 s
+[cshell] phase 0: h_e 0.8 h_g 0.2, band 28.2 M cells, element box (212, 187, 187), passive {'mount': 21494, 'thin': 11092}, V0 60957.7 mm³, closed-design V/V0-1 -4.44e-16, stress mask {'r_ex_mm': {10: 2.59, 17: 2.56, 25: 2.56, 33: 2.56, 42: 7.36}, 'n_vertices': {10: 490, 17: 489, 25: 484, 33: 495, 42: 1730}, 'excluded': 0.0084}, 11 s
 [cshell]   geometry chain on the GPU: compact band 0.63 GiB, released from the device during each FE evaluation
 [cshell]   active set rebuilt: 195088 elements, 700443 DOF, engine twogrid, coarse 117978 DOF (fp32), 93.9 GiB device memory free
-[cshell] phase 0 solid: C0 157.4981 N·mm, K0 253.97 N/mm, λ_s0 9.117486388376527, λ_b0 2.7765618283280054, c 1.640
-[cshell] growth step 0: q 0.10, R_k 0.0003361, H 0.100 of the active area, J at boundary -0.00000, R 0.6 s
-[solid] ph 0 it   0  J +0.00015  K/K0 1.0000  P/P0 1.0003  λB/λB0 1.0003  σ/σ0 1.0000  V/V0-1 -4.1e-06  closed 1.000  H 0.100  |dξ̃| 0.0630  FE 1.7s it 5.8s
+[cshell] phase 0 solid: C0 157.4981 N·mm, K0 253.97 N/mm, λ_s0 9.117486388364169, λ_b0 2.7765618283046987, c 1.640
+[cshell] growth step 0: q 0.10, R_k 0.0003361, H 0.100 of the active area, J at boundary +0.00000, R 0.6 s
+[solid] ph 0 it   0  J +0.00015  K/K0 1.0000  P/P0 1.0003  λB/λB0 1.0003  σ/σ0 1.0000  V/V0-1 -4.1e-06  closed 1.000  H 0.100  |dξ̃| 0.0630  FE 1.7s it 5.9s
 [solid] ph 0 it   1  J +0.00405  K/K0 0.9991  P/P0 1.0090  λB/λB0 1.0090  σ/σ0 1.0001  V/V0-1 -2.0e-05  closed 0.987  H 0.100  |dξ̃| 0.0182  FE 2.6s it 3.2s
-[solid] ph 0 it   2  J +0.00502  K/K0 0.9994  P/P0 1.0107  λB/λB0 1.0107  σ/σ0 0.9982  V/V0-1 -1.7e-05  closed 0.987  H 0.100  |dξ̃| 0.0275  FE 1.7s it 2.4s
-[solid] ph 0 it   3  J +0.00566  K/K0 0.9995  P/P0 1.0119  λB/λB0 1.0119  σ/σ0 0.9976  V/V0-1 -7.7e-05  closed 0.985  H 0.100  |dξ̃| 0.0415  FE 1.7s it 2.4s
-[solid] ph 0 it   4  J +0.00599  K/K0 0.9994  P/P0 1.0127  λB/λB0 1.0127  σ/σ0 0.9973  V/V0-1 -6.4e-05  closed 0.984  H 0.100  |dξ̃| 0.0416  FE 1.7s it 2.4s
-[solid] ph 0 it   5  J +0.00657  K/K0 0.9994  P/P0 1.0139  λB/λB0 1.0139  σ/σ0 0.9969  V/V0-1 -5.5e-05  closed 0.983  H 0.100  |dξ̃| 0.0417  FE 1.7s it 2.4s
+[solid] ph 0 it   2  J +0.00502  K/K0 0.9994  P/P0 1.0107  λB/λB0 1.0107  σ/σ0 0.9982  V/V0-1 -1.7e-05  closed 0.987  H 0.100  |dξ̃| 0.0275  FE 1.7s it 2.3s
+[solid] ph 0 it   3  J +0.00566  K/K0 0.9995  P/P0 1.0119  λB/λB0 1.0119  σ/σ0 0.9976  V/V0-1 -7.7e-05  closed 0.985  H 0.100  |dξ̃| 0.0415  FE 1.7s it 2.3s
+[solid] ph 0 it   4  J +0.00599  K/K0 0.9994  P/P0 1.0127  λB/λB0 1.0127  σ/σ0 0.9973  V/V0-1 -6.4e-05  closed 0.984  H 0.100  |dξ̃| 0.0416  FE 1.7s it 2.3s
+[solid] ph 0 it   5  J +0.00657  K/K0 0.9994  P/P0 1.0139  λB/λB0 1.0139  σ/σ0 0.9969  V/V0-1 -5.5e-05  closed 0.983  H 0.100  |dξ̃| 0.0417  FE 1.7s it 2.3s
 [solid] ph 0 it   6  J +0.00710  K/K0 0.9994  P/P0 1.0149  λB/λB0 1.0149  σ/σ0 0.9964  V/V0-1 -4.2e-05  closed 0.982  H 0.100  |dξ̃| 0.0431  FE 1.7s it 2.3s
 [solid] ph 0 it   7  J +0.00776  K/K0 0.9994  P/P0 1.0162  λB/λB0 1.0162  σ/σ0 0.9959  V/V0-1 -2.5e-05  closed 0.980  H 0.100  |dξ̃| 0.0431  FE 1.7s it 2.3s
 [solid] ph 0 it   8  J +0.00839  K/K0 0.9994  P/P0 1.0175  λB/λB0 1.0175  σ/σ0 0.9955  V/V0-1 -2.2e-05  closed 0.979  H 0.100  |dξ̃| 0.0536  FE 1.7s it 2.3s
 [solid] ph 0 it   9  J +0.00899  K/K0 0.9994  P/P0 1.0187  λB/λB0 1.0187  σ/σ0 0.9951  V/V0-1 -1.7e-05  closed 0.977  H 0.100  |dξ̃| 0.0542  FE 1.7s it 2.3s
 [solid] ph 0 it  10  J +0.00969  K/K0 0.9994  P/P0 1.0202  λB/λB0 1.0202  σ/σ0 0.9946  V/V0-1 -1.2e-05  closed 0.976  H 0.100  |dξ̃| 0.0556  FE 1.7s it 2.3s
-[solid] ph 0 it  11  J +0.01035  K/K0 0.9994  P/P0 1.0215  λB/λB0 1.0215  σ/σ0 0.9941  V/V0-1 -9.7e-05  closed 0.974  H 0.100  |dξ̃| 0.0500  FE 1.7s it 2.3s
+[solid] ph 0 it  11  J +0.01035  K/K0 0.9994  P/P0 1.0215  λB/λB0 1.0215  σ/σ0 0.9941  V/V0-1 -9.7e-05  closed 0.974  H 0.100  |dξ̃| 0.0500  FE 1.7s it 2.2s
 [solid] ph 0 it  12  J +0.01048  K/K0 0.9993  P/P0 1.0219  λB/λB0 1.0219  σ/σ0 0.9937  V/V0-1 -4.5e-05  closed 0.973  H 0.100  |dξ̃| 0.0359  FE 1.7s it 2.2s
-[solid] ph 0 it  13  J +0.01104  K/K0 0.9993  P/P0 1.0230  λB/λB0 1.0230  σ/σ0 0.9934  V/V0-1 +7.6e-06  closed 0.972  H 0.100  |dξ̃| 0.0304  FE 1.7s it 2.3s
+[solid] ph 0 it  13  J +0.01104  K/K0 0.9993  P/P0 1.0230  λB/λB0 1.0230  σ/σ0 0.9934  V/V0-1 +7.6e-06  closed 0.972  H 0.100  |dξ̃| 0.0304  FE 1.7s it 2.2s
 [solid] ph 0 it  14  J +0.01150  K/K0 0.9994  P/P0 1.0239  λB/λB0 1.0239  σ/σ0 0.9930  V/V0-1 +4.8e-05  closed 0.971  H 0.100  |dξ̃| 0.0266  FE 1.7s it 2.3s
-[solid] ph 0 it  15  J +0.01184  K/K0 0.9994  P/P0 1.0245  λB/λB0 1.0245  σ/σ0 0.9928  V/V0-1 +9.0e-05  closed 0.971  H 0.100  |dξ̃| 0.0244  FE 1.7s it 2.3s
+[solid] ph 0 it  15  J +0.01184  K/K0 0.9994  P/P0 1.0245  λB/λB0 1.0245  σ/σ0 0.9928  V/V0-1 +9.0e-05  closed 0.971  H 0.100  |dξ̃| 0.0244  FE 1.7s it 2.2s
 [solid] ph 0 it  16  J +0.01213  K/K0 0.9995  P/P0 1.0251  λB/λB0 1.0251  σ/σ0 0.9926  V/V0-1 -3.5e-06  closed 0.971  H 0.100  |dξ̃| 0.0130  FE 1.7s it 2.3s
 [solid] ph 0 it  17  J +0.01181  K/K0 0.9994  P/P0 1.0245  λB/λB0 1.0245  σ/σ0 0.9927  V/V0-1 -1.5e-06  closed 0.970  H 0.100  |dξ̃| 0.0069  FE 1.7s it 2.4s
 [cshell] growth step 0 done after 18 iterations: ΔJ +1.19e-02 (low-gain steps in a row 0/11)
 [cshell] growth step 1: q 0.20, R_k 0.0006192, H 0.280 of the active area, J at boundary +0.01188, R 0.6 s
-[solid] ph 0 it  18  J +0.01146  K/K0 0.9904  P/P0 1.0331  λB/λB0 1.0331  σ/σ0 1.0147  V/V0-1 +7.8e-06  closed 0.924  H 0.280  |dξ̃| 0.0437  FE 2.5s it 5.7s
+[solid] ph 0 it  18  J +0.01146  K/K0 0.9904  P/P0 1.0331  λB/λB0 1.0331  σ/σ0 1.0147  V/V0-1 +7.8e-06  closed 0.924  H 0.280  |dξ̃| 0.0437  FE 2.5s it 5.6s
 [solid] ph 0 it  19  J +0.02704  K/K0 0.9932  P/P0 1.0628  λB/λB0 1.0628  σ/σ0 1.0018  V/V0-1 +8.6e-07  closed 0.891  H 0.280  |dξ̃| 0.0292  FE 2.5s it 3.2s
 [solid] ph 0 it  20  J +0.03463  K/K0 0.9932  P/P0 1.0791  λB/λB0 1.0791  σ/σ0 1.0007  V/V0-1 -6.0e-06  closed 0.891  H 0.280  |dξ̃| 0.0219  FE 2.5s it 3.2s
-[solid] ph 0 it  21  J +0.03968  K/K0 0.9923  P/P0 1.0910  λB/λB0 1.0910  σ/σ0 1.0016  V/V0-1 -1.5e-05  closed 0.881  H 0.280  |dξ̃| 0.0167  FE 1.7s it 2.3s
+[solid] ph 0 it  21  J +0.03968  K/K0 0.9923  P/P0 1.0910  λB/λB0 1.0910  σ/σ0 1.0016  V/V0-1 -1.5e-05  closed 0.881  H 0.280  |dξ̃| 0.0167  FE 1.6s it 2.3s
 [cshell]   active set rebuilt: 198063 elements, 710862 DOF, engine twogrid, coarse 119691 DOF (fp32), 93.6 GiB device memory free
 [solid] ph 0 it  22  J +0.04216  K/K0 0.9924  P/P0 1.0963  λB/λB0 1.0963  σ/σ0 1.0013  V/V0-1 -3.7e-05  closed 0.879  H 0.280  |dξ̃| 0.0190  FE 3.4s it 4.1s
-[solid] ph 0 it  23  J +0.04341  K/K0 0.9929  P/P0 1.0985  λB/λB0 1.0986  σ/σ0 1.0011  V/V0-1 -4.2e-05  closed 0.880  H 0.280  |dξ̃| 0.0185  FE 1.6s it 2.3s
+[solid] ph 0 it  23  J +0.04341  K/K0 0.9929  P/P0 1.0985  λB/λB0 1.0986  σ/σ0 1.0011  V/V0-1 -4.2e-05  closed 0.880  H 0.280  |dξ̃| 0.0185  FE 1.6s it 2.5s
 [cshell]   active set rebuilt: 198092 elements, 710967 DOF, engine twogrid, coarse 119697 DOF (fp32), 93.6 GiB device memory free
 [solid] ph 0 it  24  J +0.04429  K/K0 0.9932  P/P0 1.1001  λB/λB0 1.1001  σ/σ0 1.0010  V/V0-1 -4.1e-05  closed 0.881  H 0.280  |dξ̃| 0.0130  FE 3.4s it 4.1s
 [solid] ph 0 it  25  J +0.04519  K/K0 0.9934  P/P0 1.1019  λB/λB0 1.1019  σ/σ0 1.0011  V/V0-1 -4.1e-05  closed 0.881  H 0.280  |dξ̃| 0.0122  FE 2.8s it 3.4s
 [solid] ph 0 it  26  J +0.04592  K/K0 0.9935  P/P0 1.1033  λB/λB0 1.1033  σ/σ0 1.0012  V/V0-1 -2.8e-05  closed 0.882  H 0.280  |dξ̃| 0.0133  FE 2.7s it 3.4s
 [cshell] growth step 1 done after 9 iterations: ΔJ +3.41e-02 (low-gain steps in a row 0/11)
 [cshell] growth step 2: q 0.30, R_k 0.001546, H 0.547 of the active area, J at boundary +0.04601, R 0.6 s
-[solid] ph 0 it  27  J +0.04991  K/K0 0.9947  P/P0 1.1109  λB/λB0 1.1109  σ/σ0 1.0000  V/V0-1 +2.3e-05  closed 0.861  H 0.547  |dξ̃| 0.0185  FE 1.8s it 5.7s
-[cshell]   active set rebuilt: 199389 elements, 715062 DOF, engine twogrid, coarse 120354 DOF (fp32), 93.6 GiB device memory free
+[solid] ph 0 it  27  J +0.04991  K/K0 0.9947  P/P0 1.1109  λB/λB0 1.1109  σ/σ0 0.9999  V/V0-1 +2.3e-05  closed 0.861  H 0.547  |dξ̃| 0.0185  FE 1.7s it 5.6s
+[cshell]   active set rebuilt: 199389 elements, 715062 DOF, engine twogrid, coarse 120354 DOF (fp32), 93.4 GiB device memory free
 [solid] ph 0 it  28  J +0.06315  K/K0 0.9922  P/P0 1.1436  λB/λB0 1.1436  σ/σ0 1.0033  V/V0-1 +7.8e-05  closed 0.728  H 0.547  |dξ̃| 0.0218  FE 3.4s it 4.1s
 [solid] ph 0 it  29  J +0.07167  K/K0 0.9895  P/P0 1.1664  λB/λB0 1.1664  σ/σ0 1.0062  V/V0-1 +2.6e-06  closed 0.749  H 0.547  |dξ̃| 0.0333  FE 2.6s it 3.4s
 [solid] ph 0 it  30  J +0.06991  K/K0 0.9912  P/P0 1.1603  λB/λB0 1.1603  σ/σ0 1.0115  V/V0-1 +8.6e-05  closed 0.715  H 0.547  |dξ̃| 0.0201  FE 1.6s it 2.4s
-[solid] ph 0 it  31  J +0.07321  K/K0 0.9915  P/P0 1.1676  λB/λB0 1.1676  σ/σ0 1.0051  V/V0-1 +2.1e-06  closed 0.732  H 0.547  |dξ̃| 0.0150  FE 2.7s it 3.5s
-[solid] ph 0 it  32  J +0.07022  K/K0 0.9939  P/P0 1.1579  λB/λB0 1.1579  σ/σ0 1.0022  V/V0-1 -3.2e-06  closed 0.732  H 0.547  |dξ̃| 0.0113  FE 2.6s it 3.4s
-[solid] ph 0 it  33  J +0.07140  K/K0 0.9942  P/P0 1.1602  λB/λB0 1.1602  σ/σ0 1.0015  V/V0-1 -3.0e-06  closed 0.740  H 0.547  |dξ̃| 0.0172  FE 1.7s it 2.5s
-[solid] ph 0 it  34  J +0.07183  K/K0 0.9946  P/P0 1.1607  λB/λB0 1.1608  σ/σ0 1.0016  V/V0-1 -1.4e-06  closed 0.740  H 0.547  |dξ̃| 0.0322  FE 1.7s it 2.5s
-[solid] ph 0 it  35  J +0.07385  K/K0 0.9936  P/P0 1.1667  λB/λB0 1.1667  σ/σ0 1.0051  V/V0-1 -1.0e-05  closed 0.737  H 0.547  |dξ̃| 0.0487  FE 2.7s it 3.5s
-[solid] ph 0 it  36  J +0.07649  K/K0 0.9925  P/P0 1.1741  λB/λB0 1.1741  σ/σ0 1.0101  V/V0-1 -1.9e-05  closed 0.730  H 0.547  |dξ̃| 0.0360  FE 2.6s it 3.5s
-[solid] ph 0 it  37  J +0.07923  K/K0 0.9926  P/P0 1.1805  λB/λB0 1.1805  σ/σ0 1.0081  V/V0-1 -1.3e-05  closed 0.723  H 0.547  |dξ̃| 0.0227  FE 2.6s it 3.5s
-[solid] ph 0 it  38  J +0.07543  K/K0 0.9946  P/P0 1.1691  λB/λB0 1.1691  σ/σ0 1.0026  V/V0-1 -1.2e-05  closed 0.734  H 0.547  |dξ̃| 0.0128  FE 2.6s it 3.5s
-[solid] ph 0 it  39  J +0.07465  K/K0 0.9952  P/P0 1.1666  λB/λB0 1.1667  σ/σ0 1.0013  V/V0-1 -9.4e-06  closed 0.737  H 0.547  |dξ̃| 0.0099  FE 2.8s it 3.7s
-[cshell] growth step 2 done after 13 iterations: ΔJ +2.86e-02 (low-gain steps in a row 0/11)
-[cshell] growth step 3: q 0.40, R_k 0.002964, H 0.686 of the active area, J at boundary +0.07465, R 0.6 s
-[cshell]   active set rebuilt: 201861 elements, 724623 DOF, engine twogrid, coarse 121758 DOF (fp32), 93.6 GiB device memory free
-[solid] ph 0 it  40  J +0.07368  K/K0 0.9839  P/P0 1.1778  λB/λB0 1.1778  σ/σ0 1.0303  V/V0-1 +2.0e-05  closed 0.725  H 0.686  |dξ̃| 0.0355  FE 3.5s it 6.6s
-[cshell]   active set rebuilt: 201944 elements, 724524 DOF, engine twogrid, coarse 121770 DOF (fp32), 93.6 GiB device memory free
-[solid] ph 0 it  41  J +0.08121  K/K0 0.9898  P/P0 1.1884  λB/λB0 1.1885  σ/σ0 1.0095  V/V0-1 +1.8e-05  closed 0.677  H 0.686  |dξ̃| 0.0377  FE 3.4s it 4.2s
-[cshell]   active set rebuilt: 202225 elements, 725292 DOF, engine twogrid, coarse 121857 DOF (fp32), 93.6 GiB device memory free
-[solid] ph 0 it  42  J +0.08880  K/K0 0.9930  P/P0 1.2028  λB/λB0 1.2028  σ/σ0 1.0034  V/V0-1 +3.4e-07  closed 0.661  H 0.686  |dξ̃| 0.0335  FE 3.5s it 4.4s
-[solid] ph 0 it  43  J +0.09442  K/K0 0.9933  P/P0 1.2160  λB/λB0 1.2160  σ/σ0 1.0019  V/V0-1 +1.9e-06  closed 0.659  H 0.686  |dξ̃| 0.0289  FE 2.6s it 3.4s
-[solid] ph 0 it  44  J +0.09951  K/K0 0.9925  P/P0 1.2295  λB/λB0 1.2295  σ/σ0 1.0080  V/V0-1 +4.4e-07  closed 0.644  H 0.686  |dξ̃| 0.0231  FE 2.5s it 3.3s
-[solid] ph 0 it  45  J +0.10446  K/K0 0.9916  P/P0 1.2428  λB/λB0 1.2428  σ/σ0 1.0067  V/V0-1 +4.9e-05  closed 0.631  H 0.686  |dξ̃| 0.0292  FE 3.0s it 3.9s
-[solid] ph 0 it  46  J +0.10344  K/K0 0.9924  P/P0 1.2392  λB/λB0 1.2392  σ/σ0 1.0070  V/V0-1 +2.6e-07  closed 0.629  H 0.686  |dξ̃| 0.0273  FE 2.6s it 3.5s
-[solid] ph 0 it  47  J +0.10507  K/K0 0.9930  P/P0 1.2425  λB/λB0 1.2425  σ/σ0 1.0050  V/V0-1 +4.1e-05  closed 0.637  H 0.686  |dξ̃| 0.0180  FE 2.5s it 3.4s
-[solid] ph 0 it  48  J +0.10293  K/K0 0.9939  P/P0 1.2361  λB/λB0 1.2362  σ/σ0 1.0030  V/V0-1 -2.3e-05  closed 0.640  H 0.686  |dξ̃| 0.0168  FE 2.5s it 3.3s
-[solid] ph 0 it  49  J +0.10269  K/K0 0.9946  P/P0 1.2346  λB/λB0 1.2347  σ/σ0 1.0022  V/V0-1 +6.4e-06  closed 0.644  H 0.686  |dξ̃| 0.0130  FE 2.6s it 3.4s
-[solid] ph 0 it  50  J +0.10235  K/K0 0.9951  P/P0 1.2332  λB/λB0 1.2332  σ/σ0 1.0012  V/V0-1 +1.0e-05  closed 0.646  H 0.686  |dξ̃| 0.0135  FE 2.8s it 3.7s
-[solid] ph 0 it  51  J +0.10247  K/K0 0.9953  P/P0 1.2332  λB/λB0 1.2332  σ/σ0 1.0009  V/V0-1 +8.2e-06  closed 0.644  H 0.686  |dξ̃| 0.0247  FE 1.8s it 2.6s
-[solid] ph 0 it  52  J +0.10284  K/K0 0.9955  P/P0 1.2339  λB/λB0 1.2339  σ/σ0 1.0010  V/V0-1 +7.6e-06  closed 0.646  H 0.686  |dξ̃| 0.0173  FE 1.8s it 2.6s
-[solid] ph 0 it  53  J +0.10369  K/K0 0.9954  P/P0 1.2361  λB/λB0 1.2361  σ/σ0 1.0011  V/V0-1 +5.1e-06  closed 0.638  H 0.686  |dξ̃| 0.0263  FE 1.8s it 2.7s
-[solid] ph 0 it  54  J +0.10402  K/K0 0.9956  P/P0 1.2366  λB/λB0 1.2367  σ/σ0 1.0011  V/V0-1 +4.9e-06  closed 0.643  H 0.686  |dξ̃| 0.0232  FE 2.8s it 3.7s
-[solid] ph 0 it  55  J +0.10481  K/K0 0.9955  P/P0 1.2387  λB/λB0 1.2387  σ/σ0 1.0013  V/V0-1 +5.2e-06  closed 0.636  H 0.686  |dξ̃| 0.0264  FE 1.8s it 2.7s
-[cshell] growth step 3 done after 16 iterations: ΔJ +3.01e-02 (low-gain steps in a row 0/11)
-[cshell] growth step 4: q 0.50, R_k 0.004925, H 0.738 of the active area, J at boundary +0.10472, R 0.6 s
-[solid] ph 0 it  56  J +0.10704  K/K0 0.9966  P/P0 1.2429  λB/λB0 1.2430  σ/σ0 1.0014  V/V0-1 +3.6e-05  closed 0.610  H 0.738  |dξ̃| 0.0293  FE 2.7s it 6.0s
-[solid] ph 0 it  57  J +0.11377  K/K0 0.9962  P/P0 1.2603  λB/λB0 1.2604  σ/σ0 1.0042  V/V0-1 +3.2e-07  closed 0.577  H 0.738  |dξ̃| 0.0280  FE 2.6s it 3.5s
-[solid] ph 0 it  58  J +0.11489  K/K0 0.9959  P/P0 1.2635  λB/λB0 1.2635  σ/σ0 1.0060  V/V0-1 +1.3e-06  closed 0.596  H 0.738  |dξ̃| 0.0259  FE 2.6s it 3.5s
-[cshell]   active set rebuilt: 204957 elements, 734976 DOF, engine twogrid, coarse 123258 DOF (fp32), 93.6 GiB device memory free
-[solid] ph 0 it  59  J +0.11869  K/K0 0.9958  P/P0 1.2733  λB/λB0 1.2733  σ/σ0 1.0071  V/V0-1 +8.4e-05  closed 0.566  H 0.738  |dξ̃| 0.0220  FE 3.4s it 4.3s
-[solid] ph 0 it  60  J +0.11769  K/K0 0.9961  P/P0 1.2704  λB/λB0 1.2704  σ/σ0 1.0057  V/V0-1 +6.8e-05  closed 0.584  H 0.738  |dξ̃| 0.0332  FE 2.7s it 3.6s
-[solid] ph 0 it  61  J +0.11701  K/K0 0.9971  P/P0 1.2674  λB/λB0 1.2674  σ/σ0 1.0063  V/V0-1 +4.4e-05  closed 0.584  H 0.738  |dξ̃| 0.0267  FE 2.7s it 3.6s
-[solid] ph 0 it  62  J +0.12017  K/K0 0.9962  P/P0 1.2765  λB/λB0 1.2765  σ/σ0 1.0063  V/V0-1 +6.1e-05  closed 0.572  H 0.738  |dξ̃| 0.0259  FE 2.8s it 3.7s
-[solid] ph 0 it  63  J +0.11693  K/K0 0.9979  P/P0 1.2661  λB/λB0 1.2662  σ/σ0 1.0041  V/V0-1 -5.9e-05  closed 0.586  H 0.738  |dξ̃| 0.0215  FE 2.6s it 3.5s
-[solid] ph 0 it  64  J +0.11615  K/K0 0.9980  P/P0 1.2641  λB/λB0 1.2641  σ/σ0 1.0024  V/V0-1 +9.6e-06  closed 0.589  H 0.738  |dξ̃| 0.0192  FE 2.7s it 3.6s
-[solid] ph 0 it  65  J +0.11478  K/K0 0.9988  P/P0 1.2595  λB/λB0 1.2595  σ/σ0 1.0015  V/V0-1 +1.1e-05  closed 0.598  H 0.738  |dξ̃| 0.0070  FE 1.7s it 2.6s
-[solid] ph 0 it  66  J +0.11440  K/K0 0.9991  P/P0 1.2582  λB/λB0 1.2582  σ/σ0 1.0009  V/V0-1 +1.3e-05  closed 0.597  H 0.738  |dξ̃| 0.0032  FE 1.7s it 2.6s
-[solid] ph 0 it  67  J +0.11455  K/K0 0.9992  P/P0 1.2584  λB/λB0 1.2585  σ/σ0 1.0009  V/V0-1 +1.2e-05  closed 0.595  H 0.738  |dξ̃| 0.0039  FE 1.8s it 2.7s
-[solid] ph 0 it  68  J +0.11479  K/K0 0.9993  P/P0 1.2590  λB/λB0 1.2590  σ/σ0 1.0009  V/V0-1 +1.1e-05  closed 0.594  H 0.738  |dξ̃| 0.0075  FE 1.8s it 2.7s
-[solid] ph 0 it  69  J +0.11512  K/K0 0.9993  P/P0 1.2598  λB/λB0 1.2598  σ/σ0 1.0009  V/V0-1 +9.6e-06  closed 0.593  H 0.738  |dξ̃| 0.0090  FE 1.8s it 2.7s
-[solid] ph 0 it  70  J +0.11545  K/K0 0.9993  P/P0 1.2606  λB/λB0 1.2606  σ/σ0 1.0009  V/V0-1 +8.5e-06  closed 0.593  H 0.738  |dξ̃| 0.0092  FE 1.8s it 2.7s
-[solid] ph 0 it  71  J +0.11581  K/K0 0.9993  P/P0 1.2615  λB/λB0 1.2615  σ/σ0 1.0009  V/V0-1 +7.6e-06  closed 0.593  H 0.738  |dξ̃| 0.0111  FE 1.8s it 2.7s
-[solid] ph 0 it  72  J +0.11619  K/K0 0.9993  P/P0 1.2625  λB/λB0 1.2625  σ/σ0 1.0009  V/V0-1 +6.5e-06  closed 0.594  H 0.738  |dξ̃| 0.0112  FE 1.8s it 2.7s
-[solid] ph 0 it  73  J +0.11661  K/K0 0.9993  P/P0 1.2635  λB/λB0 1.2636  σ/σ0 1.0009  V/V0-1 +5.0e-06  closed 0.594  H 0.738  |dξ̃| 0.0094  FE 1.8s it 2.7s
-[solid] ph 0 it  74  J +0.11706  K/K0 0.9993  P/P0 1.2647  λB/λB0 1.2647  σ/σ0 1.0009  V/V0-1 +8.4e-06  closed 0.595  H 0.738  |dξ̃| 0.0132  FE 1.8s it 2.7s
-[solid] ph 0 it  75  J +0.11760  K/K0 0.9992  P/P0 1.2661  λB/λB0 1.2661  σ/σ0 1.0011  V/V0-1 +2.0e-07  closed 0.596  H 0.738  |dξ̃| 0.0205  FE 2.8s it 3.7s
-[solid] ph 0 it  76  J +0.11829  K/K0 0.9989  P/P0 1.2683  λB/λB0 1.2683  σ/σ0 1.0022  V/V0-1 -7.2e-05  closed 0.591  H 0.738  |dξ̃| 0.0315  FE 2.7s it 3.6s
-[cshell]   active set rebuilt: 205652 elements, 737670 DOF, engine twogrid, coarse 123738 DOF (fp32), 93.6 GiB device memory free
-[solid] ph 0 it  77  J +0.12108  K/K0 0.9981  P/P0 1.2765  λB/λB0 1.2765  σ/σ0 1.0055  V/V0-1 +8.8e-05  closed 0.585  H 0.738  |dξ̃| 0.0347  FE 3.5s it 4.4s
-[solid] ph 0 it  78  J +0.12132  K/K0 0.9987  P/P0 1.2763  λB/λB0 1.2763  σ/σ0 1.0038  V/V0-1 +1.9e-06  closed 0.585  H 0.738  |dξ̃| 0.0199  FE 2.8s it 3.7s
-[solid] ph 0 it  79  J +0.12040  K/K0 0.9991  P/P0 1.2734  λB/λB0 1.2735  σ/σ0 1.0027  V/V0-1 +9.6e-07  closed 0.589  H 0.738  |dξ̃| 0.0278  FE 2.7s it 3.7s
-[solid] ph 0 it  80  J +0.11932  K/K0 0.9991  P/P0 1.2707  λB/λB0 1.2707  σ/σ0 1.0018  V/V0-1 +4.6e-06  closed 0.595  H 0.738  |dξ̃| 0.0326  FE 2.8s it 3.7s
-[cshell] growth step 4 done after 25 iterations: ΔJ +1.54e-02 (low-gain steps in a row 0/11)
-[cshell] growth step 5: q 0.60, R_k 0.006725, H 0.768 of the active area, J at boundary +0.12015, R 0.6 s
-[solid] ph 0 it  81  J +0.12016  K/K0 0.9981  P/P0 1.2741  λB/λB0 1.2741  σ/σ0 1.0018  V/V0-1 +3.9e-07  closed 0.577  H 0.768  |dξ̃| 0.0244  FE 2.8s it 7.0s
-[solid] ph 0 it  82  J +0.12592  K/K0 0.9980  P/P0 1.2890  λB/λB0 1.2890  σ/σ0 1.0035  V/V0-1 +7.5e-05  closed 0.567  H 0.768  |dξ̃| 0.0223  FE 2.6s it 3.5s
-[solid] ph 0 it  83  J +0.12749  K/K0 0.9980  P/P0 1.2930  λB/λB0 1.2931  σ/σ0 1.0043  V/V0-1 +2.7e-07  closed 0.564  H 0.768  |dξ̃| 0.0208  FE 2.8s it 3.7s
-[solid] ph 0 it  84  J +0.12957  K/K0 0.9977  P/P0 1.2988  λB/λB0 1.2988  σ/σ0 1.0042  V/V0-1 +1.4e-05  closed 0.559  H 0.768  |dξ̃| 0.0209  FE 2.7s it 3.7s
-[solid] ph 0 it  85  J +0.12697  K/K0 0.9990  P/P0 1.2904  λB/λB0 1.2904  σ/σ0 1.0027  V/V0-1 +2.6e-05  closed 0.568  H 0.768  |dξ̃| 0.0156  FE 2.8s it 3.6s
-[solid] ph 0 it  86  J +0.12743  K/K0 0.9991  P/P0 1.2915  λB/λB0 1.2915  σ/σ0 1.0019  V/V0-1 +8.9e-06  closed 0.565  H 0.768  |dξ̃| 0.0091  FE 2.8s it 3.7s
-[solid] ph 0 it  87  J +0.12661  K/K0 0.9993  P/P0 1.2891  λB/λB0 1.2891  σ/σ0 1.0011  V/V0-1 +7.2e-06  closed 0.571  H 0.768  |dξ̃| 0.0110  FE 2.9s it 3.7s
-[solid] ph 0 it  88  J +0.12717  K/K0 0.9993  P/P0 1.2905  λB/λB0 1.2905  σ/σ0 1.0011  V/V0-1 +8.3e-06  closed 0.569  H 0.768  |dξ̃| 0.0085  FE 1.8s it 2.7s
-[solid] ph 0 it  89  J +0.12743  K/K0 0.9993  P/P0 1.2912  λB/λB0 1.2912  σ/σ0 1.0010  V/V0-1 +6.6e-06  closed 0.569  H 0.768  |dξ̃| 0.0079  FE 1.8s it 2.7s
-[solid] ph 0 it  90  J +0.12755  K/K0 0.9993  P/P0 1.2915  λB/λB0 1.2915  σ/σ0 1.0009  V/V0-1 +6.4e-06  closed 0.569  H 0.768  |dξ̃| 0.0082  FE 1.9s it 2.8s
-[solid] ph 0 it  91  J +0.12809  K/K0 0.9993  P/P0 1.2929  λB/λB0 1.2929  σ/σ0 1.0010  V/V0-1 +5.8e-06  closed 0.569  H 0.768  |dξ̃| 0.0076  FE 1.9s it 2.8s
-[solid] ph 0 it  92  J +0.12830  K/K0 0.9993  P/P0 1.2934  λB/λB0 1.2935  σ/σ0 1.0009  V/V0-1 +4.7e-06  closed 0.569  H 0.768  |dξ̃| 0.0100  FE 1.9s it 2.7s
-[solid] ph 0 it  93  J +0.12878  K/K0 0.9993  P/P0 1.2947  λB/λB0 1.2947  σ/σ0 1.0010  V/V0-1 +5.4e-06  closed 0.570  H 0.768  |dξ̃| 0.0081  FE 1.8s it 2.7s
-[solid] ph 0 it  94  J +0.12909  K/K0 0.9993  P/P0 1.2955  λB/λB0 1.2955  σ/σ0 1.0009  V/V0-1 +5.4e-06  closed 0.570  H 0.768  |dξ̃| 0.0115  FE 1.8s it 2.7s
-[solid] ph 0 it  95  J +0.12948  K/K0 0.9993  P/P0 1.2965  λB/λB0 1.2965  σ/σ0 1.0009  V/V0-1 +5.0e-06  closed 0.571  H 0.768  |dξ̃| 0.0100  FE 1.8s it 2.7s
-[solid] ph 0 it  96  J +0.12997  K/K0 0.9993  P/P0 1.2978  λB/λB0 1.2978  σ/σ0 1.0009  V/V0-1 +6.4e-06  closed 0.571  H 0.768  |dξ̃| 0.0159  FE 1.8s it 2.7s
-[solid] ph 0 it  97  J +0.13043  K/K0 0.9992  P/P0 1.2990  λB/λB0 1.2991  σ/σ0 1.0011  V/V0-1 -6.3e-07  closed 0.571  H 0.768  |dξ̃| 0.0154  FE 2.9s it 3.8s
-[solid] ph 0 it  98  J +0.13096  K/K0 0.9991  P/P0 1.3005  λB/λB0 1.3006  σ/σ0 1.0014  V/V0-1 +3.7e-06  closed 0.571  H 0.768  |dξ̃| 0.0190  FE 2.9s it 3.8s
-[solid] ph 0 it  99  J +0.13164  K/K0 0.9992  P/P0 1.3022  λB/λB0 1.3022  σ/σ0 1.0016  V/V0-1 +1.7e-06  closed 0.570  H 0.768  |dξ̃| 0.0146  FE 2.8s it 3.8s
-[solid] ph 0 it 100  J +0.13152  K/K0 0.9993  P/P0 1.3018  λB/λB0 1.3018  σ/σ0 1.0012  V/V0-1 +4.2e-06  closed 0.571  H 0.768  |dξ̃| 0.0221  FE 2.9s it 3.8s
-[solid] ph 0 it 101  J +0.13164  K/K0 0.9993  P/P0 1.3021  λB/λB0 1.3022  σ/σ0 1.0010  V/V0-1 +4.6e-06  closed 0.572  H 0.768  |dξ̃| 0.0174  FE 1.8s it 2.7s
-[solid] ph 0 it 102  J +0.13193  K/K0 0.9993  P/P0 1.3029  λB/λB0 1.3029  σ/σ0 1.0010  V/V0-1 +3.8e-06  closed 0.572  H 0.768  |dξ̃| 0.0199  FE 1.8s it 2.7s
-[solid] ph 0 it 103  J +0.13206  K/K0 0.9993  P/P0 1.3032  λB/λB0 1.3033  σ/σ0 1.0009  V/V0-1 +3.5e-06  closed 0.572  H 0.768  |dξ̃| 0.0212  FE 1.8s it 2.8s
-[solid] ph 0 it 104  J +0.13229  K/K0 0.9993  P/P0 1.3038  λB/λB0 1.3039  σ/σ0 1.0009  V/V0-1 +2.3e-06  closed 0.572  H 0.768  |dξ̃| 0.0217  FE 1.9s it 2.8s
-[solid] ph 0 it 105  J +0.13256  K/K0 0.9993  P/P0 1.3045  λB/λB0 1.3046  σ/σ0 1.0009  V/V0-1 +3.4e-06  closed 0.572  H 0.768  |dξ̃| 0.0181  FE 1.8s it 2.9s
-[cshell] growth step 5 done after 25 iterations: ΔJ +1.27e-02 (low-gain steps in a row 0/11)
-[cshell] growth step 6: q 0.70, R_k 0.009881, H 0.811 of the active area, J at boundary +0.13281, R 0.6 s
-[cshell]   active set rebuilt: 207223 elements, 744276 DOF, engine twogrid, coarse 124842 DOF (fp32), 93.5 GiB device memory free
-[solid] ph 0 it 106  J +0.13269  K/K0 0.9989  P/P0 1.3054  λB/λB0 1.3054  σ/σ0 1.0011  V/V0-1 +1.8e-05  closed 0.555  H 0.811  |dξ̃| 0.0363  FE 3.5s it 6.8s
-[solid] ph 0 it 107  J +0.14486  K/K0 0.9986  P/P0 1.3379  λB/λB0 1.3380  σ/σ0 1.0015  V/V0-1 +4.6e-05  closed 0.537  H 0.811  |dξ̃| 0.0180  FE 2.7s it 3.4s
-[solid] ph 0 it 108  J +0.14572  K/K0 0.9991  P/P0 1.3395  λB/λB0 1.3396  σ/σ0 1.0016  V/V0-1 +8.5e-06  closed 0.536  H 0.811  |dξ̃| 0.0144  FE 2.9s it 3.7s
-[solid] ph 0 it 109  J +0.14795  K/K0 0.9988  P/P0 1.3460  λB/λB0 1.3460  σ/σ0 1.0019  V/V0-1 +2.5e-06  closed 0.527  H 0.811  |dξ̃| 0.0114  FE 2.8s it 3.7s
-[solid] ph 0 it 110  J +0.14841  K/K0 0.9992  P/P0 1.3466  λB/λB0 1.3467  σ/σ0 1.0017  V/V0-1 +3.6e-07  closed 0.527  H 0.811  |dξ̃| 0.0091  FE 2.7s it 3.6s
-[solid] ph 0 it 111  J +0.14882  K/K0 0.9994  P/P0 1.3475  λB/λB0 1.3476  σ/σ0 1.0012  V/V0-1 +8.9e-07  closed 0.524  H 0.811  |dξ̃| 0.0093  FE 2.9s it 3.7s
-[solid] ph 0 it 112  J +0.14948  K/K0 0.9993  P/P0 1.3494  λB/λB0 1.3494  σ/σ0 1.0012  V/V0-1 +1.9e-06  closed 0.524  H 0.811  |dξ̃| 0.0083  FE 2.9s it 3.8s
-[solid] ph 0 it 113  J +0.15058  K/K0 0.9993  P/P0 1.3523  λB/λB0 1.3524  σ/σ0 1.0014  V/V0-1 +2.1e-06  closed 0.520  H 0.811  |dξ̃| 0.0102  FE 3.0s it 3.8s
-[solid] ph 0 it 114  J +0.15093  K/K0 0.9993  P/P0 1.3533  λB/λB0 1.3533  σ/σ0 1.0013  V/V0-1 +1.8e-06  closed 0.518  H 0.811  |dξ̃| 0.0106  FE 3.0s it 3.8s
-[solid] ph 0 it 115  J +0.15174  K/K0 0.9993  P/P0 1.3555  λB/λB0 1.3556  σ/σ0 1.0015  V/V0-1 +1.5e-06  closed 0.517  H 0.811  |dξ̃| 0.0180  FE 3.0s it 3.8s
-[cshell] growth step 6 done after 10 iterations: ΔJ +1.90e-02 (low-gain steps in a row 0/11)
-[cshell] growth step 7: q 0.80, R_k 0.01603, H 0.857 of the active area, J at boundary +0.15184, R 0.6 s
-[solid] ph 0 it 116  J +0.15478  K/K0 1.0036  P/P0 1.3580  λB/λB0 1.3580  σ/σ0 0.9959  V/V0-1 +2.3e-05  closed 0.506  H 0.857  |dξ̃| 0.0318  FE 2.8s it 7.2s
-[cshell]   active set rebuilt: 209798 elements, 755055 DOF, engine twogrid, coarse 126678 DOF (fp32), 93.5 GiB device memory free
-[solid] ph 0 it 117  J +0.17268  K/K0 1.0014  P/P0 1.4105  λB/λB0 1.4106  σ/σ0 1.0015  V/V0-1 +1.8e-05  closed 0.472  H 0.857  |dξ̃| 0.0319  FE 3.5s it 4.4s
-[solid] ph 0 it 118  J +0.17983  K/K0 0.9992  P/P0 1.4340  λB/λB0 1.4340  σ/σ0 1.0027  V/V0-1 +2.1e-06  closed 0.454  H 0.857  |dξ̃| 0.0246  FE 2.8s it 3.6s
-[solid] ph 0 it 119  J +0.18048  K/K0 1.0003  P/P0 1.4343  λB/λB0 1.4344  σ/σ0 1.0029  V/V0-1 -2.6e-05  closed 0.463  H 0.857  |dξ̃| 0.0281  FE 2.7s it 3.5s
-[solid] ph 0 it 120  J +0.18312  K/K0 0.9990  P/P0 1.4437  λB/λB0 1.4438  σ/σ0 1.0035  V/V0-1 -6.1e-06  closed 0.453  H 0.857  |dξ̃| 0.0288  FE 2.8s it 3.7s
-[solid] ph 0 it 121  J +0.18421  K/K0 0.9992  P/P0 1.4466  λB/λB0 1.4467  σ/σ0 1.0035  V/V0-1 -5.6e-06  closed 0.457  H 0.857  |dξ̃| 0.0337  FE 2.8s it 3.7s
-[solid] ph 0 it 122  J +0.18572  K/K0 0.9993  P/P0 1.4508  λB/λB0 1.4509  σ/σ0 1.0034  V/V0-1 -4.3e-06  closed 0.447  H 0.857  |dξ̃| 0.0296  FE 2.7s it 3.7s
-[solid] ph 0 it 123  J +0.18652  K/K0 0.9995  P/P0 1.4529  λB/λB0 1.4530  σ/σ0 1.0024  V/V0-1 -5.0e-06  closed 0.455  H 0.857  |dξ̃| 0.0330  FE 2.9s it 3.9s
-[solid] ph 0 it 124  J +0.18792  K/K0 0.9994  P/P0 1.4571  λB/λB0 1.4572  σ/σ0 1.0026  V/V0-1 -7.4e-06  closed 0.450  H 0.857  |dξ̃| 0.0326  FE 2.8s it 3.8s
-[solid] ph 0 it 125  J +0.18909  K/K0 0.9994  P/P0 1.4605  λB/λB0 1.4606  σ/σ0 1.0025  V/V0-1 -6.5e-06  closed 0.452  H 0.857  |dξ̃| 0.0431  FE 2.8s it 3.8s
-[solid] ph 0 it 126  J +0.19025  K/K0 0.9995  P/P0 1.4638  λB/λB0 1.4639  σ/σ0 1.0023  V/V0-1 -7.9e-06  closed 0.450  H 0.857  |dξ̃| 0.0333  FE 2.8s it 3.8s
-[solid] ph 0 it 127  J +0.19163  K/K0 0.9994  P/P0 1.4679  λB/λB0 1.4680  σ/σ0 1.0023  V/V0-1 -7.1e-06  closed 0.450  H 0.857  |dξ̃| 0.0403  FE 3.0s it 3.9s
-[solid] ph 0 it 128  J +0.19248  K/K0 0.9994  P/P0 1.4704  λB/λB0 1.4705  σ/σ0 1.0022  V/V0-1 -7.1e-06  closed 0.451  H 0.857  |dξ̃| 0.0326  FE 1.8s it 2.7s
-[solid] ph 0 it 129  J +0.19367  K/K0 0.9994  P/P0 1.4740  λB/λB0 1.4741  σ/σ0 1.0023  V/V0-1 -6.4e-06  closed 0.450  H 0.857  |dξ̃| 0.0369  FE 3.0s it 3.9s
-[solid] ph 0 it 130  J +0.19449  K/K0 0.9994  P/P0 1.4764  λB/λB0 1.4765  σ/σ0 1.0022  V/V0-1 -7.0e-06  closed 0.451  H 0.857  |dξ̃| 0.0297  FE 1.9s it 2.8s
-[cshell]   active set rebuilt: 211414 elements, 762285 DOF, engine twogrid, coarse 128016 DOF (fp32), 93.6 GiB device memory free
-[solid] ph 0 it 131  J +0.19566  K/K0 0.9994  P/P0 1.4799  λB/λB0 1.4800  σ/σ0 1.0024  V/V0-1 -5.8e-06  closed 0.450  H 0.857  |dξ̃| 0.0409  FE 3.7s it 4.7s
-[solid] ph 0 it 132  J +0.19640  K/K0 0.9994  P/P0 1.4821  λB/λB0 1.4822  σ/σ0 1.0024  V/V0-1 -8.2e-06  closed 0.451  H 0.857  |dξ̃| 0.0311  FE 3.0s it 3.8s
-[solid] ph 0 it 133  J +0.19794  K/K0 0.9992  P/P0 1.4868  λB/λB0 1.4869  σ/σ0 1.0030  V/V0-1 -9.1e-06  closed 0.446  H 0.857  |dξ̃| 0.0531  FE 2.8s it 3.7s
-[solid] ph 0 it 134  J +0.19683  K/K0 0.9992  P/P0 1.4836  λB/λB0 1.4837  σ/σ0 1.0025  V/V0-1 -8.4e-06  closed 0.451  H 0.857  |dξ̃| 0.0516  FE 2.8s it 3.7s
-[solid] ph 0 it 135  J +0.20009  K/K0 0.9991  P/P0 1.4934  λB/λB0 1.4935  σ/σ0 1.0040  V/V0-1 -1.3e-05  closed 0.442  H 0.857  |dξ̃| 0.0506  FE 2.8s it 3.8s
-[solid] ph 0 it 136  J +0.19850  K/K0 0.9993  P/P0 1.4884  λB/λB0 1.4885  σ/σ0 1.0026  V/V0-1 -9.5e-06  closed 0.448  H 0.857  |dξ̃| 0.0248  FE 2.8s it 3.7s
-[solid] ph 0 it 137  J +0.19998  K/K0 0.9993  P/P0 1.4928  λB/λB0 1.4929  σ/σ0 1.0030  V/V0-1 -9.1e-06  closed 0.444  H 0.857  |dξ̃| 0.0270  FE 2.8s it 3.8s
-[solid] ph 0 it 138  J +0.20030  K/K0 0.9993  P/P0 1.4938  λB/λB0 1.4939  σ/σ0 1.0029  V/V0-1 -9.3e-06  closed 0.444  H 0.857  |dξ̃| 0.0176  FE 3.0s it 4.1s
-[solid] ph 0 it 139  J +0.20077  K/K0 0.9993  P/P0 1.4952  λB/λB0 1.4953  σ/σ0 1.0029  V/V0-1 -8.9e-06  closed 0.443  H 0.857  |dξ̃| 0.0184  FE 1.9s it 2.8s
-[solid] ph 0 it 140  J +0.20123  K/K0 0.9993  P/P0 1.4965  λB/λB0 1.4966  σ/σ0 1.0030  V/V0-1 -8.9e-06  closed 0.442  H 0.857  |dξ̃| 0.0147  FE 1.9s it 2.8s
-[cshell] growth step 7 done after 25 iterations: ΔJ +4.99e-02 (low-gain steps in a row 0/11)
-[cshell] growth step 8: q 0.90, R_k 0.02534, H 0.901 of the active area, J at boundary +0.20173, R 0.6 s
-[solid] ph 0 it 141  J +0.20603  K/K0 1.0076  P/P0 1.4986  λB/λB0 1.4987  σ/σ0 0.9929  V/V0-1 -8.2e-05  closed 0.444  H 0.901  |dξ̃| 0.0328  FE 2.8s it 6.0s
-[solid] ph 0 it 142  J +0.22392  K/K0 1.0063  P/P0 1.5552  λB/λB0 1.5553  σ/σ0 0.9972  V/V0-1 +7.7e-06  closed 0.412  H 0.901  |dξ̃| 0.0332  FE 2.8s it 3.6s
-[solid] ph 0 it 143  J +0.23766  K/K0 1.0038  P/P0 1.6025  λB/λB0 1.6027  σ/σ0 1.0013  V/V0-1 -4.2e-06  closed 0.384  H 0.901  |dξ̃| 0.0257  FE 2.8s it 3.7s
-[solid] ph 0 it 144  J +0.24206  K/K0 1.0029  P/P0 1.6181  λB/λB0 1.6184  σ/σ0 1.0019  V/V0-1 -5.7e-06  closed 0.379  H 0.901  |dξ̃| 0.0408  FE 2.9s it 3.8s
-[solid] ph 0 it 145  J +0.24629  K/K0 1.0013  P/P0 1.6344  λB/λB0 1.6347  σ/σ0 1.0057  V/V0-1 +7.5e-05  closed 0.369  H 0.901  |dξ̃| 0.0369  FE 2.8s it 3.6s
-[solid] ph 0 it 146  J +0.24778  K/K0 1.0024  P/P0 1.6374  λB/λB0 1.6377  σ/σ0 1.0033  V/V0-1 -1.2e-05  closed 0.373  H 0.901  |dξ̃| 0.0453  FE 2.8s it 3.7s
-[solid] ph 0 it 147  J +0.24861  K/K0 1.0020  P/P0 1.6408  λB/λB0 1.6411  σ/σ0 1.0031  V/V0-1 -1.5e-05  closed 0.374  H 0.901  |dξ̃| 0.0373  FE 2.9s it 3.8s
-[solid] ph 0 it 148  J +0.25146  K/K0 1.0020  P/P0 1.6503  λB/λB0 1.6505  σ/σ0 1.0027  V/V0-1 -7.9e-06  closed 0.371  H 0.901  |dξ̃| 0.0479  FE 2.9s it 3.9s
-[cshell]   active set rebuilt: 214743 elements, 777483 DOF, engine twogrid, coarse 130899 DOF (fp32), 93.5 GiB device memory free
-[solid] ph 0 it 149  J +0.25298  K/K0 1.0022  P/P0 1.6549  λB/λB0 1.6552  σ/σ0 1.0019  V/V0-1 -3.6e-06  closed 0.376  H 0.901  |dξ̃| 0.0531  FE 3.7s it 4.7s
-[solid] ph 0 it 150  J +0.25566  K/K0 1.0021  P/P0 1.6640  λB/λB0 1.6643  σ/σ0 1.0014  V/V0-1 -8.1e-06  closed 0.376  H 0.901  |dξ̃| 0.0589  FE 2.9s it 3.8s
-[solid] ph 0 it 151  J +0.25830  K/K0 1.0021  P/P0 1.6728  λB/λB0 1.6731  σ/σ0 1.0009  V/V0-1 -6.1e-06  closed 0.378  H 0.901  |dξ̃| 0.0526  FE 2.9s it 3.8s
-[solid] ph 0 it 152  J +0.26084  K/K0 1.0021  P/P0 1.6814  λB/λB0 1.6817  σ/σ0 1.0004  V/V0-1 -7.6e-06  closed 0.379  H 0.901  |dξ̃| 0.0501  FE 3.0s it 3.9s
-[solid] ph 0 it 153  J +0.26379  K/K0 1.0018  P/P0 1.6918  λB/λB0 1.6921  σ/σ0 1.0004  V/V0-1 -6.5e-06  closed 0.380  H 0.901  |dξ̃| 0.0476  FE 2.9s it 3.7s
-[solid] ph 0 it 154  J +0.26673  K/K0 1.0016  P/P0 1.7022  λB/λB0 1.7025  σ/σ0 1.0005  V/V0-1 -7.3e-06  closed 0.380  H 0.901  |dξ̃| 0.0462  FE 2.9s it 3.7s
-[solid] ph 0 it 155  J +0.26951  K/K0 1.0013  P/P0 1.7122  λB/λB0 1.7125  σ/σ0 1.0006  V/V0-1 -7.3e-06  closed 0.380  H 0.901  |dξ̃| 0.0401  FE 2.9s it 3.8s
-[solid] ph 0 it 156  J +0.27197  K/K0 1.0010  P/P0 1.7211  λB/λB0 1.7215  σ/σ0 1.0007  V/V0-1 -8.0e-06  closed 0.380  H 0.901  |dξ̃| 0.0422  FE 2.9s it 3.7s
-[solid] ph 0 it 157  J +0.27452  K/K0 1.0007  P/P0 1.7303  λB/λB0 1.7307  σ/σ0 1.0012  V/V0-1 -8.6e-06  closed 0.379  H 0.901  |dξ̃| 0.0285  FE 2.9s it 3.7s
-[cshell]   active set rebuilt: 216230 elements, 784530 DOF, engine twogrid, coarse 132537 DOF (fp32), 93.5 GiB device memory free
-[solid] ph 0 it 158  J +0.27584  K/K0 1.0006  P/P0 1.7352  λB/λB0 1.7356  σ/σ0 1.0011  V/V0-1 -8.3e-06  closed 0.378  H 0.901  |dξ̃| 0.0334  FE 3.6s it 4.5s
-[solid] ph 0 it 159  J +0.27810  K/K0 1.0004  P/P0 1.7434  λB/λB0 1.7438  σ/σ0 1.0015  V/V0-1 -8.3e-06  closed 0.376  H 0.901  |dξ̃| 0.0215  FE 3.0s it 3.9s
-[solid] ph 0 it 160  J +0.27944  K/K0 1.0003  P/P0 1.7482  λB/λB0 1.7487  σ/σ0 1.0017  V/V0-1 -7.6e-06  closed 0.375  H 0.901  |dξ̃| 0.0187  FE 3.1s it 4.0s
-[solid] ph 0 it 161  J +0.28045  K/K0 1.0002  P/P0 1.7519  λB/λB0 1.7524  σ/σ0 1.0018  V/V0-1 -6.9e-06  closed 0.374  H 0.901  |dξ̃| 0.0179  FE 3.1s it 4.1s
-[solid] ph 0 it 162  J +0.28148  K/K0 1.0001  P/P0 1.7557  λB/λB0 1.7562  σ/σ0 1.0019  V/V0-1 -6.9e-06  closed 0.373  H 0.901  |dξ̃| 0.0194  FE 1.9s it 2.9s
-[solid] ph 0 it 163  J +0.28241  K/K0 1.0001  P/P0 1.7590  λB/λB0 1.7595  σ/σ0 1.0020  V/V0-1 -6.7e-06  closed 0.372  H 0.901  |dξ̃| 0.0170  FE 1.9s it 2.9s
-[solid] ph 0 it 164  J +0.28337  K/K0 1.0000  P/P0 1.7626  λB/λB0 1.7630  σ/σ0 1.0021  V/V0-1 -6.2e-06  closed 0.372  H 0.901  |dξ̃| 0.0209  FE 1.9s it 3.0s
-[solid] ph 0 it 165  J +0.28418  K/K0 1.0000  P/P0 1.7654  λB/λB0 1.7659  σ/σ0 1.0021  V/V0-1 -6.4e-06  closed 0.370  H 0.901  |dξ̃| 0.0177  FE 3.1s it 4.1s
-[cshell] growth step 8 done after 25 iterations: ΔJ +8.33e-02 (low-gain steps in a row 0/11)
-[cshell] growth step 9: q 1.00, R_k 0.3435, H 1.000 of the active area, J at boundary +0.28507, R 0.6 s
-[solid] ph 0 it 166  J +0.28658  K/K0 1.0021  P/P0 1.7701  λB/λB0 1.7706  σ/σ0 1.0004  V/V0-1 -2.9e-06  closed 0.360  H 1.000  |dξ̃| 0.0199  FE 1.8s it 5.3s
-[solid] ph 0 it 167  J +0.29534  K/K0 1.0009  P/P0 1.8035  λB/λB0 1.8041  σ/σ0 1.0045  V/V0-1 +2.1e-05  closed 0.335  H 1.000  |dξ̃| 0.0162  FE 3.0s it 3.9s
-[solid] ph 0 it 168  J +0.29366  K/K0 1.0017  P/P0 1.7961  λB/λB0 1.7967  σ/σ0 1.0035  V/V0-1 +4.3e-05  closed 0.341  H 1.000  |dξ̃| 0.0251  FE 1.9s it 2.8s
-[solid] ph 0 it 169  J +0.29783  K/K0 1.0005  P/P0 1.8132  λB/λB0 1.8139  σ/σ0 1.0058  V/V0-1 +2.5e-05  closed 0.324  H 1.000  |dξ̃| 0.0228  FE 3.0s it 4.0s
-[solid] ph 0 it 170  J +0.29840  K/K0 1.0013  P/P0 1.8139  λB/λB0 1.8145  σ/σ0 1.0045  V/V0-1 +6.9e-05  closed 0.326  H 1.000  |dξ̃| 0.0219  FE 1.8s it 2.7s
-[solid] ph 0 it 171  J +0.30136  K/K0 1.0010  P/P0 1.8253  λB/λB0 1.8260  σ/σ0 1.0046  V/V0-1 -4.5e-06  closed 0.319  H 1.000  |dξ̃| 0.0258  FE 3.0s it 3.9s
-[solid] ph 0 it 172  J +0.30413  K/K0 1.0008  P/P0 1.8357  λB/λB0 1.8364  σ/σ0 1.0052  V/V0-1 -6.7e-06  closed 0.313  H 1.000  |dξ̃| 0.0410  FE 3.0s it 3.9s
-[solid] ph 0 it 173  J +0.30777  K/K0 1.0007  P/P0 1.8493  λB/λB0 1.8500  σ/σ0 1.0055  V/V0-1 -8.1e-06  closed 0.304  H 1.000  |dξ̃| 0.0370  FE 3.0s it 3.9s
-[solid] ph 0 it 174  J +0.31090  K/K0 1.0008  P/P0 1.8609  λB/λB0 1.8616  σ/σ0 1.0058  V/V0-1 -9.1e-06  closed 0.299  H 1.000  |dξ̃| 0.0378  FE 3.0s it 4.0s
-[solid] ph 0 it 175  J +0.31347  K/K0 1.0009  P/P0 1.8702  λB/λB0 1.8710  σ/σ0 1.0058  V/V0-1 -5.2e-06  closed 0.295  H 1.000  |dξ̃| 0.0345  FE 3.1s it 4.0s
-[solid] ph 0 it 176  J +0.31580  K/K0 1.0009  P/P0 1.8789  λB/λB0 1.8797  σ/σ0 1.0058  V/V0-1 -5.0e-06  closed 0.293  H 1.000  |dξ̃| 0.0432  FE 3.1s it 4.0s
-[solid] ph 0 it 177  J +0.31855  K/K0 1.0008  P/P0 1.8894  λB/λB0 1.8903  σ/σ0 1.0060  V/V0-1 -4.1e-06  closed 0.289  H 1.000  |dξ̃| 0.0434  FE 3.3s it 4.2s
-[cshell]   active set rebuilt: 220297 elements, 801009 DOF, engine twogrid, coarse 135462 DOF (fp32), 93.5 GiB device memory free
-[solid] ph 0 it 178  J +0.32159  K/K0 1.0008  P/P0 1.9010  λB/λB0 1.9019  σ/σ0 1.0063  V/V0-1 -5.0e-06  closed 0.285  H 1.000  |dξ̃| 0.0420  FE 3.9s it 4.8s
-[solid] ph 0 it 179  J +0.32431  K/K0 1.0009  P/P0 1.9113  λB/λB0 1.9122  σ/σ0 1.0065  V/V0-1 -3.9e-06  closed 0.281  H 1.000  |dξ̃| 0.0371  FE 2.1s it 3.0s
-[solid] ph 0 it 180  J +0.32651  K/K0 1.0010  P/P0 1.9193  λB/λB0 1.9203  σ/σ0 1.0065  V/V0-1 -5.1e-06  closed 0.278  H 1.000  |dξ̃| 0.0428  FE 3.5s it 4.5s
-[solid] ph 0 it 181  J +0.32889  K/K0 1.0011  P/P0 1.9283  λB/λB0 1.9293  σ/σ0 1.0068  V/V0-1 -5.6e-06  closed 0.272  H 1.000  |dξ̃| 0.0413  FE 3.5s it 4.5s
-[solid] ph 0 it 182  J +0.32988  K/K0 1.0015  P/P0 1.9314  λB/λB0 1.9324  σ/σ0 1.0065  V/V0-1 -7.6e-06  closed 0.272  H 1.000  |dξ̃| 0.0282  FE 3.5s it 4.4s
-[solid] ph 0 it 183  J +0.33204  K/K0 1.0017  P/P0 1.9393  λB/λB0 1.9404  σ/σ0 1.0070  V/V0-1 -5.8e-06  closed 0.265  H 1.000  |dξ̃| 0.0210  FE 3.5s it 4.4s
-[cshell] growth step 9 done after 18 iterations: ΔJ +4.69e-02 (low-gain steps in a row 0/11)
-[cshell] growth stops at boundary 10: all quantiles used; J by boundary [-0.0, 0.01188, 0.04601, 0.07465, 0.10472, 0.12015, 0.13281, 0.15184, 0.20173, 0.28507, 0.332], iterations per step [18, 9, 13, 16, 25, 25, 10, 25, 25, 18]
+[solid] ph 0 it  31  J +0.07321  K/K0 0.9915  P/P0 1.1676  λB/λB0 1.1676  σ/σ0 1.0050  V/V0-1 +2.0e-06  closed 0.732  H 0.547  |dξ̃| 0.0151  FE 2.7s it 3.5s
+[solid] ph 0 it  32  J +0.07022  K/K0 0.9939  P/P0 1.1579  λB/λB0 1.1579  σ/σ0 1.0023  V/V0-1 -3.0e-06  closed 0.732  H 0.547  |dξ̃| 0.0113  FE 2.6s it 3.4s
+[solid] ph 0 it  33  J +0.07140  K/K0 0.9942  P/P0 1.1602  λB/λB0 1.1602  σ/σ0 1.0015  V/V0-1 -3.0e-06  closed 0.740  H 0.547  |dξ̃| 0.0168  FE 1.7s it 2.5s
+[solid] ph 0 it  34  J +0.07185  K/K0 0.9946  P/P0 1.1608  λB/λB0 1.1608  σ/σ0 1.0016  V/V0-1 -1.6e-06  closed 0.741  H 0.547  |dξ̃| 0.0321  FE 1.7s it 2.5s
+[solid] ph 0 it  35  J +0.07383  K/K0 0.9936  P/P0 1.1666  λB/λB0 1.1666  σ/σ0 1.0050  V/V0-1 -1.1e-05  closed 0.737  H 0.547  |dξ̃| 0.0489  FE 2.7s it 3.5s
+[solid] ph 0 it  36  J +0.07648  K/K0 0.9925  P/P0 1.1741  λB/λB0 1.1741  σ/σ0 1.0101  V/V0-1 -2.0e-05  closed 0.730  H 0.547  |dξ̃| 0.0360  FE 2.6s it 3.5s
+[solid] ph 0 it  37  J +0.07932  K/K0 0.9925  P/P0 1.1807  λB/λB0 1.1807  σ/σ0 1.0082  V/V0-1 -1.2e-05  closed 0.723  H 0.547  |dξ̃| 0.0226  FE 2.6s it 3.5s
+[solid] ph 0 it  38  J +0.07547  K/K0 0.9946  P/P0 1.1692  λB/λB0 1.1692  σ/σ0 1.0026  V/V0-1 -1.2e-05  closed 0.734  H 0.547  |dξ̃| 0.0129  FE 2.6s it 3.5s
+[solid] ph 0 it  39  J +0.07466  K/K0 0.9952  P/P0 1.1667  λB/λB0 1.1667  σ/σ0 1.0013  V/V0-1 -8.7e-06  closed 0.737  H 0.547  |dξ̃| 0.0095  FE 2.8s it 3.7s
+[cshell] growth step 2 done after 13 iterations: ΔJ +2.87e-02 (low-gain steps in a row 0/11)
+[cshell] growth step 3: q 0.40, R_k 0.002969, H 0.686 of the active area, J at boundary +0.07467, R 0.6 s
+[cshell]   active set rebuilt: 201894 elements, 724734 DOF, engine twogrid, coarse 121773 DOF (fp32), 93.5 GiB device memory free
+[solid] ph 0 it  40  J +0.07383  K/K0 0.9839  P/P0 1.1781  λB/λB0 1.1781  σ/σ0 1.0304  V/V0-1 +1.7e-05  closed 0.727  H 0.686  |dξ̃| 0.0352  FE 3.4s it 6.5s
+[cshell]   active set rebuilt: 201977 elements, 724638 DOF, engine twogrid, coarse 121788 DOF (fp32), 93.6 GiB device memory free
+[solid] ph 0 it  41  J +0.08139  K/K0 0.9899  P/P0 1.1888  λB/λB0 1.1888  σ/σ0 1.0095  V/V0-1 +1.9e-05  closed 0.678  H 0.686  |dξ̃| 0.0375  FE 3.3s it 4.1s
+[cshell]   active set rebuilt: 202233 elements, 725334 DOF, engine twogrid, coarse 121863 DOF (fp32), 93.6 GiB device memory free
+[solid] ph 0 it  42  J +0.08900  K/K0 0.9930  P/P0 1.2033  λB/λB0 1.2033  σ/σ0 1.0035  V/V0-1 +8.0e-05  closed 0.663  H 0.686  |dξ̃| 0.0340  FE 3.3s it 4.1s
+[solid] ph 0 it  43  J +0.09482  K/K0 0.9934  P/P0 1.2169  λB/λB0 1.2169  σ/σ0 1.0016  V/V0-1 +1.1e-06  closed 0.661  H 0.686  |dξ̃| 0.0290  FE 2.6s it 3.4s
+[solid] ph 0 it  44  J +0.09770  K/K0 0.9933  P/P0 1.2240  λB/λB0 1.2240  σ/σ0 1.0060  V/V0-1 +6.4e-07  closed 0.657  H 0.686  |dξ̃| 0.0231  FE 2.6s it 3.4s
+[solid] ph 0 it  45  J +0.10358  K/K0 0.9919  P/P0 1.2403  λB/λB0 1.2403  σ/σ0 1.0070  V/V0-1 +4.1e-07  closed 0.629  H 0.686  |dξ̃| 0.0397  FE 2.6s it 3.4s
+[solid] ph 0 it  46  J +0.10632  K/K0 0.9918  P/P0 1.2472  λB/λB0 1.2472  σ/σ0 1.0079  V/V0-1 +7.9e-05  closed 0.632  H 0.686  |dξ̃| 0.0268  FE 2.6s it 3.5s
+[solid] ph 0 it  47  J +0.10426  K/K0 0.9930  P/P0 1.2405  λB/λB0 1.2405  σ/σ0 1.0052  V/V0-1 +1.5e-05  closed 0.640  H 0.686  |dξ̃| 0.0311  FE 2.6s it 3.5s
+[solid] ph 0 it  48  J +0.10376  K/K0 0.9938  P/P0 1.2383  λB/λB0 1.2384  σ/σ0 1.0046  V/V0-1 -1.7e-05  closed 0.635  H 0.686  |dξ̃| 0.0354  FE 2.5s it 3.3s
+[solid] ph 0 it  49  J +0.10479  K/K0 0.9937  P/P0 1.2410  λB/λB0 1.2411  σ/σ0 1.0034  V/V0-1 +3.3e-05  closed 0.641  H 0.686  |dξ̃| 0.0416  FE 2.6s it 3.5s
+[solid] ph 0 it  50  J +0.10319  K/K0 0.9946  P/P0 1.2359  λB/λB0 1.2359  σ/σ0 1.0036  V/V0-1 +4.3e-07  closed 0.646  H 0.686  |dξ̃| 0.0270  FE 2.7s it 3.5s
+[solid] ph 0 it  51  J +0.10632  K/K0 0.9940  P/P0 1.2444  λB/λB0 1.2444  σ/σ0 1.0034  V/V0-1 +8.7e-06  closed 0.634  H 0.686  |dξ̃| 0.0344  FE 2.7s it 3.6s
+[solid] ph 0 it  52  J +0.10352  K/K0 0.9953  P/P0 1.2359  λB/λB0 1.2359  σ/σ0 1.0014  V/V0-1 +1.3e-05  closed 0.646  H 0.686  |dξ̃| 0.0098  FE 1.7s it 2.6s
+[cshell] growth step 3 done after 13 iterations: ΔJ +2.88e-02 (low-gain steps in a row 0/11)
+[cshell] growth step 4: q 0.50, R_k 0.004901, H 0.738 of the active area, J at boundary +0.10348, R 0.6 s
+[solid] ph 0 it  53  J +0.10575  K/K0 0.9960  P/P0 1.2404  λB/λB0 1.2405  σ/σ0 1.0016  V/V0-1 +1.4e-05  closed 0.613  H 0.738  |dξ̃| 0.0275  FE 2.7s it 5.8s
+[solid] ph 0 it  54  J +0.11137  K/K0 0.9960  P/P0 1.2545  λB/λB0 1.2545  σ/σ0 1.0033  V/V0-1 +3.4e-07  closed 0.582  H 0.738  |dξ̃| 0.0297  FE 2.6s it 3.5s
+[solid] ph 0 it  55  J +0.11247  K/K0 0.9958  P/P0 1.2575  λB/λB0 1.2575  σ/σ0 1.0053  V/V0-1 +4.9e-07  closed 0.608  H 0.738  |dξ̃| 0.0303  FE 2.6s it 3.5s
+[solid] ph 0 it  56  J +0.11844  K/K0 0.9955  P/P0 1.2730  λB/λB0 1.2731  σ/σ0 1.0076  V/V0-1 +3.5e-05  closed 0.564  H 0.738  |dξ̃| 0.0212  FE 2.6s it 3.4s
+[solid] ph 0 it  57  J +0.11656  K/K0 0.9959  P/P0 1.2678  λB/λB0 1.2678  σ/σ0 1.0041  V/V0-1 +3.4e-07  closed 0.586  H 0.738  |dξ̃| 0.0289  FE 2.6s it 3.5s
+[solid] ph 0 it  58  J +0.11344  K/K0 0.9975  P/P0 1.2579  λB/λB0 1.2579  σ/σ0 1.0063  V/V0-1 +8.8e-05  closed 0.593  H 0.738  |dξ̃| 0.0264  FE 2.6s it 3.5s
+[solid] ph 0 it  59  J +0.11954  K/K0 0.9960  P/P0 1.2751  λB/λB0 1.2752  σ/σ0 1.0055  V/V0-1 +9.9e-05  closed 0.574  H 0.738  |dξ̃| 0.0330  FE 2.7s it 3.6s
+[solid] ph 0 it  60  J +0.11515  K/K0 0.9981  P/P0 1.2614  λB/λB0 1.2615  σ/σ0 1.0051  V/V0-1 +6.8e-07  closed 0.596  H 0.738  |dξ̃| 0.0367  FE 2.6s it 3.7s
+[cshell]   active set rebuilt: 205069 elements, 735441 DOF, engine twogrid, coarse 123360 DOF (fp32), 93.6 GiB device memory free
+[solid] ph 0 it  61  J +0.11743  K/K0 0.9971  P/P0 1.2684  λB/λB0 1.2684  σ/σ0 1.0041  V/V0-1 +3.9e-06  closed 0.583  H 0.738  |dξ̃| 0.0245  FE 3.4s it 4.4s
+[cshell]   active set rebuilt: 204916 elements, 734892 DOF, engine twogrid, coarse 123291 DOF (fp32), 93.6 GiB device memory free
+[solid] ph 0 it  62  J +0.11559  K/K0 0.9984  P/P0 1.2622  λB/λB0 1.2622  σ/σ0 1.0026  V/V0-1 +7.5e-06  closed 0.595  H 0.738  |dξ̃| 0.0125  FE 3.4s it 4.3s
+[solid] ph 0 it  63  J +0.11458  K/K0 0.9988  P/P0 1.2591  λB/λB0 1.2591  σ/σ0 1.0013  V/V0-1 +1.3e-05  closed 0.596  H 0.738  |dξ̃| 0.0059  FE 2.8s it 3.8s
+[solid] ph 0 it  64  J +0.11404  K/K0 0.9991  P/P0 1.2573  λB/λB0 1.2574  σ/σ0 1.0009  V/V0-1 +1.2e-05  closed 0.597  H 0.738  |dξ̃| 0.0069  FE 1.8s it 2.7s
+[solid] ph 0 it  65  J +0.11415  K/K0 0.9992  P/P0 1.2574  λB/λB0 1.2575  σ/σ0 1.0009  V/V0-1 +1.1e-05  closed 0.596  H 0.738  |dξ̃| 0.0054  FE 1.7s it 2.6s
+[solid] ph 0 it  66  J +0.11440  K/K0 0.9993  P/P0 1.2580  λB/λB0 1.2580  σ/σ0 1.0009  V/V0-1 +9.6e-06  closed 0.595  H 0.738  |dξ̃| 0.0077  FE 1.7s it 2.7s
+[solid] ph 0 it  67  J +0.11472  K/K0 0.9993  P/P0 1.2588  λB/λB0 1.2588  σ/σ0 1.0009  V/V0-1 +8.8e-06  closed 0.594  H 0.738  |dξ̃| 0.0098  FE 1.7s it 2.7s
+[solid] ph 0 it  68  J +0.11505  K/K0 0.9993  P/P0 1.2596  λB/λB0 1.2596  σ/σ0 1.0009  V/V0-1 +8.9e-06  closed 0.594  H 0.738  |dξ̃| 0.0108  FE 1.7s it 2.7s
+[solid] ph 0 it  69  J +0.11539  K/K0 0.9993  P/P0 1.2605  λB/λB0 1.2605  σ/σ0 1.0009  V/V0-1 +7.1e-06  closed 0.594  H 0.738  |dξ̃| 0.0124  FE 1.7s it 2.7s
+[solid] ph 0 it  70  J +0.11575  K/K0 0.9993  P/P0 1.2614  λB/λB0 1.2614  σ/σ0 1.0009  V/V0-1 +7.9e-06  closed 0.594  H 0.738  |dξ̃| 0.0177  FE 1.7s it 2.7s
+[solid] ph 0 it  71  J +0.11615  K/K0 0.9993  P/P0 1.2624  λB/λB0 1.2624  σ/σ0 1.0010  V/V0-1 +4.2e-06  closed 0.596  H 0.738  |dξ̃| 0.0176  FE 2.8s it 3.8s
+[solid] ph 0 it  72  J +0.11660  K/K0 0.9993  P/P0 1.2636  λB/λB0 1.2636  σ/σ0 1.0010  V/V0-1 +6.4e-06  closed 0.594  H 0.738  |dξ̃| 0.0167  FE 2.8s it 3.8s
+[solid] ph 0 it  73  J +0.11702  K/K0 0.9993  P/P0 1.2646  λB/λB0 1.2647  σ/σ0 1.0011  V/V0-1 +2.4e-06  closed 0.597  H 0.738  |dξ̃| 0.0127  FE 2.8s it 3.8s
+[solid] ph 0 it  74  J +0.11761  K/K0 0.9992  P/P0 1.2663  λB/λB0 1.2663  σ/σ0 1.0014  V/V0-1 +4.9e-06  closed 0.595  H 0.738  |dξ̃| 0.0154  FE 2.8s it 3.7s
+[solid] ph 0 it  75  J +0.11836  K/K0 0.9991  P/P0 1.2682  λB/λB0 1.2682  σ/σ0 1.0018  V/V0-1 +9.2e-07  closed 0.597  H 0.738  |dξ̃| 0.0208  FE 2.7s it 3.7s
+[solid] ph 0 it  76  J +0.11878  K/K0 0.9991  P/P0 1.2693  λB/λB0 1.2693  σ/σ0 1.0020  V/V0-1 +5.1e-06  closed 0.592  H 0.738  |dξ̃| 0.0237  FE 2.6s it 3.6s
+[solid] ph 0 it  77  J +0.11913  K/K0 0.9990  P/P0 1.2703  λB/λB0 1.2704  σ/σ0 1.0024  V/V0-1 +1.0e-06  closed 0.598  H 0.738  |dξ̃| 0.0278  FE 2.6s it 3.6s
+[cshell] growth step 4 done after 25 iterations: ΔJ +1.70e-02 (low-gain steps in a row 0/11)
+[cshell] growth step 5: q 0.60, R_k 0.006582, H 0.767 of the active area, J at boundary +0.12049, R 0.6 s
+[solid] ph 0 it  78  J +0.12047  K/K0 0.9978  P/P0 1.2753  λB/λB0 1.2753  σ/σ0 1.0028  V/V0-1 +4.7e-07  closed 0.577  H 0.767  |dξ̃| 0.0208  FE 2.7s it 6.7s
+[solid] ph 0 it  79  J +0.12679  K/K0 0.9973  P/P0 1.2921  λB/λB0 1.2921  σ/σ0 1.0040  V/V0-1 +5.0e-07  closed 0.566  H 0.767  |dξ̃| 0.0228  FE 2.7s it 3.6s
+[solid] ph 0 it  80  J +0.12941  K/K0 0.9971  P/P0 1.2991  λB/λB0 1.2992  σ/σ0 1.0058  V/V0-1 +6.9e-07  closed 0.560  H 0.767  |dξ̃| 0.0247  FE 2.6s it 3.5s
+[solid] ph 0 it  81  J +0.12970  K/K0 0.9974  P/P0 1.2995  λB/λB0 1.2995  σ/σ0 1.0047  V/V0-1 +5.5e-05  closed 0.560  H 0.767  |dξ̃| 0.0199  FE 2.7s it 3.6s
+[solid] ph 0 it  82  J +0.13053  K/K0 0.9976  P/P0 1.3014  λB/λB0 1.3014  σ/σ0 1.0042  V/V0-1 -3.2e-05  closed 0.560  H 0.767  |dξ̃| 0.0153  FE 2.7s it 3.5s
+[solid] ph 0 it  83  J +0.12781  K/K0 0.9986  P/P0 1.2931  λB/λB0 1.2931  σ/σ0 1.0021  V/V0-1 -2.6e-07  closed 0.568  H 0.767  |dξ̃| 0.0170  FE 2.8s it 3.6s
+[solid] ph 0 it  84  J +0.12797  K/K0 0.9988  P/P0 1.2932  λB/λB0 1.2933  σ/σ0 1.0014  V/V0-1 -1.5e-06  closed 0.566  H 0.767  |dξ̃| 0.0141  FE 2.8s it 3.6s
+[solid] ph 0 it  85  J +0.12781  K/K0 0.9991  P/P0 1.2925  λB/λB0 1.2925  σ/σ0 1.0011  V/V0-1 -1.6e-06  closed 0.566  H 0.767  |dξ̃| 0.0158  FE 2.9s it 3.7s
+[cshell] growth step 5 done after 8 iterations: ΔJ +7.34e-03 (low-gain steps in a row 0/11)
+[cshell] growth step 6: q 0.70, R_k 0.01024, H 0.815 of the active area, J at boundary +0.12782, R 0.6 s
+[solid] ph 0 it  86  J +0.12784  K/K0 0.9997  P/P0 1.2918  λB/λB0 1.2918  σ/σ0 1.0007  V/V0-1 +2.8e-05  closed 0.550  H 0.815  |dξ̃| 0.0393  FE 2.7s it 6.9s
+[cshell]   active set rebuilt: 207464 elements, 745017 DOF, engine twogrid, coarse 124941 DOF (fp32), 93.6 GiB device memory free
+[solid] ph 0 it  87  J +0.14103  K/K0 0.9994  P/P0 1.3266  λB/λB0 1.3266  σ/σ0 1.0018  V/V0-1 +6.1e-05  closed 0.529  H 0.815  |dξ̃| 0.0137  FE 3.6s it 4.3s
+[solid] ph 0 it  88  J +0.14311  K/K0 0.9993  P/P0 1.3323  λB/λB0 1.3324  σ/σ0 1.0016  V/V0-1 +2.0e-05  closed 0.521  H 0.815  |dξ̃| 0.0177  FE 2.8s it 3.6s
+[solid] ph 0 it  89  J +0.14627  K/K0 0.9990  P/P0 1.3411  λB/λB0 1.3412  σ/σ0 1.0028  V/V0-1 +3.3e-05  closed 0.516  H 0.815  |dξ̃| 0.0147  FE 2.8s it 3.6s
+[solid] ph 0 it  90  J +0.14742  K/K0 0.9991  P/P0 1.3441  λB/λB0 1.3441  σ/σ0 1.0024  V/V0-1 -6.2e-05  closed 0.514  H 0.815  |dξ̃| 0.0158  FE 2.8s it 3.6s
+[solid] ph 0 it  91  J +0.14928  K/K0 0.9992  P/P0 1.3491  λB/λB0 1.3491  σ/σ0 1.0027  V/V0-1 +7.2e-05  closed 0.506  H 0.815  |dξ̃| 0.0198  FE 2.7s it 3.5s
+[solid] ph 0 it  92  J +0.14958  K/K0 0.9993  P/P0 1.3497  λB/λB0 1.3497  σ/σ0 1.0018  V/V0-1 +6.9e-07  closed 0.510  H 0.815  |dξ̃| 0.0176  FE 2.8s it 3.7s
+[solid] ph 0 it  93  J +0.15159  K/K0 0.9992  P/P0 1.3552  λB/λB0 1.3553  σ/σ0 1.0026  V/V0-1 +4.4e-06  closed 0.502  H 0.815  |dξ̃| 0.0163  FE 2.8s it 3.7s
+[solid] ph 0 it  94  J +0.15119  K/K0 0.9993  P/P0 1.3540  λB/λB0 1.3540  σ/σ0 1.0019  V/V0-1 +7.5e-06  closed 0.504  H 0.815  |dξ̃| 0.0159  FE 2.9s it 3.8s
+[solid] ph 0 it  95  J +0.15264  K/K0 0.9993  P/P0 1.3579  λB/λB0 1.3579  σ/σ0 1.0023  V/V0-1 +6.4e-06  closed 0.501  H 0.815  |dξ̃| 0.0185  FE 2.9s it 3.7s
+[solid] ph 0 it  96  J +0.15284  K/K0 0.9993  P/P0 1.3584  λB/λB0 1.3585  σ/σ0 1.0020  V/V0-1 +6.5e-06  closed 0.501  H 0.815  |dξ̃| 0.0175  FE 3.0s it 3.8s
+[solid] ph 0 it  97  J +0.15354  K/K0 0.9993  P/P0 1.3603  λB/λB0 1.3604  σ/σ0 1.0021  V/V0-1 +5.9e-06  closed 0.499  H 0.815  |dξ̃| 0.0233  FE 1.8s it 2.7s
+[solid] ph 0 it  98  J +0.15406  K/K0 0.9993  P/P0 1.3618  λB/λB0 1.3618  σ/σ0 1.0021  V/V0-1 +5.9e-06  closed 0.498  H 0.815  |dξ̃| 0.0251  FE 1.8s it 2.7s
+[solid] ph 0 it  99  J +0.15472  K/K0 0.9993  P/P0 1.3636  λB/λB0 1.3636  σ/σ0 1.0022  V/V0-1 +5.6e-06  closed 0.496  H 0.815  |dξ̃| 0.0316  FE 1.8s it 2.7s
+[solid] ph 0 it 100  J +0.15531  K/K0 0.9993  P/P0 1.3652  λB/λB0 1.3652  σ/σ0 1.0022  V/V0-1 +6.1e-06  closed 0.495  H 0.815  |dξ̃| 0.0212  FE 1.8s it 2.6s
+[solid] ph 0 it 101  J +0.15610  K/K0 0.9993  P/P0 1.3673  λB/λB0 1.3674  σ/σ0 1.0023  V/V0-1 +5.0e-06  closed 0.494  H 0.815  |dξ̃| 0.0253  FE 2.9s it 3.7s
+[solid] ph 0 it 102  J +0.15654  K/K0 0.9993  P/P0 1.3686  λB/λB0 1.3686  σ/σ0 1.0023  V/V0-1 +6.0e-06  closed 0.495  H 0.815  |dξ̃| 0.0241  FE 3.0s it 3.8s
+[solid] ph 0 it 103  J +0.15764  K/K0 0.9993  P/P0 1.3716  λB/λB0 1.3717  σ/σ0 1.0026  V/V0-1 +4.3e-06  closed 0.494  H 0.815  |dξ̃| 0.0266  FE 2.8s it 3.6s
+[cshell] growth step 6 done after 18 iterations: ΔJ +2.99e-02 (low-gain steps in a row 0/11)
+[cshell] growth step 7: q 0.80, R_k 0.01584, H 0.855 of the active area, J at boundary +0.15768, R 0.6 s
+[solid] ph 0 it 104  J +0.15931  K/K0 1.0027  P/P0 1.3715  λB/λB0 1.3715  σ/σ0 0.9976  V/V0-1 +2.3e-05  closed 0.486  H 0.855  |dξ̃| 0.0424  FE 2.6s it 6.8s
+[solid] ph 0 it 105  J +0.17602  K/K0 1.0005  P/P0 1.4213  λB/λB0 1.4214  σ/σ0 1.0016  V/V0-1 -2.4e-05  closed 0.457  H 0.855  |dξ̃| 0.0277  FE 2.6s it 3.4s
+[solid] ph 0 it 106  J +0.17819  K/K0 0.9995  P/P0 1.4288  λB/λB0 1.4289  σ/σ0 1.0021  V/V0-1 +3.1e-05  closed 0.455  H 0.855  |dξ̃| 0.0204  FE 2.6s it 3.5s
+[cshell]   active set rebuilt: 210503 elements, 757878 DOF, engine twogrid, coarse 127116 DOF (fp32), 93.5 GiB device memory free
+[solid] ph 0 it 107  J +0.18295  K/K0 0.9988  P/P0 1.4436  λB/λB0 1.4437  σ/σ0 1.0052  V/V0-1 +2.0e-05  closed 0.444  H 0.855  |dξ̃| 0.0172  FE 3.6s it 4.4s
+[cshell]   active set rebuilt: 210672 elements, 758706 DOF, engine twogrid, coarse 127254 DOF (fp32), 93.5 GiB device memory free
+[solid] ph 0 it 108  J +0.18473  K/K0 0.9986  P/P0 1.4490  λB/λB0 1.4491  σ/σ0 1.0044  V/V0-1 -3.2e-05  closed 0.449  H 0.855  |dξ̃| 0.0307  FE 3.6s it 4.4s
+[solid] ph 0 it 109  J +0.18315  K/K0 0.9992  P/P0 1.4435  λB/λB0 1.4436  σ/σ0 1.0032  V/V0-1 +6.4e-05  closed 0.450  H 0.855  |dξ̃| 0.0237  FE 2.7s it 3.6s
+[solid] ph 0 it 110  J +0.18350  K/K0 0.9996  P/P0 1.4440  λB/λB0 1.4441  σ/σ0 1.0021  V/V0-1 -1.9e-06  closed 0.457  H 0.855  |dξ̃| 0.0275  FE 2.9s it 3.8s
+[solid] ph 0 it 111  J +0.18468  K/K0 0.9995  P/P0 1.4476  λB/λB0 1.4477  σ/σ0 1.0021  V/V0-1 -6.1e-07  closed 0.456  H 0.855  |dξ̃| 0.0279  FE 1.9s it 2.8s
+[solid] ph 0 it 112  J +0.18549  K/K0 0.9994  P/P0 1.4500  λB/λB0 1.4501  σ/σ0 1.0021  V/V0-1 -3.8e-08  closed 0.456  H 0.855  |dξ̃| 0.0295  FE 1.9s it 3.0s
+[solid] ph 0 it 113  J +0.18636  K/K0 0.9994  P/P0 1.4526  λB/λB0 1.4526  σ/σ0 1.0021  V/V0-1 +4.4e-07  closed 0.455  H 0.855  |dξ̃| 0.0299  FE 1.9s it 2.8s
+[solid] ph 0 it 114  J +0.18710  K/K0 0.9994  P/P0 1.4547  λB/λB0 1.4548  σ/σ0 1.0020  V/V0-1 +1.4e-06  closed 0.455  H 0.855  |dξ̃| 0.0300  FE 1.9s it 2.8s
+[solid] ph 0 it 115  J +0.18815  K/K0 0.9994  P/P0 1.4578  λB/λB0 1.4579  σ/σ0 1.0022  V/V0-1 +1.1e-06  closed 0.454  H 0.855  |dξ̃| 0.0293  FE 1.9s it 2.7s
+[solid] ph 0 it 116  J +0.18876  K/K0 0.9994  P/P0 1.4596  λB/λB0 1.4597  σ/σ0 1.0021  V/V0-1 +1.9e-06  closed 0.454  H 0.855  |dξ̃| 0.0256  FE 3.3s it 4.2s
+[solid] ph 0 it 117  J +0.18998  K/K0 0.9994  P/P0 1.4632  λB/λB0 1.4633  σ/σ0 1.0023  V/V0-1 +1.3e-06  closed 0.453  H 0.855  |dξ̃| 0.0261  FE 2.0s it 2.8s
+[solid] ph 0 it 118  J +0.19048  K/K0 0.9994  P/P0 1.4646  λB/λB0 1.4647  σ/σ0 1.0022  V/V0-1 +1.9e-06  closed 0.453  H 0.855  |dξ̃| 0.0242  FE 3.5s it 4.3s
+[solid] ph 0 it 119  J +0.19174  K/K0 0.9993  P/P0 1.4684  λB/λB0 1.4684  σ/σ0 1.0025  V/V0-1 +1.5e-06  closed 0.452  H 0.855  |dξ̃| 0.0249  FE 3.5s it 4.3s
+[solid] ph 0 it 120  J +0.19249  K/K0 0.9993  P/P0 1.4706  λB/λB0 1.4706  σ/σ0 1.0026  V/V0-1 +9.3e-07  closed 0.450  H 0.855  |dξ̃| 0.0333  FE 3.5s it 4.4s
+[solid] ph 0 it 121  J +0.19273  K/K0 0.9993  P/P0 1.4713  λB/λB0 1.4714  σ/σ0 1.0024  V/V0-1 +1.1e-06  closed 0.453  H 0.855  |dξ̃| 0.0351  FE 3.5s it 4.4s
+[solid] ph 0 it 122  J +0.19458  K/K0 0.9992  P/P0 1.4769  λB/λB0 1.4770  σ/σ0 1.0034  V/V0-1 -3.5e-06  closed 0.448  H 0.855  |dξ̃| 0.0567  FE 3.5s it 4.4s
+[solid] ph 0 it 123  J +0.19266  K/K0 0.9990  P/P0 1.4716  λB/λB0 1.4717  σ/σ0 1.0032  V/V0-1 +5.2e-07  closed 0.451  H 0.855  |dξ̃| 0.0748  FE 3.1s it 4.0s
+[solid] ph 0 it 124  J +0.19434  K/K0 0.9987  P/P0 1.4769  λB/λB0 1.4770  σ/σ0 1.0046  V/V0-1 -5.1e-06  closed 0.447  H 0.855  |dξ̃| 0.0687  FE 3.1s it 4.0s
+[solid] ph 0 it 125  J +0.19409  K/K0 0.9990  P/P0 1.4758  λB/λB0 1.4758  σ/σ0 1.0035  V/V0-1 -2.7e-06  closed 0.450  H 0.855  |dξ̃| 0.0619  FE 2.8s it 3.7s
+[solid] ph 0 it 126  J +0.19487  K/K0 0.9993  P/P0 1.4776  λB/λB0 1.4777  σ/σ0 1.0031  V/V0-1 -4.0e-06  closed 0.450  H 0.855  |dξ̃| 0.0422  FE 3.1s it 4.1s
+[solid] ph 0 it 127  J +0.19545  K/K0 0.9993  P/P0 1.4793  λB/λB0 1.4794  σ/σ0 1.0029  V/V0-1 -3.7e-06  closed 0.449  H 0.855  |dξ̃| 0.0230  FE 3.2s it 4.1s
+[solid] ph 0 it 128  J +0.19601  K/K0 0.9993  P/P0 1.4810  λB/λB0 1.4811  σ/σ0 1.0029  V/V0-1 -1.7e-06  closed 0.448  H 0.855  |dξ̃| 0.0088  FE 3.6s it 4.4s
+[cshell] growth step 7 done after 25 iterations: ΔJ +3.87e-02 (low-gain steps in a row 0/11)
+[cshell] growth step 8: q 0.90, R_k 0.02538, H 0.902 of the active area, J at boundary +0.19633, R 0.6 s
+[cshell]   active set rebuilt: 211621 elements, 764031 DOF, engine twogrid, coarse 128682 DOF (fp32), 93.5 GiB device memory free
+[solid] ph 0 it 129  J +0.20138  K/K0 1.0076  P/P0 1.4847  λB/λB0 1.4848  σ/σ0 0.9930  V/V0-1 +1.4e-05  closed 0.452  H 0.902  |dξ̃| 0.0306  FE 3.4s it 7.1s
+[solid] ph 0 it 130  J +0.21955  K/K0 1.0065  P/P0 1.5413  λB/λB0 1.5414  σ/σ0 0.9968  V/V0-1 -5.5e-05  closed 0.420  H 0.902  |dξ̃| 0.0310  FE 2.9s it 3.6s
+[solid] ph 0 it 131  J +0.23379  K/K0 1.0039  P/P0 1.5900  λB/λB0 1.5902  σ/σ0 1.0014  V/V0-1 +2.5e-05  closed 0.389  H 0.902  |dξ̃| 0.0276  FE 2.8s it 3.7s
+[solid] ph 0 it 132  J +0.23955  K/K0 1.0030  P/P0 1.6098  λB/λB0 1.6100  σ/σ0 1.0019  V/V0-1 -7.8e-07  closed 0.379  H 0.902  |dξ̃| 0.0290  FE 2.8s it 3.7s
+[solid] ph 0 it 133  J +0.24367  K/K0 1.0018  P/P0 1.6251  λB/λB0 1.6253  σ/σ0 1.0059  V/V0-1 +7.9e-05  closed 0.367  H 0.902  |dξ̃| 0.0271  FE 2.7s it 3.6s
+[solid] ph 0 it 134  J +0.24684  K/K0 1.0023  P/P0 1.6345  λB/λB0 1.6348  σ/σ0 1.0043  V/V0-1 -6.8e-06  closed 0.369  H 0.902  |dξ̃| 0.0354  FE 2.8s it 3.7s
+[cshell] growth step 8 done after 6 iterations: ΔJ +5.06e-02 (low-gain steps in a row 0/11)
+[cshell] growth step 9: q 1.00, R_k 0.3436, H 1.000 of the active area, J at boundary +0.24691, R 0.6 s
+[solid] ph 0 it 135  J +0.24811  K/K0 1.0036  P/P0 1.6367  λB/λB0 1.6369  σ/σ0 1.0019  V/V0-1 -1.3e-05  closed 0.363  H 1.000  |dξ̃| 0.0277  FE 2.9s it 7.3s
+[solid] ph 0 it 136  J +0.25341  K/K0 1.0030  P/P0 1.6550  λB/λB0 1.6553  σ/σ0 1.0039  V/V0-1 -7.0e-06  closed 0.350  H 1.000  |dξ̃| 0.0233  FE 2.9s it 3.8s
+[solid] ph 0 it 137  J +0.25630  K/K0 1.0027  P/P0 1.6651  λB/λB0 1.6654  σ/σ0 1.0049  V/V0-1 -4.1e-06  closed 0.344  H 1.000  |dξ̃| 0.0211  FE 2.9s it 3.8s
+[solid] ph 0 it 138  J +0.25750  K/K0 1.0032  P/P0 1.6683  λB/λB0 1.6686  σ/σ0 1.0033  V/V0-1 +1.7e-05  closed 0.344  H 1.000  |dξ̃| 0.0309  FE 2.9s it 3.7s
+[cshell]   active set rebuilt: 215609 elements, 780717 DOF, engine twogrid, coarse 131358 DOF (fp32), 93.5 GiB device memory free
+[solid] ph 0 it 139  J +0.25997  K/K0 1.0034  P/P0 1.6763  λB/λB0 1.6766  σ/σ0 1.0026  V/V0-1 +6.4e-05  closed 0.339  H 1.000  |dξ̃| 0.0336  FE 3.6s it 4.3s
+[solid] ph 0 it 140  J +0.26383  K/K0 1.0038  P/P0 1.6885  λB/λB0 1.6888  σ/σ0 1.0023  V/V0-1 -1.5e-06  closed 0.337  H 1.000  |dξ̃| 0.0333  FE 1.8s it 2.7s
+[solid] ph 0 it 141  J +0.26826  K/K0 1.0035  P/P0 1.7041  λB/λB0 1.7045  σ/σ0 1.0025  V/V0-1 -2.2e-06  closed 0.327  H 1.000  |dξ̃| 0.0371  FE 1.9s it 2.7s
+[solid] ph 0 it 142  J +0.27428  K/K0 1.0033  P/P0 1.7250  λB/λB0 1.7254  σ/σ0 1.0032  V/V0-1 +3.7e-05  closed 0.316  H 1.000  |dξ̃| 0.0413  FE 1.9s it 2.6s
+[solid] ph 0 it 143  J +0.27995  K/K0 1.0031  P/P0 1.7452  λB/λB0 1.7456  σ/σ0 1.0034  V/V0-1 -6.8e-06  closed 0.308  H 1.000  |dξ̃| 0.0409  FE 3.1s it 3.9s
+[solid] ph 0 it 144  J +0.28614  K/K0 1.0029  P/P0 1.7671  λB/λB0 1.7676  σ/σ0 1.0041  V/V0-1 -5.4e-06  closed 0.300  H 1.000  |dξ̃| 0.0428  FE 2.9s it 3.8s
+[solid] ph 0 it 145  J +0.29126  K/K0 1.0027  P/P0 1.7858  λB/λB0 1.7863  σ/σ0 1.0043  V/V0-1 +7.6e-05  closed 0.296  H 1.000  |dξ̃| 0.0468  FE 3.0s it 3.8s
+[cshell]   active set rebuilt: 218471 elements, 792663 DOF, engine twogrid, coarse 133800 DOF (fp32), 93.5 GiB device memory free
+[solid] ph 0 it 146  J +0.29748  K/K0 1.0031  P/P0 1.8073  λB/λB0 1.8079  σ/σ0 1.0059  V/V0-1 -5.1e-05  closed 0.287  H 1.000  |dξ̃| 0.0543  FE 3.8s it 4.6s
+[cshell]   active set rebuilt: 218624 elements, 793485 DOF, engine twogrid, coarse 134019 DOF (fp32), 93.5 GiB device memory free
+[solid] ph 0 it 147  J +0.29763  K/K0 1.0022  P/P0 1.8095  λB/λB0 1.8101  σ/σ0 1.0048  V/V0-1 +1.2e-05  closed 0.291  H 1.000  |dξ̃| 0.0623  FE 3.8s it 4.7s
+[solid] ph 0 it 148  J +0.30165  K/K0 1.0027  P/P0 1.8232  λB/λB0 1.8238  σ/σ0 1.0060  V/V0-1 -1.0e-05  closed 0.283  H 1.000  |dξ̃| 0.0552  FE 2.9s it 3.8s
+[solid] ph 0 it 149  J +0.30497  K/K0 1.0024  P/P0 1.8359  λB/λB0 1.8365  σ/σ0 1.0067  V/V0-1 -3.4e-06  closed 0.279  H 1.000  |dξ̃| 0.0411  FE 2.9s it 3.8s
+[solid] ph 0 it 150  J +0.30478  K/K0 1.0028  P/P0 1.8345  λB/λB0 1.8351  σ/σ0 1.0048  V/V0-1 -5.2e-06  closed 0.280  H 1.000  |dξ̃| 0.0327  FE 2.9s it 3.8s
+[solid] ph 0 it 151  J +0.30960  K/K0 1.0029  P/P0 1.8520  λB/λB0 1.8527  σ/σ0 1.0060  V/V0-1 -8.9e-06  closed 0.274  H 1.000  |dξ̃| 0.0259  FE 3.1s it 3.9s
+[solid] ph 0 it 152  J +0.31043  K/K0 1.0026  P/P0 1.8557  λB/λB0 1.8564  σ/σ0 1.0055  V/V0-1 -8.3e-06  closed 0.271  H 1.000  |dξ̃| 0.0255  FE 3.2s it 4.1s
+[solid] ph 0 it 153  J +0.31251  K/K0 1.0030  P/P0 1.8627  λB/λB0 1.8635  σ/σ0 1.0059  V/V0-1 -9.9e-06  closed 0.268  H 1.000  |dξ̃| 0.0185  FE 3.2s it 4.2s
+[solid] ph 0 it 154  J +0.31407  K/K0 1.0028  P/P0 1.8690  λB/λB0 1.8697  σ/σ0 1.0060  V/V0-1 -1.1e-05  closed 0.264  H 1.000  |dξ̃| 0.0205  FE 2.0s it 2.9s
+[solid] ph 0 it 155  J +0.31560  K/K0 1.0028  P/P0 1.8747  λB/λB0 1.8755  σ/σ0 1.0062  V/V0-1 -1.0e-05  closed 0.260  H 1.000  |dξ̃| 0.0213  FE 2.0s it 2.9s
+[solid] ph 0 it 156  J +0.31692  K/K0 1.0028  P/P0 1.8795  λB/λB0 1.8803  σ/σ0 1.0062  V/V0-1 -9.7e-06  closed 0.258  H 1.000  |dξ̃| 0.0235  FE 3.5s it 4.3s
+[solid] ph 0 it 157  J +0.31831  K/K0 1.0029  P/P0 1.8847  λB/λB0 1.8855  σ/σ0 1.0062  V/V0-1 -7.0e-06  closed 0.256  H 1.000  |dξ̃| 0.0257  FE 2.2s it 3.0s
+[solid] ph 0 it 158  J +0.31981  K/K0 1.0028  P/P0 1.8904  λB/λB0 1.8913  σ/σ0 1.0063  V/V0-1 -6.4e-06  closed 0.253  H 1.000  |dξ̃| 0.0278  FE 2.2s it 3.1s
+[solid] ph 0 it 159  J +0.32134  K/K0 1.0028  P/P0 1.8962  λB/λB0 1.8970  σ/σ0 1.0064  V/V0-1 -5.6e-06  closed 0.251  H 1.000  |dξ̃| 0.0306  FE 3.5s it 4.4s
+[cshell] growth step 9 done after 25 iterations: ΔJ +7.49e-02 (low-gain steps in a row 0/11)
+[cshell] growth stops at boundary 10: all quantiles used; J by boundary [0.0, 0.01188, 0.04601, 0.07467, 0.10348, 0.12049, 0.12782, 0.15768, 0.19633, 0.24691, 0.32185], iterations per step [18, 9, 13, 13, 25, 8, 18, 25, 6, 25]
 [cshell]   active set rebuilt: 195088 elements, 700443 DOF, engine twogrid, coarse 117978 DOF (fp32), 93.5 GiB device memory free
-[cshell] phase 0 design: {"active_vertices": 68053, "closed_area_frac": 0.2651292778900122, "snap_closed_area_frac": 0.0391324922611928, "hollow_allowed_area_frac": 1.0, "d_max": 2.4673244196830613, "d_mean": 0.7582761914576661, "wall_open_min": 1.5004076475907981, "wall_open_max": 5.642091176008826, "growth": {"steps": 10, "R_k": 0.34349853113287915, "J_b": [-1.1553369372441478e-11, 0.01187707389220542, 0.04601137885165814, 0.07464510756376024, 0.10472060025509812, 0.12014568193282141, 0.1328138476835397, 0.15183549885158776, 0.2017260321508772, 0.28506572020420656, 0.33200282082287896], "iters": [18, 9, 13, 16, 25, 25, 10, 25, 25, 18], "best_boundary": 10, "best_J": 0.33200282082287896}}
-[cshell] phase 1: h_e 0.4 h_g 0.1, band 220.4 M cells, element box (422, 372, 372), passive {'mount': 21494, 'thin': 11998}, V0 60945.0 mm³, closed-design V/V0-1 +4.44e-16, stress mask {'r_ex_mm': {10: 2.59, 17: 2.56, 25: 2.56, 33: 2.56, 42: 7.36}, 'n_vertices': {10: 490, 17: 489, 25: 484, 33: 495, 42: 1730}, 'excluded': 0.0074}, 52 s
+[cshell] phase 0 design: {"active_vertices": 68053, "closed_area_frac": 0.2530073844618793, "snap_closed_area_frac": 0.03987456675053022, "hollow_allowed_area_frac": 1.0, "d_max": 2.419647546239476, "d_mean": 0.7326470728254927, "wall_open_min": 1.5002586383306542, "wall_open_max": 5.62164444448307, "growth": {"steps": 10, "R_k": 0.343598473284739, "J_b": [6.371958515976373e-11, 0.011877073895565183, 0.04601113760031777, 0.0746650565372457, 0.10347893680805194, 0.12048692251738531, 0.12782348827075796, 0.15767576429988206, 0.19633381602136138, 0.2469086795118031, 0.3218476422851817], "iters": [18, 9, 13, 13, 25, 8, 18, 25, 6, 25], "best_boundary": 10, "best_J": 0.3218476422851817}}
+[cshell] phase 1: h_e 0.4 h_g 0.1, band 220.4 M cells, element box (422, 372, 372), passive {'mount': 21494, 'thin': 11998}, V0 60945.0 mm³, closed-design V/V0-1 -1.11e-16, stress mask {'r_ex_mm': {10: 2.59, 17: 2.56, 25: 2.56, 33: 2.56, 42: 7.36}, 'n_vertices': {10: 490, 17: 489, 25: 484, 33: 495, 42: 1730}, 'excluded': 0.0074}, 49 s
 [cshell]   geometry chain on the GPU: compact band 4.93 GiB, released from the device during each FE evaluation
 [cshell]   active set rebuilt: 1425997 elements, 4711569 DOF, engine twogrid, coarse 700437 DOF (fp32), 91.2 GiB device memory free
-[cshell] phase 1 solid: C0 158.9212 N·mm, K0 251.70 N/mm, λ_s0 8.97756391769331, λ_b0 2.7286454568329215, c 1.519
-[cshell]   active set rebuilt: 1593090 elements, 5346663 DOF, engine twogrid, coarse 805287 DOF (fp32), 91.2 GiB device memory free
-[solid] ph 1 it   0  J +0.34557  K/K0 1.0104  P/P0 1.9754  λB/λB0 1.9756  σ/σ0 0.9558  V/V0-1 +5.0e-06  closed 0.302  H 1.000  |dξ̃| 0.0215  FE 25.7s it 26.6s
-[solid] ph 1 it   1  J +0.35760  K/K0 1.0081  P/P0 2.0283  λB/λB0 2.0284  σ/σ0 0.9670  V/V0-1 +9.6e-06  closed 0.264  H 1.000  |dξ̃| 0.0193  FE 22.3s it 23.2s
-[solid] ph 1 it   2  J +0.36744  K/K0 1.0039  P/P0 2.0770  λB/λB0 2.0773  σ/σ0 0.9823  V/V0-1 +1.8e-05  closed 0.226  H 1.000  |dξ̃| 0.0224  FE 13.2s it 14.1s
-[solid] ph 1 it   3  J +0.37656  K/K0 0.9993  P/P0 2.1251  λB/λB0 2.1254  σ/σ0 0.9980  V/V0-1 -5.4e-06  closed 0.189  H 1.000  |dξ̃| 0.0276  FE 22.1s it 23.1s
-[solid] ph 1 it   4  J +0.38120  K/K0 0.9993  P/P0 2.1449  λB/λB0 2.1452  σ/σ0 0.9993  V/V0-1 -7.0e-06  closed 0.172  H 1.000  |dξ̃| 0.0366  FE 12.8s it 13.8s
-[solid] ph 1 it   5  J +0.38469  K/K0 0.9995  P/P0 2.1595  λB/λB0 2.1600  σ/σ0 1.0045  V/V0-1 -4.3e-06  closed 0.163  H 1.000  |dξ̃| 0.0535  FE 23.4s it 24.4s
-[solid] ph 1 it   6  J +0.38857  K/K0 0.9994  P/P0 2.1765  λB/λB0 2.1769  σ/σ0 1.0051  V/V0-1 -1.4e-05  closed 0.145  H 1.000  |dξ̃| 0.0589  FE 22.1s it 23.0s
-[solid] ph 1 it   7  J +0.39189  K/K0 1.0000  P/P0 2.1898  λB/λB0 2.1903  σ/σ0 1.0043  V/V0-1 -1.2e-05  closed 0.148  H 1.000  |dξ̃| 0.0757  FE 21.9s it 22.8s
-[solid] ph 1 it   8  J +0.39514  K/K0 0.9995  P/P0 2.2051  λB/λB0 2.2056  σ/σ0 1.0049  V/V0-1 -1.8e-05  closed 0.138  H 1.000  |dξ̃| 0.0711  FE 22.6s it 23.5s
-[cshell]   active set rebuilt: 1620156 elements, 5463885 DOF, engine twogrid, coarse 828303 DOF (fp32), 90.8 GiB device memory free
-[solid] ph 1 it   9  J +0.39864  K/K0 0.9991  P/P0 2.2215  λB/λB0 2.2220  σ/σ0 1.0060  V/V0-1 -1.1e-05  closed 0.142  H 1.000  |dξ̃| 0.0821  FE 34.8s it 35.8s
-[cshell]   active set rebuilt: 1623191 elements, 5475366 DOF, engine twogrid, coarse 830292 DOF (fp32), 90.9 GiB device memory free
-[solid] ph 1 it  10  J +0.40204  K/K0 0.9993  P/P0 2.2363  λB/λB0 2.2368  σ/σ0 1.0035  V/V0-1 -1.3e-05  closed 0.140  H 1.000  |dξ̃| 0.0785  FE 34.7s it 35.7s
-[solid] ph 1 it  11  J +0.40564  K/K0 1.0003  P/P0 2.2502  λB/λB0 2.2507  σ/σ0 1.0008  V/V0-1 -1.7e-05  closed 0.142  H 1.000  |dξ̃| 0.0806  FE 20.9s it 21.8s
-[solid] ph 1 it  12  J +0.41007  K/K0 1.0003  P/P0 2.2702  λB/λB0 2.2707  σ/σ0 1.0007  V/V0-1 -3.3e-06  closed 0.138  H 1.000  |dξ̃| 0.0798  FE 21.2s it 22.2s
-[solid] ph 1 it  13  J +0.41381  K/K0 1.0000  P/P0 2.2879  λB/λB0 2.2885  σ/σ0 1.0007  V/V0-1 -9.4e-06  closed 0.136  H 1.000  |dξ̃| 0.0725  FE 21.7s it 22.7s
-[solid] ph 1 it  14  J +0.41697  K/K0 0.9999  P/P0 2.3026  λB/λB0 2.3033  σ/σ0 1.0015  V/V0-1 -1.3e-05  closed 0.132  H 1.000  |dξ̃| 0.0769  FE 20.8s it 21.8s
-[cshell]   active set rebuilt: 1635403 elements, 5526435 DOF, engine twogrid, coarse 840207 DOF (fp32), 90.7 GiB device memory free
-[solid] ph 1 it  15  J +0.41997  K/K0 0.9994  P/P0 2.3177  λB/λB0 2.3184  σ/σ0 1.0028  V/V0-1 -1.4e-05  closed 0.129  H 1.000  |dξ̃| 0.0512  FE 33.2s it 34.2s
-[solid] ph 1 it  16  J +0.42204  K/K0 0.9997  P/P0 2.3264  λB/λB0 2.3272  σ/σ0 1.0017  V/V0-1 -6.0e-06  closed 0.126  H 1.000  |dξ̃| 0.0781  FE 20.0s it 21.0s
-[solid] ph 1 it  17  J +0.42407  K/K0 0.9997  P/P0 2.3360  λB/λB0 2.3368  σ/σ0 1.0013  V/V0-1 -8.5e-06  closed 0.127  H 1.000  |dξ̃| 0.0463  FE 20.9s it 21.8s
-[solid] ph 1 it  18  J +0.42555  K/K0 0.9996  P/P0 2.3431  λB/λB0 2.3439  σ/σ0 1.0008  V/V0-1 -7.9e-06  closed 0.123  H 1.000  |dξ̃| 0.0655  FE 21.4s it 22.3s
-[solid] ph 1 it  19  J +0.42718  K/K0 0.9997  P/P0 2.3506  λB/λB0 2.3515  σ/σ0 1.0008  V/V0-1 -8.6e-06  closed 0.122  H 1.000  |dξ̃| 0.0540  FE 20.9s it 21.9s
-[solid] ph 1 it  20  J +0.42864  K/K0 0.9997  P/P0 2.3574  λB/λB0 2.3583  σ/σ0 1.0007  V/V0-1 -7.0e-06  closed 0.120  H 1.000  |dξ̃| 0.0620  FE 21.0s it 21.9s
-[solid] ph 1 it  21  J +0.43008  K/K0 0.9998  P/P0 2.3641  λB/λB0 2.3651  σ/σ0 1.0005  V/V0-1 -7.1e-06  closed 0.118  H 1.000  |dξ̃| 0.0546  FE 21.1s it 22.1s
-[solid] ph 1 it  22  J +0.43149  K/K0 0.9997  P/P0 2.3709  λB/λB0 2.3718  σ/σ0 1.0005  V/V0-1 -1.0e-05  closed 0.116  H 1.000  |dξ̃| 0.0521  FE 22.3s it 23.3s
-[cshell]   active set rebuilt: 1644775 elements, 5566803 DOF, engine twogrid, coarse 848325 DOF (fp32), 90.7 GiB device memory free
-[solid] ph 1 it  23  J +0.43287  K/K0 0.9998  P/P0 2.3774  λB/λB0 2.3783  σ/σ0 1.0005  V/V0-1 -7.7e-06  closed 0.113  H 1.000  |dξ̃| 0.0559  FE 33.4s it 34.4s
-[solid] ph 1 it  24  J +0.43422  K/K0 0.9997  P/P0 2.3840  λB/λB0 2.3850  σ/σ0 1.0008  V/V0-1 -1.3e-05  closed 0.112  H 1.000  |dξ̃| 0.0462  FE 21.8s it 22.9s
-[solid] ph 1 it  25  J +0.43532  K/K0 0.9996  P/P0 2.3893  λB/λB0 2.3903  σ/σ0 1.0011  V/V0-1 -7.9e-06  closed 0.109  H 1.000  |dξ̃| 0.0620  FE 21.2s it 22.2s
-[solid] ph 1 it  26  J +0.43651  K/K0 0.9996  P/P0 2.3952  λB/λB0 2.3963  σ/σ0 1.0016  V/V0-1 -1.0e-05  closed 0.110  H 1.000  |dξ̃| 0.0460  FE 21.1s it 22.2s
-[solid] ph 1 it  27  J +0.43751  K/K0 0.9996  P/P0 2.3999  λB/λB0 2.4010  σ/σ0 1.0015  V/V0-1 -8.2e-06  closed 0.107  H 1.000  |dξ̃| 0.0667  FE 20.4s it 21.4s
-[solid] ph 1 it  28  J +0.43850  K/K0 0.9996  P/P0 2.4047  λB/λB0 2.4058  σ/σ0 1.0011  V/V0-1 -9.8e-06  closed 0.110  H 1.000  |dξ̃| 0.0452  FE 21.7s it 22.7s
-[solid] ph 1 it  29  J +0.43940  K/K0 0.9996  P/P0 2.4089  λB/λB0 2.4100  σ/σ0 1.0007  V/V0-1 -9.5e-06  closed 0.109  H 1.000  |dξ̃| 0.0468  FE 21.2s it 22.2s
-[solid] ph 1 it  30  J +0.44028  K/K0 0.9996  P/P0 2.4133  λB/λB0 2.4144  σ/σ0 1.0007  V/V0-1 -9.9e-06  closed 0.109  H 1.000  |dξ̃| 0.0494  FE 22.2s it 23.2s
-[solid] ph 1 it  31  J +0.44110  K/K0 0.9996  P/P0 2.4172  λB/λB0 2.4184  σ/σ0 1.0006  V/V0-1 -1.0e-05  closed 0.110  H 1.000  |dξ̃| 0.0393  FE 21.6s it 22.6s
-[solid] ph 1 it  32  J +0.44182  K/K0 0.9995  P/P0 2.4208  λB/λB0 2.4219  σ/σ0 1.0006  V/V0-1 -1.0e-05  closed 0.109  H 1.000  |dξ̃| 0.0401  FE 22.4s it 23.4s
-[solid] ph 1 it  33  J +0.44253  K/K0 0.9995  P/P0 2.4243  λB/λB0 2.4254  σ/σ0 1.0006  V/V0-1 -9.6e-06  closed 0.109  H 1.000  |dξ̃| 0.0441  FE 22.5s it 23.6s
-[solid] ph 1 it  34  J +0.44320  K/K0 0.9995  P/P0 2.4275  λB/λB0 2.4287  σ/σ0 1.0006  V/V0-1 -1.2e-05  closed 0.108  H 1.000  |dξ̃| 0.0385  FE 12.5s it 13.5s
-[solid] ph 1 it  35  J +0.44383  K/K0 0.9995  P/P0 2.4307  λB/λB0 2.4319  σ/σ0 1.0008  V/V0-1 -1.0e-05  closed 0.108  H 1.000  |dξ̃| 0.0418  FE 21.2s it 22.1s
-[cshell]   active set rebuilt: 1656395 elements, 5614350 DOF, engine twogrid, coarse 858198 DOF (fp32), 90.7 GiB device memory free
-[solid] ph 1 it  36  J +0.44439  K/K0 0.9994  P/P0 2.4336  λB/λB0 2.4349  σ/σ0 1.0011  V/V0-1 -1.6e-05  closed 0.108  H 1.000  |dξ̃| 0.0519  FE 33.6s it 34.6s
-[solid] ph 1 it  37  J +0.44493  K/K0 0.9993  P/P0 2.4364  λB/λB0 2.4377  σ/σ0 1.0015  V/V0-1 -7.7e-06  closed 0.108  H 1.000  |dξ̃| 0.0758  FE 21.2s it 22.2s
-[solid] ph 1 it  38  J +0.44539  K/K0 0.9991  P/P0 2.4392  λB/λB0 2.4405  σ/σ0 1.0026  V/V0-1 -1.3e-05  closed 0.106  H 1.000  |dξ̃| 0.0776  FE 21.3s it 22.3s
-[solid] ph 1 it  39  J +0.44591  K/K0 0.9991  P/P0 2.4417  λB/λB0 2.4431  σ/σ0 1.0028  V/V0-1 -1.1e-05  closed 0.106  H 1.000  |dξ̃| 0.0707  FE 20.8s it 21.8s
-[solid] ph 1 it  40  J +0.44614  K/K0 0.9992  P/P0 2.4426  λB/λB0 2.4440  σ/σ0 1.0025  V/V0-1 -1.3e-05  closed 0.107  H 1.000  |dξ̃| 0.0550  FE 20.3s it 21.3s
-[solid] ph 1 it  41  J +0.44632  K/K0 0.9993  P/P0 2.4433  λB/λB0 2.4446  σ/σ0 1.0021  V/V0-1 -1.6e-05  closed 0.106  H 1.000  |dξ̃| 0.0572  FE 20.3s it 21.3s
-[solid] ph 1 it  42  J +0.44643  K/K0 0.9993  P/P0 2.4439  λB/λB0 2.4453  σ/σ0 1.0018  V/V0-1 -1.6e-05  closed 0.108  H 1.000  |dξ̃| 0.0547  FE 20.1s it 21.2s
-[solid] ph 1 it  43  J +0.44662  K/K0 0.9992  P/P0 2.4449  λB/λB0 2.4462  σ/σ0 1.0018  V/V0-1 -1.4e-05  closed 0.107  H 1.000  |dξ̃| 0.0577  FE 20.2s it 21.2s
-[solid] ph 1 it  44  J +0.44676  K/K0 0.9992  P/P0 2.4457  λB/λB0 2.4471  σ/σ0 1.0022  V/V0-1 -1.7e-05  closed 0.105  H 1.000  |dξ̃| 0.0603  FE 20.2s it 21.2s
-[solid] ph 1 it  45  J +0.44696  K/K0 0.9993  P/P0 2.4465  λB/λB0 2.4478  σ/σ0 1.0016  V/V0-1 -1.6e-05  closed 0.107  H 1.000  |dξ̃| 0.0278  FE 20.3s it 21.3s
-[solid] ph 1 it  46  J +0.44699  K/K0 0.9994  P/P0 2.4464  λB/λB0 2.4477  σ/σ0 1.0011  V/V0-1 -1.7e-05  closed 0.106  H 1.000  |dξ̃| 0.0182  FE 21.5s it 22.5s
-[solid] ph 1 it  47  J +0.44708  K/K0 0.9994  P/P0 2.4468  λB/λB0 2.4481  σ/σ0 1.0008  V/V0-1 -1.5e-05  closed 0.107  H 1.000  |dξ̃| 0.0217  FE 22.1s it 23.1s
-[solid] ph 1 it  48  J +0.44719  K/K0 0.9993  P/P0 2.4474  λB/λB0 2.4487  σ/σ0 1.0008  V/V0-1 -1.4e-05  closed 0.106  H 1.000  |dξ̃| 0.0213  FE 13.9s it 14.9s
-[solid] ph 1 it  49  J +0.44731  K/K0 0.9993  P/P0 2.4480  λB/λB0 2.4493  σ/σ0 1.0008  V/V0-1 -1.3e-05  closed 0.106  H 1.000  |dξ̃| 0.0193  FE 13.4s it 14.5s
-[solid] ph 1 it  50  J +0.44742  K/K0 0.9993  P/P0 2.4486  λB/λB0 2.4499  σ/σ0 1.0008  V/V0-1 -1.2e-05  closed 0.106  H 1.000  |dξ̃| 0.0164  FE 22.9s it 23.9s
-[solid] ph 1 it  51  J +0.44753  K/K0 0.9993  P/P0 2.4491  λB/λB0 2.4505  σ/σ0 1.0008  V/V0-1 -1.2e-05  closed 0.105  H 1.000  |dξ̃| 0.0162  FE 14.3s it 15.2s
-[solid] ph 1 it  52  J +0.44764  K/K0 0.9993  P/P0 2.4497  λB/λB0 2.4510  σ/σ0 1.0008  V/V0-1 -1.2e-05  closed 0.105  H 1.000  |dξ̃| 0.0142  FE 14.2s it 15.3s
-[solid] ph 1 it  53  J +0.44774  K/K0 0.9993  P/P0 2.4502  λB/λB0 2.4515  σ/σ0 1.0008  V/V0-1 -1.1e-05  closed 0.105  H 1.000  |dξ̃| 0.0165  FE 23.1s it 24.1s
-[solid] ph 1 it  54  J +0.44785  K/K0 0.9993  P/P0 2.4507  λB/λB0 2.4521  σ/σ0 1.0008  V/V0-1 -1.1e-05  closed 0.105  H 1.000  |dξ̃| 0.0172  FE 13.7s it 14.7s
-[solid] ph 1 it  55  J +0.44796  K/K0 0.9993  P/P0 2.4512  λB/λB0 2.4526  σ/σ0 1.0008  V/V0-1 -1.1e-05  closed 0.105  H 1.000  |dξ̃| 0.0188  FE 13.7s it 14.7s
-[solid] ph 1 it  56  J +0.44806  K/K0 0.9993  P/P0 2.4517  λB/λB0 2.4531  σ/σ0 1.0008  V/V0-1 -1.1e-05  closed 0.105  H 1.000  |dξ̃| 0.0176  FE 14.2s it 15.3s
-[solid] ph 1 it  57  J +0.44817  K/K0 0.9993  P/P0 2.4522  λB/λB0 2.4536  σ/σ0 1.0008  V/V0-1 -1.0e-05  closed 0.105  H 1.000  |dξ̃| 0.0166  FE 14.2s it 15.3s
-[solid] ph 1 it  58  J +0.44827  K/K0 0.9993  P/P0 2.4528  λB/λB0 2.4541  σ/σ0 1.0008  V/V0-1 -1.0e-05  closed 0.104  H 1.000  |dξ̃| 0.0189  FE 14.4s it 15.4s
-[solid] ph 1 it  59  J +0.44837  K/K0 0.9993  P/P0 2.4532  λB/λB0 2.4546  σ/σ0 1.0008  V/V0-1 -9.6e-06  closed 0.104  H 1.000  |dξ̃| 0.0193  FE 13.7s it 14.8s
-[solid] ph 1 it  60  J +0.44848  K/K0 0.9993  P/P0 2.4538  λB/λB0 2.4552  σ/σ0 1.0008  V/V0-1 -1.1e-05  closed 0.104  H 1.000  |dξ̃| 0.0178  FE 13.9s it 14.9s
-[solid] ph 1 it  61  J +0.44860  K/K0 0.9993  P/P0 2.4543  λB/λB0 2.4557  σ/σ0 1.0009  V/V0-1 -1.2e-05  closed 0.103  H 1.000  |dξ̃| 0.0132  FE 21.9s it 23.0s
-[solid] ph 1 it  62  J +0.44871  K/K0 0.9993  P/P0 2.4549  λB/λB0 2.4563  σ/σ0 1.0009  V/V0-1 -1.2e-05  closed 0.104  H 1.000  |dξ̃| 0.0185  FE 22.2s it 23.2s
-[solid] ph 1 it  63  J +0.44880  K/K0 0.9993  P/P0 2.4554  λB/λB0 2.4568  σ/σ0 1.0010  V/V0-1 -1.5e-05  closed 0.102  H 1.000  |dξ̃| 0.0259  FE 22.1s it 23.1s
-[solid] ph 1 it  64  J +0.44889  K/K0 0.9993  P/P0 2.4558  λB/λB0 2.4572  σ/σ0 1.0011  V/V0-1 -1.1e-05  closed 0.103  H 1.000  |dξ̃| 0.0487  FE 22.1s it 23.1s
-[solid] ph 1 it  65  J +0.44901  K/K0 0.9993  P/P0 2.4566  λB/λB0 2.4580  σ/σ0 1.0014  V/V0-1 -1.5e-05  closed 0.101  H 1.000  |dξ̃| 0.0550  FE 21.1s it 22.1s
-[solid] ph 1 it  66  J +0.44912  K/K0 0.9993  P/P0 2.4571  λB/λB0 2.4586  σ/σ0 1.0015  V/V0-1 -1.4e-05  closed 0.102  H 1.000  |dξ̃| 0.0440  FE 21.0s it 22.0s
-[solid] ph 1 it  67  J +0.44916  K/K0 0.9993  P/P0 2.4572  λB/λB0 2.4586  σ/σ0 1.0014  V/V0-1 -1.5e-05  closed 0.101  H 1.000  |dξ̃| 0.0400  FE 21.0s it 22.1s
-[solid] ph 1 it  68  J +0.44918  K/K0 0.9993  P/P0 2.4572  λB/λB0 2.4586  σ/σ0 1.0010  V/V0-1 -1.6e-05  closed 0.102  H 1.000  |dξ̃| 0.0146  FE 21.7s it 22.8s
-[solid] ph 1 it  69  J +0.44918  K/K0 0.9993  P/P0 2.4573  λB/λB0 2.4587  σ/σ0 1.0008  V/V0-1 -1.2e-05  closed 0.102  H 1.000  |dξ̃| 0.0184  FE 22.2s it 23.4s
-[solid] ph 1 it  70  J +0.44923  K/K0 0.9993  P/P0 2.4575  λB/λB0 2.4589  σ/σ0 1.0008  V/V0-1 -1.1e-05  closed 0.102  H 1.000  |dξ̃| 0.0163  FE 13.5s it 14.7s
-[solid] ph 1 it  71  J +0.44927  K/K0 0.9993  P/P0 2.4577  λB/λB0 2.4591  σ/σ0 1.0008  V/V0-1 -1.0e-05  closed 0.102  H 1.000  |dξ̃| 0.0185  FE 13.3s it 14.5s
-[solid] ph 1 it  72  J +0.44932  K/K0 0.9993  P/P0 2.4579  λB/λB0 2.4593  σ/σ0 1.0008  V/V0-1 -1.0e-05  closed 0.102  H 1.000  |dξ̃| 0.0207  FE 13.4s it 14.5s
-[solid] ph 1 it  73  J +0.44936  K/K0 0.9993  P/P0 2.4582  λB/λB0 2.4596  σ/σ0 1.0008  V/V0-1 -9.7e-06  closed 0.102  H 1.000  |dξ̃| 0.0194  FE 13.3s it 14.4s
-[solid] ph 1 it  74  J +0.44940  K/K0 0.9993  P/P0 2.4584  λB/λB0 2.4598  σ/σ0 1.0008  V/V0-1 -9.5e-06  closed 0.102  H 1.000  |dξ̃| 0.0157  FE 13.4s it 14.5s
-[solid] ph 1 it  75  J +0.44944  K/K0 0.9993  P/P0 2.4586  λB/λB0 2.4600  σ/σ0 1.0008  V/V0-1 -9.6e-06  closed 0.101  H 1.000  |dξ̃| 0.0115  FE 13.3s it 14.3s
-[solid] ph 1 it  76  J +0.44948  K/K0 0.9993  P/P0 2.4587  λB/λB0 2.4601  σ/σ0 1.0008  V/V0-1 -9.9e-06  closed 0.102  H 1.000  |dξ̃| 0.0132  FE 13.4s it 14.4s
-[solid] ph 1 it  77  J +0.44952  K/K0 0.9993  P/P0 2.4589  λB/λB0 2.4603  σ/σ0 1.0008  V/V0-1 -1.0e-05  closed 0.101  H 1.000  |dξ̃| 0.0121  FE 13.4s it 14.4s
-[solid] ph 1 it  78  J +0.44956  K/K0 0.9993  P/P0 2.4591  λB/λB0 2.4605  σ/σ0 1.0008  V/V0-1 -1.1e-05  closed 0.101  H 1.000  |dξ̃| 0.0185  FE 13.6s it 14.6s
-[solid] ph 1 it  79  J +0.44959  K/K0 0.9993  P/P0 2.4593  λB/λB0 2.4607  σ/σ0 1.0008  V/V0-1 -1.2e-05  closed 0.101  H 1.000  |dξ̃| 0.0114  FE 13.4s it 14.5s
+[cshell] phase 1 solid: C0 158.9212 N·mm, K0 251.70 N/mm, λ_s0 8.97756391767167, λ_b0 2.728645456334934, c 1.519
+[cshell]   active set rebuilt: 1590593 elements, 5336364 DOF, engine twogrid, coarse 803589 DOF (fp32), 91.1 GiB device memory free
+[solid] ph 1 it   0  J +0.33450  K/K0 1.0119  P/P0 1.9293  λB/λB0 1.9295  σ/σ0 0.9555  V/V0-1 -4.2e-06  closed 0.285  H 1.000  |dξ̃| 0.0224  FE 26.0s it 26.8s
+[solid] ph 1 it   1  J +0.34671  K/K0 1.0096  P/P0 1.9815  λB/λB0 1.9817  σ/σ0 0.9662  V/V0-1 +7.4e-06  closed 0.250  H 1.000  |dξ̃| 0.0221  FE 12.8s it 13.7s
+[solid] ph 1 it   2  J +0.35687  K/K0 1.0054  P/P0 2.0307  λB/λB0 2.0308  σ/σ0 0.9816  V/V0-1 +1.3e-05  closed 0.214  H 1.000  |dξ̃| 0.0239  FE 12.8s it 13.7s
+[solid] ph 1 it   3  J +0.36642  K/K0 0.9993  P/P0 2.0823  λB/λB0 2.0826  σ/σ0 1.0007  V/V0-1 -9.6e-06  closed 0.174  H 1.000  |dξ̃| 0.0275  FE 12.8s it 13.7s
+[solid] ph 1 it   4  J +0.37159  K/K0 0.9992  P/P0 2.1042  λB/λB0 2.1045  σ/σ0 1.0049  V/V0-1 +9.1e-05  closed 0.161  H 1.000  |dξ̃| 0.0453  FE 22.9s it 23.6s
+[solid] ph 1 it   5  J +0.37567  K/K0 0.9996  P/P0 2.1208  λB/λB0 2.1211  σ/σ0 1.0050  V/V0-1 +4.5e-05  closed 0.154  H 1.000  |dξ̃| 0.0611  FE 21.0s it 21.8s
+[solid] ph 1 it   6  J +0.37936  K/K0 0.9994  P/P0 2.1369  λB/λB0 2.1372  σ/σ0 1.0049  V/V0-1 -1.0e-05  closed 0.142  H 1.000  |dξ̃| 0.0764  FE 23.0s it 23.9s
+[solid] ph 1 it   7  J +0.38314  K/K0 0.9996  P/P0 2.1525  λB/λB0 2.1529  σ/σ0 1.0038  V/V0-1 +7.7e-05  closed 0.150  H 1.000  |dξ̃| 0.0772  FE 21.0s it 21.9s
+[cshell]   active set rebuilt: 1616123 elements, 5446005 DOF, engine twogrid, coarse 824244 DOF (fp32), 91.1 GiB device memory free
+[solid] ph 1 it   8  J +0.38738  K/K0 0.9999  P/P0 2.1702  λB/λB0 2.1706  σ/σ0 1.0031  V/V0-1 -3.0e-05  closed 0.140  H 1.000  |dξ̃| 0.0881  FE 25.2s it 26.2s
+[solid] ph 1 it   9  J +0.39164  K/K0 0.9997  P/P0 2.1894  λB/λB0 2.1898  σ/σ0 1.0034  V/V0-1 -2.4e-05  closed 0.144  H 1.000  |dξ̃| 0.0847  FE 21.0s it 22.0s
+[solid] ph 1 it  10  J +0.39643  K/K0 1.0000  P/P0 2.2098  λB/λB0 2.2103  σ/σ0 1.0030  V/V0-1 -1.3e-05  closed 0.139  H 1.000  |dξ̃| 0.0868  FE 20.8s it 21.7s
+[solid] ph 1 it  11  J +0.40164  K/K0 1.0000  P/P0 2.2329  λB/λB0 2.2334  σ/σ0 1.0020  V/V0-1 -1.0e-04  closed 0.140  H 1.000  |dξ̃| 0.0858  FE 20.6s it 21.5s
+[solid] ph 1 it  12  J +0.40628  K/K0 1.0001  P/P0 2.2534  λB/λB0 2.2540  σ/σ0 1.0007  V/V0-1 +7.1e-06  closed 0.142  H 1.000  |dξ̃| 0.0835  FE 20.7s it 21.5s
+[cshell]   active set rebuilt: 1628395 elements, 5496963 DOF, engine twogrid, coarse 834726 DOF (fp32), 90.8 GiB device memory free
+[solid] ph 1 it  13  J +0.41033  K/K0 1.0000  P/P0 2.2719  λB/λB0 2.2725  σ/σ0 1.0005  V/V0-1 -7.3e-06  closed 0.141  H 1.000  |dξ̃| 0.0813  FE 25.3s it 26.3s
+[solid] ph 1 it  14  J +0.41320  K/K0 0.9993  P/P0 2.2866  λB/λB0 2.2872  σ/σ0 1.0016  V/V0-1 -9.7e-06  closed 0.138  H 1.000  |dξ̃| 0.0699  FE 20.8s it 21.8s
+[solid] ph 1 it  15  J +0.41572  K/K0 0.9992  P/P0 2.2983  λB/λB0 2.2990  σ/σ0 1.0019  V/V0-1 -6.9e-06  closed 0.137  H 1.000  |dξ̃| 0.0657  FE 20.6s it 21.6s
+[solid] ph 1 it  16  J +0.41773  K/K0 0.9996  P/P0 2.3068  λB/λB0 2.3075  σ/σ0 1.0015  V/V0-1 -6.3e-06  closed 0.135  H 1.000  |dξ̃| 0.0697  FE 20.7s it 21.6s
+[solid] ph 1 it  17  J +0.41976  K/K0 0.9997  P/P0 2.3159  λB/λB0 2.3167  σ/σ0 1.0012  V/V0-1 -1.4e-05  closed 0.135  H 1.000  |dξ̃| 0.0555  FE 21.7s it 22.6s
+[solid] ph 1 it  18  J +0.42154  K/K0 0.9997  P/P0 2.3242  λB/λB0 2.3250  σ/σ0 1.0016  V/V0-1 -1.0e-05  closed 0.132  H 1.000  |dξ̃| 0.0572  FE 21.3s it 22.2s
+[solid] ph 1 it  19  J +0.42290  K/K0 0.9996  P/P0 2.3306  λB/λB0 2.3314  σ/σ0 1.0011  V/V0-1 -1.4e-05  closed 0.131  H 1.000  |dξ̃| 0.0469  FE 21.9s it 22.9s
+[solid] ph 1 it  20  J +0.42410  K/K0 0.9997  P/P0 2.3362  λB/λB0 2.3370  σ/σ0 1.0008  V/V0-1 -8.7e-06  closed 0.130  H 1.000  |dξ̃| 0.0414  FE 22.4s it 23.3s
+[solid] ph 1 it  21  J +0.42523  K/K0 0.9996  P/P0 2.3416  λB/λB0 2.3424  σ/σ0 1.0007  V/V0-1 -8.6e-06  closed 0.130  H 1.000  |dξ̃| 0.0434  FE 22.2s it 23.2s
+[solid] ph 1 it  22  J +0.42624  K/K0 0.9996  P/P0 2.3463  λB/λB0 2.3472  σ/σ0 1.0005  V/V0-1 -6.8e-06  closed 0.128  H 1.000  |dξ̃| 0.0455  FE 13.0s it 14.0s
+[cshell]   active set rebuilt: 1640265 elements, 5546523 DOF, engine twogrid, coarse 844548 DOF (fp32), 90.7 GiB device memory free
+[solid] ph 1 it  23  J +0.42728  K/K0 0.9996  P/P0 2.3512  λB/λB0 2.3521  σ/σ0 1.0005  V/V0-1 -6.2e-06  closed 0.127  H 1.000  |dξ̃| 0.0466  FE 32.8s it 33.7s
+[solid] ph 1 it  24  J +0.42833  K/K0 0.9996  P/P0 2.3562  λB/λB0 2.3570  σ/σ0 1.0005  V/V0-1 -5.8e-06  closed 0.126  H 1.000  |dξ̃| 0.0385  FE 23.0s it 24.0s
+[solid] ph 1 it  25  J +0.42934  K/K0 0.9996  P/P0 2.3609  λB/λB0 2.3618  σ/σ0 1.0005  V/V0-1 -5.2e-06  closed 0.125  H 1.000  |dξ̃| 0.0400  FE 13.2s it 14.2s
+[solid] ph 1 it  26  J +0.43037  K/K0 0.9996  P/P0 2.3658  λB/λB0 2.3667  σ/σ0 1.0005  V/V0-1 -6.4e-06  closed 0.125  H 1.000  |dξ̃| 0.0379  FE 13.2s it 14.1s
+[solid] ph 1 it  27  J +0.43138  K/K0 0.9996  P/P0 2.3706  λB/λB0 2.3715  σ/σ0 1.0005  V/V0-1 -7.5e-06  closed 0.124  H 1.000  |dξ̃| 0.0370  FE 22.2s it 23.2s
+[solid] ph 1 it  28  J +0.43246  K/K0 0.9996  P/P0 2.3758  λB/λB0 2.3767  σ/σ0 1.0005  V/V0-1 -7.6e-06  closed 0.122  H 1.000  |dξ̃| 0.0368  FE 22.5s it 23.4s
+[solid] ph 1 it  29  J +0.43344  K/K0 0.9996  P/P0 2.3804  λB/λB0 2.3814  σ/σ0 1.0005  V/V0-1 -8.4e-06  closed 0.121  H 1.000  |dξ̃| 0.0419  FE 22.2s it 23.2s
+[solid] ph 1 it  30  J +0.43438  K/K0 0.9996  P/P0 2.3849  λB/λB0 2.3859  σ/σ0 1.0005  V/V0-1 -7.6e-06  closed 0.121  H 1.000  |dξ̃| 0.0450  FE 22.5s it 23.4s
+[solid] ph 1 it  31  J +0.43529  K/K0 0.9996  P/P0 2.3893  λB/λB0 2.3903  σ/σ0 1.0006  V/V0-1 -7.5e-06  closed 0.120  H 1.000  |dξ̃| 0.0465  FE 22.2s it 23.1s
+[solid] ph 1 it  32  J +0.43613  K/K0 0.9996  P/P0 2.3934  λB/λB0 2.3944  σ/σ0 1.0007  V/V0-1 -8.2e-06  closed 0.120  H 1.000  |dξ̃| 0.0412  FE 21.8s it 22.7s
+[solid] ph 1 it  33  J +0.43692  K/K0 0.9995  P/P0 2.3972  λB/λB0 2.3983  σ/σ0 1.0008  V/V0-1 -1.0e-05  closed 0.118  H 1.000  |dξ̃| 0.0608  FE 21.6s it 22.5s
+[solid] ph 1 it  34  J +0.43764  K/K0 0.9995  P/P0 2.4009  λB/λB0 2.4020  σ/σ0 1.0011  V/V0-1 -1.2e-05  closed 0.118  H 1.000  |dξ̃| 0.0478  FE 21.5s it 22.5s
+[solid] ph 1 it  35  J +0.43824  K/K0 0.9993  P/P0 2.4041  λB/λB0 2.4052  σ/σ0 1.0018  V/V0-1 -1.0e-05  closed 0.117  H 1.000  |dξ̃| 0.0700  FE 20.7s it 21.7s
+[solid] ph 1 it  36  J +0.43883  K/K0 0.9991  P/P0 2.4074  λB/λB0 2.4086  σ/σ0 1.0031  V/V0-1 -1.2e-05  closed 0.112  H 1.000  |dξ̃| 0.0725  FE 19.9s it 20.9s
+[solid] ph 1 it  37  J +0.43977  K/K0 0.9992  P/P0 2.4118  λB/λB0 2.4130  σ/σ0 1.0032  V/V0-1 -1.2e-05  closed 0.115  H 1.000  |dξ̃| 0.0597  FE 20.0s it 21.0s
+[solid] ph 1 it  38  J +0.44033  K/K0 0.9993  P/P0 2.4142  λB/λB0 2.4153  σ/σ0 1.0026  V/V0-1 -1.6e-05  closed 0.111  H 1.000  |dξ̃| 0.0625  FE 19.9s it 20.8s
+[cshell]   active set rebuilt: 1651808 elements, 5595936 DOF, engine twogrid, coarse 853959 DOF (fp32), 90.7 GiB device memory free
+[solid] ph 1 it  39  J +0.44082  K/K0 0.9994  P/P0 2.4162  λB/λB0 2.4174  σ/σ0 1.0015  V/V0-1 -1.8e-05  closed 0.116  H 1.000  |dξ̃| 0.0472  FE 33.1s it 34.1s
+[solid] ph 1 it  40  J +0.44118  K/K0 0.9997  P/P0 2.4173  λB/λB0 2.4184  σ/σ0 1.0008  V/V0-1 -1.7e-05  closed 0.115  H 1.000  |dξ̃| 0.0311  FE 21.1s it 22.1s
+[solid] ph 1 it  41  J +0.44160  K/K0 0.9996  P/P0 2.4195  λB/λB0 2.4206  σ/σ0 1.0007  V/V0-1 -1.6e-05  closed 0.116  H 1.000  |dξ̃| 0.0334  FE 21.8s it 22.8s
+[solid] ph 1 it  42  J +0.44203  K/K0 0.9996  P/P0 2.4218  λB/λB0 2.4229  σ/σ0 1.0007  V/V0-1 -1.6e-05  closed 0.115  H 1.000  |dξ̃| 0.0320  FE 21.8s it 22.8s
+[solid] ph 1 it  43  J +0.44249  K/K0 0.9995  P/P0 2.4241  λB/λB0 2.4253  σ/σ0 1.0007  V/V0-1 -1.5e-05  closed 0.115  H 1.000  |dξ̃| 0.0315  FE 13.2s it 14.3s
+[solid] ph 1 it  44  J +0.44291  K/K0 0.9994  P/P0 2.4263  λB/λB0 2.4275  σ/σ0 1.0007  V/V0-1 -1.5e-05  closed 0.115  H 1.000  |dξ̃| 0.0341  FE 13.2s it 14.2s
+[solid] ph 1 it  45  J +0.44329  K/K0 0.9994  P/P0 2.4282  λB/λB0 2.4294  σ/σ0 1.0007  V/V0-1 -1.4e-05  closed 0.114  H 1.000  |dξ̃| 0.0367  FE 21.8s it 22.8s
+[solid] ph 1 it  46  J +0.44363  K/K0 0.9994  P/P0 2.4299  λB/λB0 2.4311  σ/σ0 1.0008  V/V0-1 -1.4e-05  closed 0.113  H 1.000  |dξ̃| 0.0364  FE 21.8s it 22.8s
+[solid] ph 1 it  47  J +0.44395  K/K0 0.9994  P/P0 2.4315  λB/λB0 2.4327  σ/σ0 1.0008  V/V0-1 -1.4e-05  closed 0.113  H 1.000  |dξ̃| 0.0291  FE 21.9s it 22.9s
+[solid] ph 1 it  48  J +0.44426  K/K0 0.9994  P/P0 2.4330  λB/λB0 2.4342  σ/σ0 1.0008  V/V0-1 -1.5e-05  closed 0.113  H 1.000  |dξ̃| 0.0313  FE 21.1s it 22.5s
+[solid] ph 1 it  49  J +0.44458  K/K0 0.9994  P/P0 2.4346  λB/λB0 2.4359  σ/σ0 1.0009  V/V0-1 -1.5e-05  closed 0.112  H 1.000  |dξ̃| 0.0339  FE 20.9s it 21.8s
+[solid] ph 1 it  50  J +0.44490  K/K0 0.9994  P/P0 2.4361  λB/λB0 2.4374  σ/σ0 1.0009  V/V0-1 -1.6e-05  closed 0.112  H 1.000  |dξ̃| 0.0325  FE 20.3s it 21.3s
+[solid] ph 1 it  51  J +0.44521  K/K0 0.9994  P/P0 2.4377  λB/λB0 2.4389  σ/σ0 1.0010  V/V0-1 -1.8e-05  closed 0.111  H 1.000  |dξ̃| 0.0410  FE 20.6s it 21.5s
+[solid] ph 1 it  52  J +0.44548  K/K0 0.9993  P/P0 2.4391  λB/λB0 2.4404  σ/σ0 1.0012  V/V0-1 -1.5e-05  closed 0.112  H 1.000  |dξ̃| 0.0456  FE 20.5s it 21.4s
+[solid] ph 1 it  53  J +0.44573  K/K0 0.9993  P/P0 2.4404  λB/λB0 2.4417  σ/σ0 1.0014  V/V0-1 -2.0e-05  closed 0.109  H 1.000  |dξ̃| 0.0572  FE 20.6s it 21.6s
+[solid] ph 1 it  54  J +0.44595  K/K0 0.9993  P/P0 2.4414  λB/λB0 2.4428  σ/σ0 1.0014  V/V0-1 -1.5e-05  closed 0.111  H 1.000  |dξ̃| 0.0430  FE 20.5s it 21.4s
+[solid] ph 1 it  55  J +0.44614  K/K0 0.9993  P/P0 2.4423  λB/λB0 2.4437  σ/σ0 1.0013  V/V0-1 -1.7e-05  closed 0.109  H 1.000  |dξ̃| 0.0399  FE 20.4s it 21.3s
+[solid] ph 1 it  56  J +0.44626  K/K0 0.9994  P/P0 2.4428  λB/λB0 2.4442  σ/σ0 1.0009  V/V0-1 -1.6e-05  closed 0.110  H 1.000  |dξ̃| 0.0251  FE 22.1s it 23.1s
+[solid] ph 1 it  57  J +0.44640  K/K0 0.9994  P/P0 2.4435  λB/λB0 2.4448  σ/σ0 1.0008  V/V0-1 -1.3e-05  closed 0.110  H 1.000  |dξ̃| 0.0233  FE 13.9s it 14.9s
+[solid] ph 1 it  58  J +0.44655  K/K0 0.9993  P/P0 2.4443  λB/λB0 2.4456  σ/σ0 1.0008  V/V0-1 -1.3e-05  closed 0.109  H 1.000  |dξ̃| 0.0250  FE 13.4s it 14.3s
+[solid] ph 1 it  59  J +0.44670  K/K0 0.9993  P/P0 2.4450  λB/λB0 2.4464  σ/σ0 1.0008  V/V0-1 -1.3e-05  closed 0.109  H 1.000  |dξ̃| 0.0254  FE 13.7s it 14.7s
+[cshell]   active set rebuilt: 1660223 elements, 5630118 DOF, engine twogrid, coarse 861321 DOF (fp32), 90.7 GiB device memory free
+[solid] ph 1 it  60  J +0.44684  K/K0 0.9993  P/P0 2.4457  λB/λB0 2.4471  σ/σ0 1.0008  V/V0-1 -1.3e-05  closed 0.109  H 1.000  |dξ̃| 0.0263  FE 34.1s it 35.0s
+[solid] ph 1 it  61  J +0.44698  K/K0 0.9993  P/P0 2.4464  λB/λB0 2.4477  σ/σ0 1.0008  V/V0-1 -1.3e-05  closed 0.108  H 1.000  |dξ̃| 0.0268  FE 13.9s it 14.9s
+[solid] ph 1 it  62  J +0.44710  K/K0 0.9993  P/P0 2.4470  λB/λB0 2.4484  σ/σ0 1.0008  V/V0-1 -1.3e-05  closed 0.108  H 1.000  |dξ̃| 0.0274  FE 13.9s it 14.8s
+[solid] ph 1 it  63  J +0.44723  K/K0 0.9993  P/P0 2.4476  λB/λB0 2.4490  σ/σ0 1.0008  V/V0-1 -1.2e-05  closed 0.108  H 1.000  |dξ̃| 0.0296  FE 13.9s it 14.9s
+[solid] ph 1 it  64  J +0.44735  K/K0 0.9993  P/P0 2.4482  λB/λB0 2.4496  σ/σ0 1.0008  V/V0-1 -1.3e-05  closed 0.108  H 1.000  |dξ̃| 0.0284  FE 13.9s it 14.9s
+[solid] ph 1 it  65  J +0.44747  K/K0 0.9993  P/P0 2.4488  λB/λB0 2.4502  σ/σ0 1.0008  V/V0-1 -1.2e-05  closed 0.107  H 1.000  |dξ̃| 0.0318  FE 13.9s it 15.0s
+[solid] ph 1 it  66  J +0.44758  K/K0 0.9993  P/P0 2.4493  λB/λB0 2.4507  σ/σ0 1.0008  V/V0-1 -1.3e-05  closed 0.107  H 1.000  |dξ̃| 0.0313  FE 13.9s it 14.9s
+[solid] ph 1 it  67  J +0.44770  K/K0 0.9993  P/P0 2.4500  λB/λB0 2.4513  σ/σ0 1.0008  V/V0-1 -1.3e-05  closed 0.107  H 1.000  |dξ̃| 0.0379  FE 13.9s it 14.9s
+[solid] ph 1 it  68  J +0.44782  K/K0 0.9993  P/P0 2.4505  λB/λB0 2.4519  σ/σ0 1.0008  V/V0-1 -1.4e-05  closed 0.107  H 1.000  |dξ̃| 0.0399  FE 13.9s it 14.9s
+[solid] ph 1 it  69  J +0.44795  K/K0 0.9993  P/P0 2.4512  λB/λB0 2.4525  σ/σ0 1.0008  V/V0-1 -1.4e-05  closed 0.107  H 1.000  |dξ̃| 0.0442  FE 23.5s it 24.5s
+[solid] ph 1 it  70  J +0.44807  K/K0 0.9993  P/P0 2.4518  λB/λB0 2.4531  σ/σ0 1.0008  V/V0-1 -1.5e-05  closed 0.107  H 1.000  |dξ̃| 0.0418  FE 13.9s it 14.9s
+[solid] ph 1 it  71  J +0.44819  K/K0 0.9993  P/P0 2.4523  λB/λB0 2.4537  σ/σ0 1.0008  V/V0-1 -1.5e-05  closed 0.107  H 1.000  |dξ̃| 0.0370  FE 13.9s it 15.0s
+[solid] ph 1 it  72  J +0.44829  K/K0 0.9993  P/P0 2.4529  λB/λB0 2.4543  σ/σ0 1.0008  V/V0-1 -1.6e-05  closed 0.106  H 1.000  |dξ̃| 0.0297  FE 13.5s it 14.5s
+[solid] ph 1 it  73  J +0.44839  K/K0 0.9993  P/P0 2.4533  λB/λB0 2.4547  σ/σ0 1.0008  V/V0-1 -1.7e-05  closed 0.107  H 1.000  |dξ̃| 0.0239  FE 13.4s it 14.4s
+[solid] ph 1 it  74  J +0.44848  K/K0 0.9993  P/P0 2.4538  λB/λB0 2.4552  σ/σ0 1.0008  V/V0-1 -1.6e-05  closed 0.106  H 1.000  |dξ̃| 0.0162  FE 13.6s it 14.6s
+[solid] ph 1 it  75  J +0.44858  K/K0 0.9993  P/P0 2.4543  λB/λB0 2.4557  σ/σ0 1.0008  V/V0-1 -1.6e-05  closed 0.106  H 1.000  |dξ̃| 0.0159  FE 23.1s it 24.1s
+[solid] ph 1 it  76  J +0.44865  K/K0 0.9993  P/P0 2.4546  λB/λB0 2.4560  σ/σ0 1.0008  V/V0-1 -1.5e-05  closed 0.105  H 1.000  |dξ̃| 0.0167  FE 23.1s it 24.1s
+[solid] ph 1 it  77  J +0.44872  K/K0 0.9993  P/P0 2.4550  λB/λB0 2.4564  σ/σ0 1.0008  V/V0-1 -1.4e-05  closed 0.106  H 1.000  |dξ̃| 0.0250  FE 23.5s it 24.5s
+[solid] ph 1 it  78  J +0.44879  K/K0 0.9993  P/P0 2.4554  λB/λB0 2.4568  σ/σ0 1.0009  V/V0-1 -1.6e-05  closed 0.105  H 1.000  |dξ̃| 0.0285  FE 23.3s it 24.3s
+[solid] ph 1 it  79  J +0.44886  K/K0 0.9993  P/P0 2.4557  λB/λB0 2.4571  σ/σ0 1.0009  V/V0-1 -1.5e-05  closed 0.106  H 1.000  |dξ̃| 0.0198  FE 22.3s it 23.3s
 [cshell]   active set rebuilt: 1425997 elements, 4711569 DOF, engine twogrid, coarse 700437 DOF (fp32), 91.3 GiB device memory free
-[cshell] phase 1 design: {"active_vertices": 67945, "closed_area_frac": 0.10124399587725814, "snap_closed_area_frac": 0.017063451278684992, "hollow_allowed_area_frac": 1.0, "d_max": 3.088253365472004, "d_mean": 1.2616025297006892, "wall_open_min": 1.5000080682139578, "wall_open_max": 5.882052494864547, "growth": {"steps": 10, "R_k": 0.34349853113287915, "J_b": [-1.1553369372441478e-11, 0.01187707389220542, 0.04601137885165814, 0.07464510756376024, 0.10472060025509812, 0.12014568193282141, 0.1328138476835397, 0.15183549885158776, 0.2017260321508772, 0.28506572020420656, 0.33200282082287896], "iters": [18, 9, 13, 16, 25, 25, 10, 25, 25, 18], "best_boundary": 10, "best_J": 0.33200282082287896}}
+[cshell] phase 1 design: {"active_vertices": 67945, "closed_area_frac": 0.10450558850120126, "snap_closed_area_frac": 0.01757320596465652, "hollow_allowed_area_frac": 1.0, "d_max": 3.096339918689371, "d_mean": 1.2502444050450519, "wall_open_min": 1.5000076732731378, "wall_open_max": 5.873044771613311, "growth": {"steps": 10, "R_k": 0.343598473284739, "J_b": [6.371958515976373e-11, 0.011877073895565183, 0.04601113760031777, 0.0746650565372457, 0.10347893680805194, 0.12048692251738531, 0.12782348827075796, 0.15767576429988206, 0.19633381602136138, 0.2469086795118031, 0.3218476422851817], "iters": [18, 9, 13, 13, 25, 8, 18, 25, 6, 25], "best_boundary": 10, "best_J": 0.3218476422851817}}

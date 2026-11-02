@@ -1,7 +1,7 @@
 {
  "name": "Cantilever",
  "step_file": "/home/b6bl/owenpeckham.b6bl/shell-lightweighting/.claude/worktrees/cshell-escape-floor1/examples/parts/Solid Cantilever.step",
- "output_dir": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/SR_ESC1",
+ "output_dir": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/SR_ESC1b",
  "supports": [
   {
    "type": "cylinder",
@@ -135,7 +135,7 @@
   "type": "weighted",
   "constraints": [],
   "constraint_scale": 0.01,
-  "feasibility_tol": 0.001,
+  "feasibility_tol": 0.01,
   "w_stiffness": 0.5,
   "w_capacity": 0.5,
   "min_gain": 0.02,

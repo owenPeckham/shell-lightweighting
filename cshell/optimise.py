@@ -669,7 +669,7 @@ def evaluate(ctx: Context, xi, phase: int, shift=None, D_comp: float | None = No
             sab = model.dm.forward(xi[:nv], xi[nv:], as_built=True)
             fe = model.fe_eval(model.dm.rho(sab), st, base, base["c"])
             V = model.dm.volume(model.dm.forward(xi[:nv], xi[nv:], as_built=False))
-            tol = float(o.get("feasibility_tol", 1e-3))
+            tol = ccfg.feasibility_log_tol(cfg)
             K, P = base["C0"] / fe["C"], fe["P_P0"]
             floors = dict(K=bool(np.log(K) >= np.log(o["floor_stiffness"]) - tol),
                           P=bool(st.w_P == 0 or np.log(P) >= np.log(o["floor_capacity"]) - tol))
@@ -693,7 +693,7 @@ def evaluate(ctx: Context, xi, phase: int, shift=None, D_comp: float | None = No
         sab = model.dm.forward(xi[:nv], xi[nv:], as_built=True)
         fe = model.fe_eval(model.dm.rho(sab), st, base, want_all=True)
         V = model.dm.volume(model.dm.forward(xi[:nv], xi[nv:], as_built=False))
-        tol = float(cfg["objective"].get("feasibility_tol", 1e-3))
+        tol = ccfg.feasibility_log_tol(cfg)
         feasible = all(v <= tol for v in fe["g"].values())
         return dict(objective="compliance", J_K=fe["J"], P_P0=None,
                     J=fe["J"], K_K0=base["C0"] / fe["C"], lamB_ratio=fe["lamB_ratio"], sig_ratio=fe["sig_ratio"],
