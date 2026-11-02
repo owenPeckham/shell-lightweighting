@@ -39,6 +39,7 @@ Committed results for the three example parts (reports, summaries, fields, previ
 | `objective.type` | `"weighted"` | `"weighted"`: J above with floors as MMA constraints; `"compliance"`: J = ln K/K0 with `objective.constraints` (`buckling`, `strength`) |
 | `objective.w_stiffness`, `w_capacity` | 0.5, 0.5 | Weights w_K, w_P |
 | `objective.floor_stiffness`, `floor_capacity` | 0.85, 0.85 | K/K0 and P/P0 floors |
+| `objective.floor_strength`, `floor_buckling` | `null`, `null` | Optional per-mode floors relative to the solid: σ_PN0/σ_PN ≥ f_S, λ_B/λ_B0 ≥ f_B (P/P0 alone binds only the governing mode); set e.g. `--set objective.floor_strength=1.0` |
 | `optimiser.starts` | `["solid"]` | Start designs (`uniform`, `dshell`, `neutral` remain available) |
 | `growth.enabled`, `growth.quantiles`, `growth.patience` | on, 0.1…1.0, `None` | The hollow-allowed region grows in order of the shear/flexure ratio R through every quantile (patience `None`: all quantiles run) |
 | `design.closure_skirt_mm` | 1.5 | Closure spreads over this skirt at closure borders (0 = off) |

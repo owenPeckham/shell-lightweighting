@@ -1,0 +1,19 @@
+cshell summary: MBB
+
+DECISION: accepted
+  cshell design accepted: J = +0.4930 (optimisation grid), +0.4926 (shifted grid) > ln(1 + g_min) = 0.0198, feasible, export mass-matched and watertight
+
+mass target 88.640 g, final 88.625 g (V/V_target - 1 -1.63e-04, delta +0.0012 mm)
+
+objective: weighted (J = the run's objective; ln K/K0 separate)
+grid                  J   lnK/K0    K/K0    P/P0    lamB   sigPN  governing  feasible
+optimisation    +0.4930  +0.1060   1.112   2.411   2.449   0.858  buckling   True
+shifted         +0.4926  +0.1051   1.111   2.411   2.449   0.859  buckling   True
+floors: K/K0 ≥ 1.0, P/P0 ≥ 1.0, σ_PN0/σ_PN ≥ 1.0, λ_B/λ_B0 ≥ 1.0
+
+export h 0.2 mm: 4753836 faces, watertight True, material bodies 1, shells 1, enclosed voids 2, escape holes 4
+fins removed by the export 61.18 mm³ (check, expected ≈ 0), void → material 6.22 mm³
+wall mm (nominal): min 1.494, p05 1.503, median 2.478, max 25.806; min off the hole rims 1.494
+closed area 4.1% of active, hollow 75.1% of the surface
+timing s: context_s 0, rescore_s 214, export_s 37, finalise_s 465
+peak: GPU 35.98 GiB, host 5.65 GiB; export alone GPU 2.35 GiB, host 5.65 GiB

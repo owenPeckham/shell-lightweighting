@@ -7,7 +7,7 @@ stronger. Three optimisers, from simplest to most general:
 | --- | --- | --- | --- | --- |
 | **ushell** (uniform shell) | `ushell/` (Fusion 360 add-in) | one wall thickness | `README.md` (install) | `ushell/logs/` (example log) |
 | **dshell** (discrete regions; was `vshell`) | `dshell/` | which regions are hollow + their wall | `dshell/README.md` | `examples/dshell/runs/<part>/` |
-| **cshell** (continuous) | `cshell/` | per-vertex wall thickness and offset fields | `cshell/README.md`, `docs/cshell/` | `examples/cshell/runs/<part>/` |
+| **cshell** (continuous) | `cshell/` | per-vertex wall thickness and offset fields | `cshell/README.md`, `docs/cshell/` | `examples/cshell/runs/<part>/`; escape holes + floors 1.00: `examples/cshell/runs_escape_floor1/<part>/` |
 
 Renamed 2026-10-31: `vshell` → `dshell`, `continuous/` → `docs/cshell/`, `shell_lightweighting/` → `ushell/`,
 `examples/step/` → `examples/parts/`, `examples/runs/` → `examples/dshell/runs/`. Older documents keep the old
@@ -25,7 +25,7 @@ names in their text.
 | `cshell/` | Continuous optimiser (Python package): `README.md`, `cluster/` (Slurm scripts), `cli.py`, `config.py`, `surface.py`, `band.py`, `design.py`, `objective.py`, `fe_twogrid.py` / `fe_sparse.py` / `fea.py` (FE), `mma.py`, `optimise.py`, `finalise.py`, `export.py`, `validate.py` / `bodyfit_gpu.py`, `report.py` (`collect.py`: legacy Stage 2) |
 | `examples/parts/` | The three Study 1 STEP parts: `Solid MBB.step`, `Solid Cantilever.step`, `Solid L-bracket.step` (shared by all optimisers) |
 | `examples/dshell/` | dshell configs (`mbb.json`, `cantilever.json`, `l_bracket.json`) and `runs/<part>/` results |
-| `examples/cshell/` | cshell configs (`mbb.json`, `cantilever.json`, `l_bracket.json`), `bench/` (B1–B3 benchmark parts + configs, `make_bench.py`), `runs/<part>/` results |
+| `examples/cshell/` | cshell configs (`mbb.json`, `cantilever.json`, `l_bracket.json`), `bench/` (B1–B3 benchmark parts + configs, `make_bench.py`), `runs/<part>/` results, `runs_escape_floor1/<part>/` (escape holes, all floors 1.00) |
 | `docs/cshell/` | cshell theory, status, validation, benchmarks, plans, research notes and Owen's reference FE code (details below) |
 | `feasibility/` | Feasibility prototype for variable thickness (scripts, results JSON, figures; `feasibility/README.md`) |
 | `tests/dshell/` | dshell tests (scripts: `test_basic.py`, `validate_tubes.py`, `validate_thin_wall.py`) |

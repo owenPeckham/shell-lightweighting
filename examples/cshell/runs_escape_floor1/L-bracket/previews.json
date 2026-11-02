@@ -1,0 +1,54 @@
+{
+  "final_design": {
+    "source": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/SR_ESC1/L-bracket/final_design.stl",
+    "full": {
+      "faces": 1599944,
+      "vertices": 799956,
+      "volume_mm3": 41947.45582474223,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 1,
+      "watertight": true
+    },
+    "preview": {
+      "faces": 500000,
+      "vertices": 249984,
+      "volume_mm3": 41947.026037291274,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 1,
+      "watertight": true
+    },
+    "rel_volume_change": -1.0245852638868236e-05,
+    "preview_bytes": 25000084,
+    "seconds": 22.26644229888916
+  },
+  "original": {
+    "source": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/FULL/L-bracket/original.stl",
+    "full": {
+      "faces": 18947100,
+      "vertices": 9473540,
+      "volume_mm3": 41946.30837331411,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 1,
+      "watertight": true
+    },
+    "preview": {
+      "faces": 500000,
+      "vertices": 249990,
+      "volume_mm3": 41945.20782733452,
+      "boundary_edges": 0,
+      "non_manifold_edges": 0,
+      "non_manifold_vertices": 0,
+      "connected_components": 1,
+      "watertight": true
+    },
+    "rel_volume_change": -2.6237016373387156e-05,
+    "preview_bytes": 25000084,
+    "seconds": 347.9198262691498
+  }
+}
