@@ -154,7 +154,8 @@ def evaluate(fe: SparseFE, rho_hat_active, rho_active, m_active, st: Settings, b
         wsum = st.w_K + st.w_P
         J = (st.w_K * np.log(base["C0"] / C) + st.w_P * np.log(lam / base["lam0"])) / wsum
         dJ = (-st.w_K * dC / C + st.w_P * dlnlam) / wsum
-    parts = dict(stress=sp, buckling=bk, primal=pr, dC=dC, dlnlam=dlnlam, shares=w.tolist())
+    parts = dict(stress=sp, buckling=bk, primal=pr, dC=dC, dlnlam=dlnlam, shares=w.tolist(),
+                 dlnsig=sp.grad / sp.value, dlnmu=dmu / mu_t if mu_t > 0 else None)   # per-mode floors (optimise)
     return Evaluation(J=float(J), dJ=dJ, C=C, sigma_pn=sp.value, lam_s=lam_s, mu_tilde=mu_t, lam_b=lam_b, lam=lam,
                       governing=governing, parts=parts)
 

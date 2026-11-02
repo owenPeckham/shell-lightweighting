@@ -136,10 +136,28 @@ def closed_threshold(cfg: dict) -> float:
     return float((cfg.get("export") or {}).get("closed_thr", 0.9))
 
 
+def _inv(x):
+    try:
+        return 1.0 / float(x)
+    except (TypeError, ValueError, ZeroDivisionError):
+        return None
+
+
+def _floors_line(o: dict) -> str:
+    s = f"floors: K/K0 ≥ {o.get('floor_K')}, P/P0 ≥ {o.get('floor_P')}"
+    if o.get("floor_S") is not None:
+        s += f", σ_PN0/σ_PN ≥ {o.get('floor_S')}"
+    if o.get("floor_B") is not None:
+        s += f", λ_B/λ_B0 ≥ {o.get('floor_B')}"
+    return s
+
+
 def _infeasible_why(r: dict) -> str:
     if r.get("objective") == "weighted":
         return (f"floors violated (K/K0 {r.get('K_K0')}, P/P0 {r.get('P_P0')} against {r.get('floor_K')}, "
-                f"{r.get('floor_P')}; governing {r.get('governing')})")
+                f"{r.get('floor_P')}; σ_PN0/σ_PN {_inv(r.get('sig_ratio'))} against {r.get('floor_S')}, "
+                f"λ_B/λ_B0 {r.get('lamB_ratio')} against {r.get('floor_B')}; failed {r.get('floors')}; "
+                f"governing {r.get('governing')})")
     return (f"constraints violated (λ_B/λ_B0 {r.get('lamB_ratio')}, σ_PN/σ_PN0 {r.get('sig_ratio')}, governing "
             f"{r.get('governing')})")
 
@@ -186,7 +204,7 @@ def summary_text(S: dict) -> str:
            f"{g(r.get('P_P0'), '{:.3f}'):>8}{g(r.get('lamB_ratio'), '{:.3f}'):>8}{g(r.get('sig_ratio'), '{:.3f}'):>8}"
            f"  {str(r.get('governing') or '-'):<10} {r.get('feasible')}{'  ' + r['error'] if r.get('error') else ''}"
            for lab, r in (("optimisation", o), ("shifted", s))),
-         *([f"floors: K/K0 ≥ {o.get('floor_K')}, P/P0 ≥ {o.get('floor_P')}"] if o.get("objective") == "weighted"
+         *([_floors_line(o)] if o.get("objective") == "weighted"
            else []),
          "",
          f"export h {e.get('h_mm')} mm: {e.get('faces')} faces, watertight {e.get('watertight')}, material bodies "
@@ -231,7 +249,7 @@ def _evaluate_fn(evaluate):
 
 # keys of a C2 score kept in summary.json opt/shift (§8: the run's own objective J; J_K = ln K/K0 kept separate)
 SCORE_KEYS = ("objective", "J", "J_K", "K_K0", "P_P0", "lamB_ratio", "sig_ratio", "mass_err", "governing", "floor_K",
-              "floor_P")
+              "floor_P", "floor_S", "floor_B", "floors")
 
 
 def score(ctx, xi, phase: int, D_comp: float, evaluate=None, log=print, hollow=None, shifted: bool = True) -> dict:

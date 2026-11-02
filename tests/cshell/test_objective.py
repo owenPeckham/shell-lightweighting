@@ -121,3 +121,27 @@ def test_compliance_without_buckling_mode_is_inactive():
     st = Settings(eig_tol=1e-6, num_modes=2, objective="compliance", constraints=("buckling",))
     e = evaluate_compliance(fe, rho, rho, m, st, dict(C0=1.0, sigma_pn0=1.0, mu0=0.0))
     assert e.g["buckling"] == -np.inf and not np.any(e.dg["buckling"]) and e.governing == "stiffness"
+
+
+@pytest.mark.parametrize("engine,backend", ENGINES)
+def test_per_mode_floor_gradients(engine, backend):
+    """d ln σ_PN and d ln μ̃ (the per-mode floors objective.floor_strength / floor_buckling) along a smooth
+    direction, with buckling active; < 1e-3."""
+    g, fe, m = notched_bar(backend, engine)
+    nn = g.node_shape
+    rng = np.random.default_rng(7)
+    rho = rng.uniform(0.6, 1.0, g.Ne)
+    st = Settings(knockdown=0.85, beta=12.0, eig_tol=1e-7, num_modes=4)
+    load = np.zeros(nn + (3,)); load[-1] = np.array([-400.0, 0.0, -20.0]) / (nn[1] * nn[2])
+    fe.f = fe.xp.asarray(g.gather_nodes(load).reshape(-1))
+    e0 = evaluate(fe, rho, rho, m, st)
+    assert e0.mu_tilde > 0
+    x = g.gather_elems(np.indices(g.elem_shape)[0]) / 40
+    d = 0.05 * np.sin(np.pi * x) * (1 + 0.3 * rng.standard_normal(g.Ne))
+    h = 1e-2
+    ep, em = (evaluate(fe, rho + s * h * d, rho + s * h * d, m, st) for s in (1, -1))
+    for name, key, attr in (("sig", "dlnsig", "sigma_pn"), ("mu", "dlnmu", "mu_tilde")):
+        pred = float(e0.parts[key] @ d)
+        fd = (np.log(getattr(ep, attr)) - np.log(getattr(em, attr))) / (2 * h)
+        print(name, "fd", fd, "pred", pred)
+        assert abs(fd / pred - 1) < 1e-3, (name, fd, pred)

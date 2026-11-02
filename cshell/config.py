@@ -62,6 +62,9 @@ DEFAULTS = {
                   "feasibility_tol": 1e-3,                  # evaluate(): feasible if every g ≤ tol
                   "w_stiffness": 0.5, "w_capacity": 0.5, "min_gain": 0.02, "floor_stiffness": 0.85,
                   "floor_capacity": 0.85,
+                  "floor_strength": None,                   # weighted: optional per-mode floors (None = off), relative
+                  "floor_buckling": None,                   # to the solid: σ_PN/σ_PN0 ≤ 1/f_S, λ_B/λ_B0 ≥ f_B (P/P0
+                                                            # alone only binds the governing mode of the soft-min)
                   "floors_as_constraints": True},           # weighted: K/K0 ≥ floor_stiffness, P/P0 ≥ floor_capacity (MMA)
     "filter": {"radius_mm": [4.0, 3.0, 2.5],
                "passes": 2},                # ξ̃ = clip(Fⁿ ξ) (§2: n = 2 removes one-vertex cones)
@@ -185,6 +188,9 @@ def validate(cfg: dict) -> None:
     if o.get("type") == "weighted" and (o["w_stiffness"] < 0 or o["w_capacity"] < 0
                                         or (o["w_stiffness"] + o["w_capacity"]) == 0):
         raise ValueError("objective weights must be >= 0 and not both zero")
+    for k in ("floor_stiffness", "floor_capacity", "floor_strength", "floor_buckling"):
+        if o.get(k) is not None and not float(o[k]) > 0:
+            raise ValueError(f"objective.{k} must be > 0 (or null for the optional per-mode floors)")
     bad = set(o.get("constraints", [])) - {"buckling", "strength"}
     if bad:
         raise ValueError(f"objective.constraints: unknown {sorted(bad)} (buckling, strength)")

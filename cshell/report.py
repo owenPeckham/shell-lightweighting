@@ -612,7 +612,10 @@ def p_summary(R):
                 lines.append(f"{lab:15s} J {_fmt(v.get('J'))} (weighted)  ln K/K0 {_fmt(v.get('J_K'))}  K/K0 "
                              f"{_fmt(v.get('K_K0'))}  P/P0 {_fmt(v.get('P_P0'))}  governing {v.get('governing')}  "
                              f"feasible {v.get('feasible')}   (accept: J > ln 1.02 = {LN102:.4f}, K/K0 >= "
-                             f"{_fmt(v.get('floor_K'))}, P/P0 >= {_fmt(v.get('floor_P'))})")
+                             f"{_fmt(v.get('floor_K'))}, P/P0 >= {_fmt(v.get('floor_P'))}"
+                             + (f", sigPN0/sigPN >= {_fmt(v.get('floor_S'))}" if v.get('floor_S') is not None else "")
+                             + (f", lamB/lamB0 >= {_fmt(v.get('floor_B'))}" if v.get('floor_B') is not None else "")
+                             + ")")
             else:
                 lines.append(f"{lab:15s} J {_fmt(v.get('J'))}  K/K0 {_fmt(v.get('K_K0'))}  lamB/lamB0 {_fmt(v.get('lamB_ratio'))}"
                              f"  sigPN/sigPN0 {_fmt(v.get('sig_ratio'))}  feasible {v.get('feasible')}   (accept: J > ln 1.02 = {LN102:.4f},"

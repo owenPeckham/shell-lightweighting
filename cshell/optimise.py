@@ -357,6 +357,10 @@ class PhaseModel:
             cons = tuple(x for x in cons if x != "buckling")
         if typ == "weighted" and o.get("floors_as_constraints", False):   # §8: K/K0 ≥ f_K, P/P0 ≥ f_P (MMA)
             cons = ("floor_K",) + (("floor_P",) if o["w_capacity"] > 0 else ())
+            if o["w_capacity"] > 0 and o.get("floor_strength") is not None:     # σ_PN/σ_PN0 ≤ 1/f_S
+                cons += ("floor_S",)
+            if o["w_capacity"] > 0 and cap["buckling"] and o.get("floor_buckling") is not None:   # λ_B/λ_B0 ≥ f_B
+                cons += ("floor_B",)
         return Settings(w_K=o["w_stiffness"], w_P=o["w_capacity"], sigma_f=c["material"]["strength_MPa"],
                         knockdown=cap["knockdown"], beta=ccfg.phase_value(cap["softmin_beta"], self.phase, frac),
                         stress_p=ccfg.phase_value(cap["stress_p"], self.phase, frac), stress_q=cap["stress_q"],
@@ -449,6 +453,12 @@ class PhaseModel:
             if "floor_P" in st.constraints:
                 out["g"]["floor_P"] = float(np.log(o["floor_capacity"]) - np.log(ev.lam / base["lam0"]))
                 out["dg"]["floor_P"] = -ev.parts["dlnlam"]
+            if "floor_S" in st.constraints:                # ln(σ_PN/σ_PN0) + ln f_S ≤ 0 (raw p-norms: c drops out)
+                out["g"]["floor_S"] = float(np.log(ev.sigma_pn / base["sigma_pn0"]) + np.log(o["floor_strength"]))
+                out["dg"]["floor_S"] = ev.parts["dlnsig"]
+            if "floor_B" in st.constraints and ev.mu_tilde > 0 and base.get("mu0", 0) > 0:   # ln f_B + ln μ̃/μ̃0 ≤ 0
+                out["g"]["floor_B"] = float(np.log(o["floor_buckling"]) + np.log(ev.mu_tilde / base["mu0"]))
+                out["dg"]["floor_B"] = ev.parts["dlnmu"]
         return out
 
     def baseline(self, st: Settings, want_all: bool = False) -> dict:
@@ -663,10 +673,15 @@ def evaluate(ctx: Context, xi, phase: int, shift=None, D_comp: float | None = No
             K, P = base["C0"] / fe["C"], fe["P_P0"]
             floors = dict(K=bool(np.log(K) >= np.log(o["floor_stiffness"]) - tol),
                           P=bool(st.w_P == 0 or np.log(P) >= np.log(o["floor_capacity"]) - tol))
+            if st.w_P > 0 and o.get("floor_strength") is not None and np.isfinite(fe["sig_ratio"]):
+                floors["S"] = bool(-np.log(fe["sig_ratio"]) >= np.log(o["floor_strength"]) - tol)
+            if st.w_P > 0 and st.buckling and o.get("floor_buckling") is not None and np.isfinite(fe["lamB_ratio"]):
+                floors["B"] = bool(np.log(fe["lamB_ratio"]) >= np.log(o["floor_buckling"]) - tol)
             return dict(objective="weighted", J=fe["J"], J_K=float(np.log(K)), K_K0=K, P_P0=P,
                         lamB_ratio=fe["lamB_ratio"], sig_ratio=fe["sig_ratio"], mass_err=V / model.V0 - 1.0,
                         feasible=bool(all(floors.values())), floors=floors,
-                        floor_K=o["floor_stiffness"], floor_P=o["floor_capacity"], governing=fe["governing"],
+                        floor_K=o["floor_stiffness"], floor_P=o["floor_capacity"], floor_S=o.get("floor_strength"),
+                        floor_B=o.get("floor_buckling"), governing=fe["governing"],
                         g=dict(fe["g"]), C=fe["C"], C0=base["C0"], lam=fe["lam"], lam0=base["lam0"], V=V,
                         V0=model.V0, h_e=model.h_e, origin=np.asarray(model.origin).tolist(), phase=ph)
         cons = ("buckling", "strength") if cfg["capacity"]["buckling"] else ("strength",)
