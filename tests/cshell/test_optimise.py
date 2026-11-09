@@ -59,8 +59,9 @@ def test_weighted_quantile():
 def test_config_defaults_c1():
     from cshell import config
     D = config.DEFAULTS
-    O = D["objective"]                                     # §8: weighted default, floors as MMA constraints
-    assert O["type"] == "weighted" and O["constraints"] == [] and O["floors_as_constraints"]
+    O = D["objective"]                                     # PLAN_lightweight: lightweight default (weighted kept)
+    assert O["type"] == "lightweight" and O["lw_margin_stiffness"] == O["lw_margin_capacity"] == 1.02
+    assert O["constraints"] == [] and O["floors_as_constraints"]
     assert O["floor_stiffness"] == 0.85 and O["floor_capacity"] == 0.85 and O["w_stiffness"] == O["w_capacity"] == 0.5
     assert D["optimiser"]["starts"] == ["solid"]
     assert D["growth"]["tol"] == 1e-3 and D["growth"]["patience"] is None          # every quantile runs

@@ -31,9 +31,10 @@ def write(name, shape, L, F):
     cfg = {"name": name, "step_file": f"{name}.step", "output_dir": "../../../runs_cshell/bench",
            "supports": [{"type": "plane", "normal": [-1, 0, 0], "extreme": True}],
            "loads": [{"faces": {"type": "plane", "normal": [1, 0, 0], "extreme": True}, "force_N": F}],
-           "mounts": {"auto_analytic": False}}
+           "mounts": {"auto_analytic": False},
+           "objective": {"type": "weighted"}}       # benchmarks test the constant-mass path (PLAN_lightweight)
     if name != "B3_column":
-        cfg["objective"] = {"w_stiffness": 1.0, "w_capacity": 0.0}
+        cfg["objective"].update(w_stiffness=1.0, w_capacity=0.0)
     json.dump(cfg, open(f"{name}.json", "w"), indent=1)
     print(name, L, "volume", shape.volume)
 

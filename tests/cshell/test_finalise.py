@@ -27,6 +27,7 @@ C3_KEYS = ("name", "decision", "mass", "opt", "shift", "export", "closed_area_fr
 
 def _run_dir(tmp_path, legacy=False):
     cfg = config.load(str(ROOT / "examples/cshell/mbb.json"))
+    cfg["objective"]["type"] = "weighted"                 # the constant-mass decision rule (lightweight: test_lightweight)
     cfg["output_dir"] = str(tmp_path)
     start = "neutral" if legacy else "solid"
     cfg["optimiser"]["starts"] = [start]
