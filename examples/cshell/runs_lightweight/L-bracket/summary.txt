@@ -1,0 +1,20 @@
+cshell summary: L-bracket
+
+DECISION: accepted
+  cshell design accepted: mass saving 3.9% (V/V0 0.9611); K/K0 1.0200 / 1.0197, P/P0 1.0200 / 1.0213 (optimisation / shifted grid) ≥ 1, export mass-matched and watertight
+
+mass target 41.930 g, final 41.930 g (V/V_target - 1 +8.15e-06, delta +0.0003 mm)
+
+objective: lightweight (J = the run's objective; ln K/K0 separate)
+grid                  J   lnK/K0    K/K0    P/P0    lamB   sigPN  governing  feasible
+optimisation    +0.0389  +0.0198   1.020   1.020   1.003   0.980  strength   True
+shifted         +0.0389  +0.0195   1.020   1.021   1.003   0.979  strength   True
+lightweight: J = mass saving 1 - V/V0 (V/V0 0.9611); accepted iff K/K0 ≥ 1 and P/P0 ≥ 1 on both grids (optimiser margins [1.02, 1.02])
+solid 43.625 g -> final 41.930 g: mass saving 3.9% (export target V_opt/V0 0.9611)
+
+export h 0.2 mm: 1635244 faces, watertight True, material bodies 1, shells 2, enclosed voids 1, escape holes 0
+fins removed by the export 141.29 mm³ (check, expected ≈ 0), void → material 2.36 mm³
+wall mm (nominal): min 1.496, p05 1.535, median 3.443, max 42.175; min off the hole rims 1.496
+closed area 36.2% of active, hollow 32.6% of the surface
+timing s: context_s 0, rescore_s 129, export_s 20, finalise_s 276
+peak: GPU 13.42 GiB, host 5.28 GiB; export alone GPU 1.98 GiB, host 5.28 GiB
