@@ -1086,8 +1086,10 @@ class Run:
                     # minimises f0 = s_J (V/V0 − 1 + w_s G_s) with the floors as its only constraints
                     gJ = -gV if lw else pull(fe["dJ"])
                     t_pull = time.time() - t0
-                    if s_J is None:
-                        s_J = 10.0 / max(np.abs(gJ).max() * opt["move"] * 10, 1e-12)   # |Δf0| ~ 10 per full move
+                    if s_J is None:   # lightweight: f0 in the constraints' unit (1 = 1 % of V0), so MMA's elastic
+                        # penalty c = 1e3 per 1 % shortfall dominates; the per-variable scale below made f0 ~1e4 per
+                        # 1 % of V and MMA settled infeasible (LW1 MBB: K/K0 0.990 at the cap)
+                        s_J = 1.0 / con_scale if lw else 10.0 / max(np.abs(gJ).max() * opt["move"] * 10, 1e-12)
                     f0 = s_J * (-fe["J"] + w_s * Gs)
                     df0 = s_J * (-gJ + w_s * gG)
                     if lw:
