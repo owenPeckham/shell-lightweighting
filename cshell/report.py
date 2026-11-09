@@ -608,7 +608,11 @@ def p_summary(R):
     for key, lab in (("opt", "optimiser grid"), ("shift", "shifted grid")):
         v = S.get(key)
         if isinstance(v, dict):
-            if v.get("objective") == "weighted":           # §8: the run's own objective, ln K/K0 kept separate
+            if v.get("objective") == "lightweight":        # PLAN_lightweight: J = mass saving 1 - V/V0
+                lines.append(f"{lab:15s} mass saving {_fmt(v.get('J'))} (V/V0 {_fmt(v.get('V_V0'))})  K/K0 "
+                             f"{_fmt(v.get('K_K0'))}  P/P0 {_fmt(v.get('P_P0'))}  governing {v.get('governing')}  "
+                             f"feasible {v.get('feasible')}   (accept: K/K0 >= 1, P/P0 >= 1)")
+            elif v.get("objective") == "weighted":         # §8: the run's own objective, ln K/K0 kept separate
                 lines.append(f"{lab:15s} J {_fmt(v.get('J'))} (weighted)  ln K/K0 {_fmt(v.get('J_K'))}  K/K0 "
                              f"{_fmt(v.get('K_K0'))}  P/P0 {_fmt(v.get('P_P0'))}  governing {v.get('governing')}  "
                              f"feasible {v.get('feasible')}   (accept: J > ln 1.02 = {LN102:.4f}, K/K0 >= "
@@ -833,11 +837,13 @@ def p_convergence(R):
     col = lambda k: np.array([np.nan if _num(r.get(k)) is None else float(r[k]) for r in H])
     x = np.arange(len(H))
     wtd = any(_num(r.get("P_P0")) is not None for r in H)     # §8 weighted run: J = w ln K/K0 + w ln P/P0
-    keys = [("J", ("J = weighted objective" if wtd else "J = ln K/K0") + " (accept above ln 1.02)", LN102),
-            ("K_K0", "K / K0" + (" (floor 0.85)" if wtd else ""), 0.85 if wtd else None),
-            (("P_P0", "P / P0 (floor 0.85)", 0.85) if wtd else ("lamB_ratio", "lamB / lamB0 (>= 1)", 1.0)),
+    lwt = (R.cfg.get("objective") or {}).get("type") == "lightweight"     # J = mass saving 1 - V/V0
+    keys = [("J", "J = mass saving 1 - V/V0", 0.0) if lwt else
+            ("J", ("J = weighted objective" if wtd else "J = ln K/K0") + " (accept above ln 1.02)", LN102),
+            ("K_K0", "K / K0 (accept >= 1)", 1.0) if lwt else ("K_K0", "K / K0" + (" (floor 0.85)" if wtd else ""), 0.85 if wtd else None),
+            ("P_P0", "P / P0 (accept >= 1)", 1.0) if lwt else (("P_P0", "P / P0 (floor 0.85)", 0.85) if wtd else ("lamB_ratio", "lamB / lamB0 (>= 1)", 1.0)),
             ("sig_ratio", "sigPN / sigPN0" + ("" if wtd else " (<= 1)"), None if wtd else 1.0),
-            ("mass_err", "mass error V/V0 - 1", 0.0),
+            ("mass_err", "V/V0 - 1 (mass is free)" if lwt else "mass error V/V0 - 1", 0.0),
             ("R_k", "R_k (hollow allowed where R <= R_k)", None), ("closed_frac", "closed fraction", None),
             ("hollow_allowed_frac", "hollow-allowed fraction", None)]
     gs, ph = col("growth_step"), col("phase")
@@ -917,7 +923,10 @@ def p_resolution(R):
     _need((len(rows) >= 1, "summary.json: opt / shift"))
     fig = vr.new_figure(12, 6.5)
     wtd = any(v.get("objective") == "weighted" for _, v in rows)
-    panels = ([("J", "J (weighted)", LN102), ("K_K0", "K / K0", 0.85), ("P_P0", "P / P0", 0.85),
+    lwt = any(v.get("objective") == "lightweight" for _, v in rows)
+    panels = ([("J", "mass saving 1 - V/V0", 0.0), ("K_K0", "K / K0", 1.0), ("P_P0", "P / P0", 1.0),
+               ("lamB_ratio", "lamB / lamB0", None)] if lwt else
+              [("J", "J (weighted)", LN102), ("K_K0", "K / K0", 0.85), ("P_P0", "P / P0", 0.85),
                ("lamB_ratio", "lamB / lamB0", None)] if wtd else
               [("J", "J", LN102), ("K_K0", "K / K0", None), ("lamB_ratio", "lamB / lamB0", 1.0),
                ("sig_ratio", "sigPN / sigPN0", 1.0)])

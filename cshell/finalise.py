@@ -153,6 +153,9 @@ def _floors_line(o: dict) -> str:
 
 
 def _infeasible_why(r: dict) -> str:
+    if r.get("objective") == "lightweight":
+        return (f"K/K0 {r.get('K_K0')}, P/P0 {r.get('P_P0')} not both ≥ 1 (failed {r.get('floors')}; governing "
+                f"{r.get('governing')})")
     if r.get("objective") == "weighted":
         return (f"floors violated (K/K0 {r.get('K_K0')}, P/P0 {r.get('P_P0')} against {r.get('floor_K')}, "
                 f"{r.get('floor_P')}; σ_PN0/σ_PN {_inv(r.get('sig_ratio'))} against {r.get('floor_S')}, "
@@ -162,9 +165,35 @@ def _infeasible_why(r: dict) -> str:
             f"{r.get('governing')})")
 
 
-def decide(opt: dict, shift: dict | None, export_ok: bool, export_why: str, crit: float) -> tuple:
+def export_target_fraction(opt: dict):
+    """Lightweight export target V_opt/V0 (PLAN_lightweight): V/V0 of the final design on the optimisation grid
+    (`opt` after the re-score), else 1 + mass_err of the last history row; None if neither is a usable number."""
+    for v in (opt.get("V_V0"), None if opt.get("mass_err") is None else 1.0 + float(opt["mass_err"])):
+        try:
+            v = float(v)
+        except (TypeError, ValueError):
+            continue
+        if np.isfinite(v) and 0.0 < v <= 1.5:
+            return v
+    return None
+
+
+def decide(opt: dict,shift: dict | None, export_ok: bool, export_why: str, crit: float) -> tuple:
     """(accepted, reason) on the run's own objective (§8): J > ln(1 + g) and feasible (weighted: floors K/K0, P/P0;
-    compliance: the λ_B, σ_PN constraints) on the optimisation and the shifted grid, and the export passed."""
+    compliance: the λ_B, σ_PN constraints) on the optimisation and the shifted grid, and the export passed.
+    lightweight (PLAN_lightweight, `crit` = 0): J = 1 − V/V0 > 0 and K/K0 ≥ 1, P/P0 ≥ 1 on both grids."""
+    lw = (opt.get("objective") or (shift or {}).get("objective")) == "lightweight"
+    acc, reason = _decide(opt, shift, export_ok, export_why, crit)
+    if not lw:
+        return acc, reason
+    if acc:
+        reason = (f"cshell design accepted: mass saving {opt['J']:.1%} (V/V0 {1 - opt['J']:.4f}); K/K0 "
+                  f"{opt.get('K_K0'):.4f} / {shift.get('K_K0'):.4f}, P/P0 {opt.get('P_P0'):.4f} / "
+                  f"{shift.get('P_P0'):.4f} (optimisation / shifted grid) ≥ 1, export mass-matched and watertight")
+    return acc, reason.replace("≤ ln(1 + g_min) =", "≤ (no mass saving)")
+
+
+def _decide(opt: dict, shift: dict | None, export_ok: bool, export_why: str, crit: float) -> tuple:
     why = []
     J = opt.get("J")
     if J is None or not np.isfinite(J) or not J > crit:
@@ -205,7 +234,12 @@ def summary_text(S: dict) -> str:
            f"  {str(r.get('governing') or '-'):<10} {r.get('feasible')}{'  ' + r['error'] if r.get('error') else ''}"
            for lab, r in (("optimisation", o), ("shifted", s))),
          *([_floors_line(o)] if o.get("objective") == "weighted"
-           else []),
+           else [f"lightweight: J = mass saving 1 - V/V0 (V/V0 {g(o.get('V_V0'), '{:.4f}')}); accepted iff K/K0 ≥ 1 and "
+                 f"P/P0 ≥ 1 on both grids (optimiser margins {o.get('margins') or '-'})"]
+           if o.get("objective") == "lightweight" else []),
+         *([f"solid {g(m.get('solid_g'), '{:.3f}')} g -> final {g(m.get('final_g'), '{:.3f}')} g: mass saving "
+            f"{g(m.get('saving'), '{:.1%}')} (export target V_opt/V0 {g(m.get('target_fraction'), '{:.4f}')})"]
+           if m.get("solid_g") is not None else []),
          "",
          f"export h {e.get('h_mm')} mm: {e.get('faces')} faces, watertight {e.get('watertight')}, material bodies "
          f"{e.get('bodies')}, shells {e.get('shells')}, enclosed voids {(e.get('voids') or {}).get('enclosed')}, "
@@ -248,8 +282,8 @@ def _evaluate_fn(evaluate):
 
 
 # keys of a C2 score kept in summary.json opt/shift (§8: the run's own objective J; J_K = ln K/K0 kept separate)
-SCORE_KEYS = ("objective", "J", "J_K", "K_K0", "P_P0", "lamB_ratio", "sig_ratio", "mass_err", "governing", "floor_K",
-              "floor_P", "floor_S", "floor_B", "floors")
+SCORE_KEYS = ("objective", "J", "J_K", "K_K0", "P_P0", "lamB_ratio", "sig_ratio", "mass_err", "V_V0", "governing",
+              "floor_K", "floor_P", "floor_S", "floor_B", "floors")
 
 
 def score(ctx, xi, phase: int, D_comp: float, evaluate=None, log=print, hollow=None, shifted: bool = True) -> dict:
@@ -463,6 +497,14 @@ def finalise(run_dir: str, ctx=None, *, out_dir: str | None = None, rescore: boo
         # 3. export ---------------------------------------------------------------------------------------------
         h = float(h_mm if h_mm is not None else (cfg.get("export") or {}).get("h_mm", 0.2))
         thr = closed_threshold(cfg)
+        lw = ccfg.is_lightweight(cfg)
+        ekw = dict(export_kw or {})
+        if lw:                                            # PLAN_lightweight: δ targets V_opt (V_opt/V0 · V_solid)
+            opt["margins"] = list(ccfg.floors(cfg))
+            frac = export_target_fraction(opt)
+            if frac is not None:
+                ekw.setdefault("target_fraction", frac)
+            log(f"[finalise] lightweight: export target V_opt/V0 = {frac}")
         fields = cex.vertex_fields(ctx, xi, D_comp, h_g_last, **_hk(hollow))
         closed = fields["xt_a"] >= thr
         _free_device()
@@ -470,7 +512,7 @@ def finalise(run_dir: str, ctx=None, *, out_dir: str | None = None, rescore: boo
         pke = _peak_gpu()
         t0 = time.time()
         ex = cex.export_design_gpu(ctx, xi, out_dir, D_comp, name="final_design", h_g=h_g_last, fields=fields,
-                                   closed_thr=thr, h_x=h, log=log, **(export_kw or {}))
+                                   closed_thr=thr, h_x=h, log=log, **ekw)
         tim["export_s"] = time.time() - t0
         peak_export = dict(gpu_gib=pke.stop() if pke is not None else None, host_gib=hwm_gib())
         export_ok, export_why = col.export_verdict(ex)
@@ -491,7 +533,7 @@ def finalise(run_dir: str, ctx=None, *, out_dir: str | None = None, rescore: boo
             tim["bodyfit_s"] = time.time() - t0
             if val.get("ran"):
                 files["validation.csv"] = "validation.csv"
-        crit = math.log(1.0 + float(cfg["objective"].get("min_gain", 0.02)))
+        crit = 0.0 if lw else math.log(1.0 + float(cfg["objective"].get("min_gain", 0.02)))   # lw: any mass saving
         acc, reason = decide(opt, shift, export_ok, export_why, crit)
         if val is not None and val.get("blocking_miss"):
             acc, reason = False, "original SOLID part kept: body-fitted check missed a ratio (validation.csv)"
@@ -511,7 +553,10 @@ def finalise(run_dir: str, ctx=None, *, out_dir: str | None = None, rescore: boo
         S = dict(
             schema=SCHEMA, name=cfg["name"], decision=dict(accepted=acc, reason=reason),
             mass=dict(target_g=V0 * rho if V0 else None, final_g=Vf * rho if Vf else None, error=mesh.get("volume_rel"),
-                      delta_mm=mc.get("delta"), V_target_mm3=V0, V_final_mm3=Vf, density_g_mm3=rho),
+                      delta_mm=mc.get("delta"), V_target_mm3=V0, V_final_mm3=Vf, density_g_mm3=rho,
+                      **(dict(solid_g=ex["V_solid_mm3"] * rho, target_fraction=ex.get("target_fraction"),
+                              saving=1.0 - Vf / ex["V_solid_mm3"] if Vf else None)
+                         if lw and ex.get("V_solid_mm3") else {})),
             opt=opt, shift=shift,
             export=dict(h_mm=h, faces=mesh.get("faces"), watertight=mesh.get("watertight_manifold"),
                         bodies=mesh.get("bodies"), shells=mesh.get("shells"), void_shells=mesh.get("void_shells"),
