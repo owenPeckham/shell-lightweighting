@@ -1,0 +1,20 @@
+cshell summary: Cantilever
+
+DECISION: accepted
+  cshell design accepted: mass saving 2.4% (V/V0 0.9760); K/K0 1.0200 / 1.0196, P/P0 1.0336 / 1.0337 (optimisation / shifted grid) ≥ 1, export mass-matched and watertight
+
+mass target 61.855 g, final 61.855 g (V/V_target - 1 -9.92e-06, delta -0.0631 mm)
+
+objective: lightweight (J = the run's objective; ln K/K0 separate)
+grid                  J   lnK/K0    K/K0    P/P0    lamB   sigPN  governing  feasible
+optimisation    +0.0240  +0.0198   1.020   1.034   1.034   1.005  buckling   True
+shifted         +0.0240  +0.0194   1.020   1.034   1.034   1.006  buckling   True
+lightweight: J = mass saving 1 - V/V0 (V/V0 0.9760); accepted iff K/K0 ≥ 1 and P/P0 ≥ 1 on both grids (optimiser margins [1.02, 1.02])
+solid 63.378 g -> final 61.855 g: mass saving 2.4% (export target V_opt/V0 0.9760)
+
+export h 0.2 mm: 2387104 faces, watertight True, material bodies 1, shells 7, enclosed voids 6, escape holes 0
+fins removed by the export 210.02 mm³ (check, expected ≈ 0), void → material 0.01 mm³
+wall mm (nominal): min 1.435, p05 1.571, median 5.000, max 41.507; min off the hole rims 1.435
+closed area 51.3% of active, hollow 32.4% of the surface
+timing s: context_s 0, rescore_s 119, export_s 22, finalise_s 258
+peak: GPU 19.77 GiB, host 5.00 GiB; export alone GPU 2.35 GiB, host 5.00 GiB

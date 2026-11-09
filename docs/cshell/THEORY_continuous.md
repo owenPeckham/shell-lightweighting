@@ -487,6 +487,8 @@ $$\max_{\xi}\; J(\xi) = \frac{w_K \ln\!\big(C_{0}/C(\xi)\big) \;+\; w_P \ln\!\bi
 
 The MMA objective is f₀ = s_J(−J + w_s G_s), with s_J chosen so that |f₀| is about 10 at the first iterate. G_s is the sliver penalty (§5.2).
 
+**Lightweight mode (default since 2026-11-09, `docs/cshell/plans/PLAN_lightweight.md`).** `objective.type = "lightweight"` replaces J by the mass saving J = 1 − V/V₀ (nominal V, §3.10) and drops the constant-mass condition (no §7.2 restoration): MMA minimises f₀ = s_J(V/V₀ − 1 + w_s G_s), ∂f₀/∂ξ = s_J(∂V/∂ξ / V₀ + w_s ∂G_s/∂ξ), subject only to ln(K₀/K) + ln m_K ≤ 0 and ln m_P − ln(P/P₀) ≤ 0 (floor_K, floor_P of §5.2 with the margins m_K = m_P = 1.02, scaled by constraint_scale), plus the optional per-mode floors. The solid start is mildly infeasible (K/K₀ = P/P₀ = 1 < 1.02) and MMA recovers towards the constraint boundary. tol_f (1e-4) then applies to ΔV/V₀, and a later phase counts as converged only when feasible. The growth schedule keeps the boundary with the lowest V among those with every g ≤ −ln(1 − feasibility_tol), else the least infeasible one. The export δ targets V_opt (V_opt/V₀ times the exact solid volume). Acceptance in this mode: K/K₀ ≥ 1 and P/P₀ ≥ 1 on the optimisation and the shifted grid, J > 0, and the export checks passed. The weighted mode above is unchanged and selected with `objective.type = "weighted"`.
+
 ### 5.2 Constraints
 
 | # | Constraint | Form | Notes |

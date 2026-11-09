@@ -35,6 +35,7 @@
   "auto_analytic": false
  },
  "objective": {
+  "type": "weighted",
   "w_stiffness": 1.0,
   "w_capacity": 0.0
  }

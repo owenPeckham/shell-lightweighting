@@ -55,9 +55,14 @@ DEFAULTS = {
                  "exclude_rma_factor": 2.0,  # exclusion r_ex = max(exclude_bc_mm, factor·r_MA at the face) (§4)
                  "include_mounts": False, "buckling": True, "buckling_modes": 6, "buckling_p": 8,
                  "knockdown": 0.85, "softmin_beta": [8, 12, 16], "eig_tol": 1e-3, "min_density_geometric": 0.1},
-    "objective": {"type": "weighted",       # PLAN_single_run §8 (Owen 2026-11-01): J = w_K ln K/K0 + w_P ln P/P0, P the
-                                            # capacity soft-min of strength and global buckling, at constant mass;
-                                            # "compliance" (§4): J = ln K/K0 with `constraints` relative to the solid
+    "objective": {"type": "lightweight",    # PLAN_lightweight (Owen 2026-11-09, default): minimise V/V0 (no mass
+                                            # restoration) s.t. K/K0 ≥ lw_margin_stiffness, P/P0 ≥ lw_margin_capacity
+                                            # (MMA); J reported = mass saving 1 − V/V0. "weighted" (PLAN_single_run
+                                            # §8): J = w_K ln K/K0 + w_P ln P/P0, P the capacity soft-min of strength
+                                            # and global buckling, at constant mass; "compliance" (§4): J = ln K/K0
+                                            # with `constraints` relative to the solid, at constant mass
+                  "lw_margin_stiffness": 1.02,              # lightweight: optimiser floors (accept: K/K0, P/P0 ≥ 1)
+                  "lw_margin_capacity": 1.02,
                   "constraints": [],                        # compliance type only: "buckling", "strength"
                   "constraint_scale": 0.01,                 # MMA sees g/scale (1 unit = 1 % violation)
                   "feasibility_tol": 0.01,                  # acceptance: a floor/constraint ratio may fall short by this
@@ -185,8 +190,12 @@ def validate(cfg: dict) -> None:
         if "faces" not in L or "force_N" not in L or len(L["force_N"]) != 3:
             raise ValueError("config: each load needs 'faces' (selector) and 'force_N' [fx, fy, fz]")
     o = cfg["objective"]
-    if o.get("type", "compliance") not in ("compliance", "weighted"):
-        raise ValueError("objective.type must be 'compliance' or 'weighted'")
+    if o.get("type", "compliance") not in ("compliance", "weighted", "lightweight"):
+        raise ValueError("objective.type must be 'lightweight', 'weighted' or 'compliance'")
+    if o.get("type") == "lightweight":
+        for k in ("lw_margin_stiffness", "lw_margin_capacity"):
+            if not float(o.get(k, 1.0)) > 0:
+                raise ValueError(f"objective.{k} must be > 0")
     if o.get("type") == "weighted" and (o["w_stiffness"] < 0 or o["w_capacity"] < 0
                                         or (o["w_stiffness"] + o["w_capacity"]) == 0):
         raise ValueError("objective weights must be >= 0 and not both zero")
@@ -215,6 +224,20 @@ def feasibility_log_tol(cfg: dict) -> float:
     """Allowed log shortfall of every floor/constraint at acceptance: objective.feasibility_tol is a relative fraction
     (0.01 = a ratio may be 1 % below its floor), so g = ln(floor/ratio) ≤ −ln(1 − tol)."""
     return float(-math.log1p(-float(cfg["objective"].get("feasibility_tol", 0.01))))
+
+
+def is_lightweight(cfg: dict) -> bool:
+    """objective.type == "lightweight" (PLAN_lightweight: minimise V/V0 s.t. K/K0, P/P0 ≥ margins)."""
+    return (cfg.get("objective") or {}).get("type") == "lightweight"
+
+
+def floors(cfg: dict) -> tuple:
+    """(f_K, f_P) of the optimiser's floor_K / floor_P constraints K/K0 ≥ f_K, P/P0 ≥ f_P: the lightweight margins
+    lw_margin_stiffness / lw_margin_capacity, else floor_stiffness / floor_capacity (weighted)."""
+    o = cfg["objective"]
+    if is_lightweight(cfg):
+        return float(o.get("lw_margin_stiffness", 1.02)), float(o.get("lw_margin_capacity", 1.02))
+    return float(o["floor_stiffness"]), float(o["floor_capacity"])
 
 
 def void_min_eff(cfg: dict) -> float:

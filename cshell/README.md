@@ -1,7 +1,18 @@
-# cshell — continuous constant-mass shelling optimiser
+# cshell — continuous shelling optimiser (lightweighting by default)
 
-`cshell` turns a solid part (STEP) into a hollowed, variable-thickness shell part of the **same mass** that is
-stiffer and/or stronger. One run starts from the original solid and maximises the weighted objective
+**Default (`objective.type = "lightweight"`, PLAN_lightweight, 2026-11-09):** `cshell` turns a solid part (STEP) into
+the **lightest** hollowed, variable-thickness shell part that is at least as stiff and as strong as the solid:
+
+    minimise V/V0   subject to   K/K0 ≥ 1.02,  P/P0 ≥ 1.02      (objective.lw_margin_stiffness / _capacity)
+
+as MMA constraints, with no mass restoration (V is free). The run reports J = mass saving 1 − V/V0; the growth
+schedule keeps the boundary with the lowest V among the feasible ones (else the least infeasible); the export's mass
+correction δ targets the optimised volume (V_opt/V0 · V_solid); the design is accepted iff K/K0 ≥ 1 and P/P0 ≥ 1 on the
+optimisation and the shifted grid, it saves mass (J > 0) and the export passed. Results:
+`examples/cshell/runs_lightweight/<part>/`.
+
+**Constant mass (`--set objective.type=weighted`, the previous default, unchanged):** a hollowed shell part of the
+**same mass** that is stiffer and/or stronger. One run starts from the original solid and maximises the weighted objective
 
     J = w_K ln K/K0 + w_P ln P/P0        (w_K = w_P = 0.5)
 
@@ -36,8 +47,9 @@ Committed results for the three example parts (reports, summaries, fields, previ
 
 | Key | Default | Meaning |
 | --- | --- | --- |
-| `objective.type` | `"weighted"` | `"weighted"`: J above with floors as MMA constraints; `"compliance"`: J = ln K/K0 with `objective.constraints` (`buckling`, `strength`) |
-| `objective.w_stiffness`, `w_capacity` | 0.5, 0.5 | Weights w_K, w_P |
+| `objective.type` | `"lightweight"` | `"lightweight"`: min V/V0 s.t. K/K0, P/P0 ≥ margins (above); `"weighted"`: J above at constant mass with floors as MMA constraints; `"compliance"`: J = ln K/K0 with `objective.constraints` (`buckling`, `strength`) |
+| `objective.lw_margin_stiffness`, `lw_margin_capacity` | 1.02, 1.02 | lightweight: optimiser floors on K/K0, P/P0 (acceptance needs ≥ 1) |
+| `objective.w_stiffness`, `w_capacity` | 0.5, 0.5 | Weights w_K, w_P (weighted) |
 | `objective.floor_stiffness`, `floor_capacity` | 0.85, 0.85 | K/K0 and P/P0 floors |
 | `objective.feasibility_tol` | 0.01 | Acceptance: every floor ratio may fall short of its floor by this fraction (1 %) |
 | `objective.floor_strength`, `floor_buckling` | `null`, `null` | Optional per-mode floors relative to the solid: σ_PN0/σ_PN ≥ f_S, λ_B/λ_B0 ≥ f_B (P/P0 alone binds only the governing mode); set e.g. `--set objective.floor_strength=1.0` |

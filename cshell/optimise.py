@@ -46,7 +46,7 @@ HIST_COLS = ["start", "it", "phase", "growth_step", "R_k", "J", "K_K0", "P_P0", 
              "closed_frac", "hollow_allowed_frac", "governing", "lam_ratio", "G_s", "max_dxi", "max_dxi_raw", "move",
              "n_restore", "eig_iters", "eig_converged", "active_dof", "fe_engine", "t_geometry", "t_fe", "t_R", "t_mma",
              "t_pull", "t_mmasub", "t_restore", "t_upload", "t_iter", "gpu_mem_GiB", "gpu_peak_GiB", "host_peak_GiB",
-             "c_norm", "sliver_w", "stress_p", "beta"]
+             "c_norm", "sliver_w", "stress_p", "beta", "V_V0", "g_max"]
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -352,20 +352,24 @@ class PhaseModel:
         c = self.ctx.cfg
         cap, o = c["capacity"], c["objective"]
         typ = o.get("type", "compliance")
+        w_K, w_P = o["w_stiffness"], o["w_capacity"]
+        lw = typ == "lightweight"
+        if lw:   # PLAN_lightweight: the weighted evaluator supplies K, P and their gradients (its J is not the
+            typ, w_K, w_P = "weighted", 0.5, 0.5     # objective: Run minimises V/V0); floors are the lw margins
         cons = tuple(o.get("constraints", ())) if typ == "compliance" else ()
         if not cap["buckling"]:
             cons = tuple(x for x in cons if x != "buckling")
-        if typ == "weighted" and o.get("floors_as_constraints", False):   # §8: K/K0 ≥ f_K, P/P0 ≥ f_P (MMA)
-            cons = ("floor_K",) + (("floor_P",) if o["w_capacity"] > 0 else ())
-            if o["w_capacity"] > 0 and o.get("floor_strength") is not None:     # σ_PN/σ_PN0 ≤ 1/f_S
+        if typ == "weighted" and (lw or o.get("floors_as_constraints", False)):   # §8: K/K0 ≥ f_K, P/P0 ≥ f_P (MMA)
+            cons = ("floor_K",) + (("floor_P",) if w_P > 0 else ())
+            if w_P > 0 and o.get("floor_strength") is not None:     # σ_PN/σ_PN0 ≤ 1/f_S
                 cons += ("floor_S",)
-            if o["w_capacity"] > 0 and cap["buckling"] and o.get("floor_buckling") is not None:   # λ_B/λ_B0 ≥ f_B
+            if w_P > 0 and cap["buckling"] and o.get("floor_buckling") is not None:   # λ_B/λ_B0 ≥ f_B
                 cons += ("floor_B",)
-        return Settings(w_K=o["w_stiffness"], w_P=o["w_capacity"], sigma_f=c["material"]["strength_MPa"],
+        return Settings(w_K=w_K, w_P=w_P, sigma_f=c["material"]["strength_MPa"],
                         knockdown=cap["knockdown"], beta=ccfg.phase_value(cap["softmin_beta"], self.phase, frac),
                         stress_p=ccfg.phase_value(cap["stress_p"], self.phase, frac), stress_q=cap["stress_q"],
                         quantile=cap["stress_quantile"],
-                        buckling=cap["buckling"] and (o["w_capacity"] > 0 if typ == "weighted" else True),
+                        buckling=cap["buckling"] and (w_P > 0 if typ == "weighted" else True),
                         num_modes=cap["buckling_modes"], buckling_p=cap["buckling_p"],
                         min_density=cap["min_density_geometric"], eig_tol=cap["eig_tol"],
                         rho_min=c["grid"]["rho_min"], objective=typ, constraints=cons)
@@ -429,7 +433,7 @@ class PhaseModel:
                        sig_ratio=np.nan, K_K0=np.nan if base is None else base["C0"] / pr.compliance)
             if base is not None and "floor_K" in st.constraints:
                 out["g"]["floor_K"] = float(np.log(pr.compliance / base["C0"])
-                                            + np.log(self.ctx.cfg["objective"]["floor_stiffness"]))
+                                            + np.log(ccfg.floors(self.ctx.cfg)[0]))
                 out["dg"]["floor_K"] = dC / pr.compliance
             return out
         ev = evaluate_weighted(self.fe, rho_hat, r, m, st, base, c_norm, prev_modes)
@@ -447,11 +451,12 @@ class PhaseModel:
                 out["lamB_ratio"] = ev.lam_b / base["lam_b0"]
             if np.isfinite(base.get("lam_s0", np.nan)):
                 out["sig_ratio"] = base["lam_s0"] / ev.lam_s * (base.get("c", 1.0) / c_norm)   # σ_PN/σ_PN0 (same c)
+            f_K, f_P = ccfg.floors(self.ctx.cfg)          # weighted: floor_*; lightweight: lw_margin_*
             if "floor_K" in st.constraints:
-                out["g"]["floor_K"] = float(np.log(ev.C / base["C0"]) + np.log(o["floor_stiffness"]))
+                out["g"]["floor_K"] = float(np.log(ev.C / base["C0"]) + np.log(f_K))
                 out["dg"]["floor_K"] = ev.parts["dC"] / ev.C
             if "floor_P" in st.constraints:
-                out["g"]["floor_P"] = float(np.log(o["floor_capacity"]) - np.log(ev.lam / base["lam0"]))
+                out["g"]["floor_P"] = float(np.log(f_P) - np.log(ev.lam / base["lam0"]))
                 out["dg"]["floor_P"] = -ev.parts["dlnlam"]
             if "floor_S" in st.constraints:                # ln(σ_PN/σ_PN0) + ln f_S ≤ 0 (raw p-norms: c drops out)
                 out["g"]["floor_S"] = float(np.log(ev.sigma_pn / base["sigma_pn0"]) + np.log(o["floor_strength"]))
@@ -661,7 +666,9 @@ def evaluate(ctx: Context, xi, phase: int, shift=None, D_comp: float | None = No
     model = PhaseModel(ctx, ph, D, log, hollow=hollow, shift=shift)
     try:
         o = cfg["objective"]
-        if o.get("type", "compliance") == "weighted":     # §8: the run's own objective, J = w_K ln K/K0 + w_P ln P/P0
+        typ = o.get("type", "compliance")
+        if typ in ("weighted", "lightweight"):    # §8: the run's own objective, J = w_K ln K/K0 + w_P ln P/P0;
+            lw = typ == "lightweight"             # PLAN_lightweight: J = 1 − V/V0 (mass saving), K/K0, P/P0 ≥ 1
             st = model.settings(1.0)
             base = model.baseline(st)
             nv = ctx.surf.n_vertices
@@ -671,16 +678,21 @@ def evaluate(ctx: Context, xi, phase: int, shift=None, D_comp: float | None = No
             V = model.dm.volume(model.dm.forward(xi[:nv], xi[nv:], as_built=False))
             tol = ccfg.feasibility_log_tol(cfg)
             K, P = base["C0"] / fe["C"], fe["P_P0"]
-            floors = dict(K=bool(np.log(K) >= np.log(o["floor_stiffness"]) - tol),
-                          P=bool(st.w_P == 0 or np.log(P) >= np.log(o["floor_capacity"]) - tol))
+            if lw:                                # acceptance: no shortfall allowed (the optimiser's margins > 1)
+                floors = dict(K=bool(K >= 1.0), P=bool(P >= 1.0))
+                fe["J"] = 1.0 - V / model.V0
+            else:
+                floors = dict(K=bool(np.log(K) >= np.log(o["floor_stiffness"]) - tol),
+                              P=bool(st.w_P == 0 or np.log(P) >= np.log(o["floor_capacity"]) - tol))
             if st.w_P > 0 and o.get("floor_strength") is not None and np.isfinite(fe["sig_ratio"]):
                 floors["S"] = bool(-np.log(fe["sig_ratio"]) >= np.log(o["floor_strength"]) - tol)
             if st.w_P > 0 and st.buckling and o.get("floor_buckling") is not None and np.isfinite(fe["lamB_ratio"]):
                 floors["B"] = bool(np.log(fe["lamB_ratio"]) >= np.log(o["floor_buckling"]) - tol)
-            return dict(objective="weighted", J=fe["J"], J_K=float(np.log(K)), K_K0=K, P_P0=P,
+            return dict(objective=typ, J=fe["J"], J_K=float(np.log(K)), K_K0=K, P_P0=P,
                         lamB_ratio=fe["lamB_ratio"], sig_ratio=fe["sig_ratio"], mass_err=V / model.V0 - 1.0,
-                        feasible=bool(all(floors.values())), floors=floors,
-                        floor_K=o["floor_stiffness"], floor_P=o["floor_capacity"], floor_S=o.get("floor_strength"),
+                        V_V0=V / model.V0, feasible=bool(all(floors.values())), floors=floors,
+                        floor_K=1.0 if lw else o["floor_stiffness"], floor_P=1.0 if lw else o["floor_capacity"],
+                        floor_S=o.get("floor_strength"),
                         floor_B=o.get("floor_buckling"), governing=fe["governing"],
                         g=dict(fe["g"]), C=fe["C"], C0=base["C0"], lam=fe["lam"], lam0=base["lam0"], V=V,
                         V0=model.V0, h_e=model.h_e, origin=np.asarray(model.origin).tolist(), phase=ph)
@@ -722,14 +734,31 @@ class RunState:
 
 
 GROWTH_ARRAYS = ("best_xi", "best_H")
-GROWTH_SCALARS = ("step", "R_k", "done", "in_step", "J_prev_it", "low", "best_J", "best_k")
+GROWTH_SCALARS = ("step", "R_k", "done", "in_step", "J_prev_it", "low", "best_J", "best_k", "best_viol")
 
 
 def new_growth() -> dict:
     """Growth state: next boundary `step`, R_k, J at each boundary J_b, MMA iterations of each step n_it, iterations in
     the current step, J of the previous iteration, consecutive low-gain steps, best boundary (J, ξ, H, k), done."""
     return dict(step=0, R_k=np.nan, J_b=[], n_it=[], done=False, in_step=0, J_prev_it=None, low=0, best_J=None,
-                best_xi=None, best_H=None, best_k=-1)
+                best_xi=None, best_H=None, best_k=-1, best_viol=None)
+
+
+def boundary_better(J: float, viol: float, best_J, best_viol, lightweight: bool, tol: float) -> bool:
+    """Whether a growth boundary (J, viol) replaces the best one so far. weighted/compliance: higher J (§8).
+    lightweight (PLAN_lightweight): `viol` = max constraint g (log shortfall); feasible means viol ≤ tol
+    (objective.feasibility_tol). A feasible boundary beats an infeasible one; among feasible ones the lowest V (highest
+    J = 1 − V/V0) wins, among infeasible ones the least infeasible."""
+    if best_J is None:
+        return True
+    if not lightweight:
+        return J > best_J
+    bv = np.inf if best_viol is None or not np.isfinite(best_viol) else best_viol
+    v = np.inf if viol is None or not np.isfinite(viol) else viol
+    feas, bfeas = v <= tol, bv <= tol
+    if feas != bfeas:
+        return feas
+    return J > best_J if feas else v < bv
 
 
 class Run:
@@ -807,9 +836,9 @@ class Run:
             hollow = z["hollow"].astype(bool)
         if "has_growth" in z.files and bool(z["has_growth"]) and "g_in_step" in z.files:
             growth = new_growth()
-            for k in GROWTH_SCALARS:
-                v = float(z[f"g_{k}"])
-                growth[k] = None if np.isnan(v) and k in ("J_prev_it", "best_J") else v
+            for k in GROWTH_SCALARS:                     # best_viol: absent in checkpoints before PLAN_lightweight
+                v = float(z[f"g_{k}"]) if f"g_{k}" in z.files else np.nan
+                growth[k] = None if np.isnan(v) and k in ("J_prev_it", "best_J", "best_viol") else v
             for k in ("step", "in_step", "low", "best_k"):
                 growth[k] = int(growth[k])
             growth["done"] = bool(growth["done"])
@@ -854,6 +883,12 @@ class Run:
         gpu_peak = peak.stop()
         if not np.isfinite(fe["J"]):
             raise FloatingPointError(f"non-finite objective at phase {model.phase}")
+        gv = [v for v in fe["g"].values() if np.isfinite(v)]
+        fe["viol"] = max(gv) if gv else np.nan            # max constraint g (log shortfall; ≤ 0 feasible)
+        fe["V_V0"] = np.nan
+        if ccfg.is_lightweight(self.cfg):                 # PLAN_lightweight: J = mass saving 1 − V/V0 (nominal V)
+            fe["V_V0"] = model.dm.volume(model.dm.forward(xi[:nv], xi[nv:], as_built=False)) / model.V0
+            fe["J"], fe["dJ"] = 1.0 - fe["V_V0"], None
         fe.update(t_geometry=t_geo, t_fe=t_fe, gpu_peak=gpu_peak, base_c=base_c)
         return fe, sab
 
@@ -863,6 +898,8 @@ class Run:
         gcfg = cfg.get("growth", {})
         ocfg = cfg["objective"]
         con_scale = float(ocfg.get("constraint_scale", 0.01))
+        lw = ccfg.is_lightweight(cfg)                    # PLAN_lightweight: min V/V0, no mass restoration
+        feas_tol = ccfg.feasibility_log_tol(cfg)
         nv = ctx.surf.n_vertices
         rs = self.load_latest() if resume else None
         fresh = rs is None
@@ -934,12 +971,14 @@ class Run:
                 xi[:nv][model.ds.passive] = 0.0
                 xi[nv:][model.ds.passive] = 1.0
                 act = model.active_mask()
-                xi, eta, nres = restore_mass(xi, vol, vol_grad, model.V0, act, tol=opt["mass_tol"])
+                nres = 0
+                if not lw:
+                    xi, eta, nres = restore_mass(xi, vol, vol_grad, model.V0, act, tol=opt["mass_tol"])
                 extended = False
                 Cls = MMA if opt["method"] == "mma" else ProjectedLBFGSB
 
-                def new_optimiser(n):
-                    return Cls(n, 2 + len(cons), move=opt["move"], con_scale=1.0)
+                def new_optimiser(n):                    # constant mass: V/V0 − 1 within ±τ as two MMA rows
+                    return Cls(n, (0 if lw else 2) + len(cons), move=opt["move"], con_scale=1.0)
                 optimiser = new_optimiser(int(act.sum()))
                 if rs.opt_state is not None and ph == rs.phase and rs.it > 0:
                     sizes = {np.size(v) for k, v in rs.opt_state.items()
@@ -981,9 +1020,9 @@ class Run:
                                      f"{gain:+.2e} (low-gain steps in a row {gr['low']}/{patience})")
                             if gr["low"] >= patience:
                                 stop, why = True, f"{patience} consecutive steps raised J by < tol {g_tol:g}"
-                        if gr["best_J"] is None or fe["J"] > gr["best_J"]:
-                            gr["best_J"], gr["best_xi"], gr["best_H"], gr["best_k"] = (
-                                float(fe["J"]), xi.copy(), rs.hollow.copy(), k)
+                        if boundary_better(fe["J"], fe["viol"], gr["best_J"], gr.get("best_viol"), lw, feas_tol):
+                            gr["best_J"], gr["best_xi"], gr["best_H"], gr["best_k"], gr["best_viol"] = (
+                                float(fe["J"]), xi.copy(), rs.hollow.copy(), k, float(fe["viol"]))
                         if stop:
                             gr["done"] = True
                             if gr["best_k"] != k:                # revert to the best boundary design
@@ -1007,7 +1046,8 @@ class Run:
                         model.set_hollow(rs.hollow)
                         gr["step"], gr["R_k"] = k + 1, R_k
                         act = model.active_mask()
-                        xi, eta, nres = restore_mass(xi, vol, vol_grad, model.V0, act, tol=opt["mass_tol"])
+                        if not lw:
+                            xi, eta, nres = restore_mass(xi, vol, vol_grad, model.V0, act, tol=opt["mass_tol"])
                         optimiser = new_optimiser(int(act.sum()))
                         s_J = None
                         prev_modes = fe["modes"]
@@ -1026,7 +1066,6 @@ class Run:
                         g_rho[edense] = cx.asarray(v)
                         gd, ga = dm.pull_rho_hat(sab, g_rho)
                         return np.concatenate([gd, ga])[act]
-                    gJ = pull(fe["dJ"])
                     g_con, dg_con = [], []
                     for name in cons:
                         gv = fe["g"].get(name, -np.inf)
@@ -1043,14 +1082,22 @@ class Run:
                     gGd, gGa = dm.sliver_grad(snom)
                     gG = np.concatenate([gGd, gGa])[act]
                     gV = np.concatenate([gVd, gVa])[act] / model.V0
+                    # lightweight: J = 1 − V/V0 (nominal V, as fe["J"] from _eval), ∂J/∂ξ = −∂(V/V0)/∂ξ; MMA
+                    # minimises f0 = s_J (V/V0 − 1 + w_s G_s) with the floors as its only constraints
+                    gJ = -gV if lw else pull(fe["dJ"])
                     t_pull = time.time() - t0
-                    if s_J is None:
-                        s_J = 10.0 / max(np.abs(gJ).max() * opt["move"] * 10, 1e-12)   # |Δf0| ~ 10 per full move
+                    if s_J is None:   # lightweight: f0 in the constraints' unit (1 = 1 % of V0), so MMA's elastic
+                        # penalty c = 1e3 per 1 % shortfall dominates; the per-variable scale below made f0 ~1e4 per
+                        # 1 % of V and MMA settled infeasible (LW1 MBB: K/K0 0.990 at the cap)
+                        s_J = 1.0 / con_scale if lw else 10.0 / max(np.abs(gJ).max() * opt["move"] * 10, 1e-12)
                     f0 = s_J * (-fe["J"] + w_s * Gs)
                     df0 = s_J * (-gJ + w_s * gG)
-                    e = V / model.V0 - 1.0
-                    g = np.array([e - tau, -e - tau] + g_con) / np.array([tau, tau] + [1.0] * len(cons))
-                    dg = np.vstack([gV / tau, -gV / tau] + dg_con)
+                    if lw:
+                        g, dg = np.array(g_con), np.vstack(dg_con)
+                    else:
+                        e = V / model.V0 - 1.0
+                        g = np.array([e - tau, -e - tau] + g_con) / np.array([tau, tau] + [1.0] * len(cons))
+                        dg = np.vstack([gV / tau, -gV / tau] + dg_con)
                     x_act = xi[act]
                     t1 = time.time()
                     x_new = optimiser.step(x_act, f0, df0, g, dg)
@@ -1059,7 +1106,9 @@ class Run:
                     xi_new[act] = x_new
                     t_mma = time.time() - t0
                     t0 = time.time()
-                    xi_new, eta, nres = restore_mass(xi_new, vol, vol_grad, model.V0, act, tol=opt["mass_tol"])
+                    nres = 0
+                    if not lw:
+                        xi_new, eta, nres = restore_mass(xi_new, vol, vol_grad, model.V0, act, tol=opt["mass_tol"])
                     t_res = time.time() - t0
                     dxi_raw = float(np.abs(xi_new - xi).max())
                     filt = model.ds.filt                         # convergence on the physical (filtered) design
@@ -1071,7 +1120,8 @@ class Run:
                     closed_frac = float((A * pool * (sab.a >= ctx.r_ma)).sum() / Ap)
                     hollow_frac = 1.0 if rs.hollow is None else float((A * (pool & rs.hollow)).sum() / Ap)
                     xi = xi_new
-                    mass_err = vol(xi) / model.V0 - 1.0
+                    # constant mass: V/V0 − 1 after restoration (R1); lightweight: of the evaluated design (as J, K, P)
+                    mass_err = fe["V_V0"] - 1.0 if lw else vol(xi) / model.V0 - 1.0
                     prev_modes = fe["modes"]
                     if st.objective == "weighted" and st.w_P > 0 and np.isfinite(fe["quantile"]):
                         c_norm = float(np.sqrt(c_norm) * np.sqrt(fe["quantile"] / fe["sigma_pn"]))   # Le et al. (2010)
@@ -1091,13 +1141,14 @@ class Run:
                                t_fe=fe["t_fe"], t_R=t_R, t_mma=t_mma, t_pull=t_pull, t_mmasub=t_mmasub,
                                t_restore=t_res, t_upload=getattr(model, "t_upload", 0.0), t_iter=time.time() - t_it,
                                gpu_mem_GiB=_gpu_mem(), gpu_peak_GiB=fe["gpu_peak"], host_peak_GiB=host_peak_gib(),
-                               c_norm=c_norm, sliver_w=w_s, stress_p=st.stress_p, beta=st.beta)
+                               c_norm=c_norm, sliver_w=w_s, stress_p=st.stress_p, beta=st.beta,
+                               V_V0=fe["V_V0"] if lw else mass_err + 1.0, g_max=fe["viol"])
                     self._history(row)
                     self.log(f"[{self.start}] ph {ph} it {it:3d}  J {fe['J']:+.5f}  K/K0 {row['K_K0']:.4f}  P/P0 {row['P_P0']:.4f}  λB/λB0 "
                              f"{row['lamB_ratio']:.4f}  σ/σ0 {row['sig_ratio']:.4f}  V/V0-1 {mass_err:+.1e}  closed "
                              f"{closed_frac:.3f}  H {hollow_frac:.3f}  |dξ̃| {dxi:.4f}  FE {fe['t_fe']:.1f}s "
-                             f"it {row['t_iter']:.1f}s")
-                    if abs(mass_err) > opt["mass_tol"] * 1.0001:
+                             f"it {row['t_iter']:.1f}s" + (f"  g_max {fe['viol']:+.4f}" if lw else ""))
+                    if not lw and abs(mass_err) > opt["mass_tol"] * 1.0001:
                         raise RuntimeError(f"R1 violated after restoration: V/V0 - 1 = {mass_err:.2e}")
                     if gr is not None and not gr["done"]:
                         gr["in_step"] += 1
@@ -1107,7 +1158,8 @@ class Run:
                                   hours, rs.hollow, gr if gr is not None else rs.growth)
                     self.save(rs)
                     if not grow:
-                        if J_prev is not None and dxi < opt["tol_x"] and abs(fe["J"] - J_prev) < opt["tol_f"]:
+                        if J_prev is not None and dxi < opt["tol_x"] and abs(fe["J"] - J_prev) < opt["tol_f"] and (
+                                not lw or fe["viol"] <= feas_tol):     # lightweight: converged only when feasible
                             calm += 1
                         else:
                             calm = 0

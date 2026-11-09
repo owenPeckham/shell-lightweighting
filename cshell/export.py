@@ -99,6 +99,7 @@ class ExportConfig:
     mass_correct: bool = True
     mesh_vol_tol: float = 2.0e-4      # secant steps on δ until |V_mesh/V_target − 1| ≤ this (≤ 2 steps)
     target_volume: float | None = None   # V_target (mm³); None: exact volume of the Γ₀ tessellation
+    target_fraction: float | None = None  # lightweight: V_target = fraction · V(Γ₀) (V_opt/V0 of the band; GPU export)
     log: object = print
 
     @classmethod
@@ -1871,8 +1872,10 @@ class GpuExporter(Exporter):
         cp.get_default_memory_pool().free_all_blocks()
         self._void_cells = (void_raw, void_open)
         self.V0_ramp = v0r * h ** 3
-        self.V0 = float(cfg.target_volume) if cfg.target_volume is not None else tess_volume(dz.V0, dz.T0)
-        self.summary.update(V0_mm3=self.V0, V0_ramp_mm3=self.V0_ramp, V0_ramp_rel=self.V0_ramp / self.V0 - 1.0,
+        V_solid = tess_volume(dz.V0, dz.T0)
+        self.V0 = float(cfg.target_volume) if cfg.target_volume is not None else (
+            V_solid * (1.0 if cfg.target_fraction is None else float(cfg.target_fraction)))
+        self.summary.update(V0_mm3=self.V0, V_solid_mm3=V_solid, target_fraction=cfg.target_fraction,V0_ramp_mm3=self.V0_ramp, V0_ramp_rel=self.V0_ramp / self.V0 - 1.0,
                             n_tiles=len(g.tile_ids()), n_cell_queries=nq, opening_halo=Hw, opening_R_cells=R,
                             n_opened_tiles=n_open_tiles,
                             min_wall=dict(on=mw, t_min_outer=cfg.t_min if mw else None,

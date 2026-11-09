@@ -233,7 +233,8 @@ def start_table(run_dir, cfg: dict, merge: bool = True) -> list[dict]:
         fin = [r for r in h if int(r["phase"]) == n_ph - 1]
         lr = fin[-1] if fin else last
         mass_err = _f(lr.get("mass_err"))
-        feasible = status == "done" and abs(mass_err) <= cfg["optimiser"]["mass_tol"] * 1.0001
+        feasible = status == "done" and ((cfg.get("objective") or {}).get("type") == "lightweight"   # V free
+                                         or abs(mass_err) <= cfg["optimiser"]["mass_tol"] * 1.0001)
         K_K0 = _f(lr.get("K_K0")) if "K_K0" in lr else (1.0 / _f(lr.get("C_C0")) if lr else float("nan"))
         rows.append(dict(start=s, status=status, feasible=bool(feasible), phases_done=len(done), iterations=len(h),
                          J_opt=_f(lr.get("J")), K_K0_opt=K_K0, lamB_ratio_opt=_f(lr.get("lamB_ratio")),
