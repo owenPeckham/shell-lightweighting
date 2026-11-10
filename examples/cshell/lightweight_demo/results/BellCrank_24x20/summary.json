@@ -1,0 +1,209 @@
+{
+ "schema": "cshell.summary/2",
+ "name": "BellCrank_24x20",
+ "decision": {
+  "accepted": false,
+  "reason": "original SOLID part kept: shifted grid: K/K0 1.019564270225305, P/P0 0.9224064774123681 not both \u2265 1 (failed {'K': True, 'P': False}; governing strength)"
+ },
+ "mass": {
+  "target_g": 56.091838744999336,
+  "final_g": 56.08541019051706,
+  "error": -0.00011460766175808157,
+  "delta_mm": 0.026557643480371127,
+  "V_target_mm3": 53934.46033173012,
+  "V_final_mm3": 53928.27902934332,
+  "density_g_mm3": 0.0010400000000000001,
+  "solid_g": 81.26035362949663,
+  "target_fraction": 0.69027313123381,
+  "saving": 0.3098059793557352
+ },
+ "opt": {
+  "J": 0.30972686876619004,
+  "K_K0": 1.0200399691960813,
+  "lamB_ratio": 0.7982042178976909,
+  "sig_ratio": 0.9803422327026149,
+  "mass_err": -0.30972686876619004,
+  "start": "solid",
+  "xi_file": "xi_solid_phase1.npy",
+  "phase": 1,
+  "D_comp": 16.0,
+  "feasible": true,
+  "objective": "lightweight",
+  "J_K": 0.019841812014802823,
+  "P_P0": 1.0200519435889328,
+  "V_V0": 0.69027313123381,
+  "governing": "strength",
+  "floor_K": 1.0,
+  "floor_P": 1.0,
+  "floor_S": null,
+  "floor_B": null,
+  "floors": {
+   "K": true,
+   "P": true
+  },
+  "history": {
+   "J": 0.3096574257823764,
+   "K_K0": 1.0200396454889527,
+   "lamB_ratio": 0.7981123263511979,
+   "sig_ratio": 0.9803414956257338,
+   "feasible": false
+  },
+  "margins": [
+   1.02,
+   1.02
+  ]
+ },
+ "shift": {
+  "objective": "lightweight",
+  "J": 0.30972686876619016,
+  "J_K": 0.019375349972601135,
+  "K_K0": 1.019564270225305,
+  "P_P0": 0.9224064774123681,
+  "lamB_ratio": 0.5986336421243551,
+  "sig_ratio": 1.0841207470424812,
+  "mass_err": -0.30972686876619016,
+  "V_V0": 0.6902731312338098,
+  "governing": "strength",
+  "floor_K": 1.0,
+  "floor_P": 1.0,
+  "floor_S": null,
+  "floor_B": null,
+  "floors": {
+   "K": true,
+   "P": false
+  },
+  "feasible": false,
+  "error": null,
+  "shift_mm": [
+   0.2,
+   0.2,
+   0.2
+  ],
+  "seconds": 282.0457875728607,
+  "peak": {
+   "gpu_gib": 26.74017333984375,
+   "host_gib": 47.6251220703125
+  }
+ },
+ "export": {
+  "h_mm": 0.2,
+  "faces": 1732508,
+  "watertight": true,
+  "bodies": 1,
+  "shells": 3,
+  "void_shells": 2,
+  "shell_volumes_mm3": [
+   89021.60797687937,
+   -239.49996008649276,
+   -34853.82898744956
+  ],
+  "volume_mm3": 53928.27902934332,
+  "volume_rel": -0.00011460766175808157,
+  "holes": 0,
+  "voids": {
+   "total": 2,
+   "enclosed": 2,
+   "escape_holes": false,
+   "holes": 0,
+   "without_hole": 2,
+   "unvented": null,
+   "per_void": [
+    {
+     "id": 0,
+     "volume_mm3": 34880.04000000001,
+     "holes": 0,
+     "vented": false
+    },
+    {
+     "id": 1,
+     "volume_mm3": 240.22400000000005,
+     "holes": 0,
+     "vented": false
+    }
+   ]
+  },
+  "wall": {
+   "min": 1.6441850496292114,
+   "p05": 2.05856700668335,
+   "median": 3.332442624664307,
+   "max": 97.0000008178711,
+   "min_as_built": 1.4441850496292115,
+   "min_off_rims": 1.6441850496292114
+  },
+  "min_wall": {
+   "on": true,
+   "t_min_outer": 1.5,
+   "t_min_between_voids": 1.3,
+   "R_w": 11,
+   "R_m": 9,
+   "void_to_material_mm3": 0.0,
+   "fins_removed_mm3": 413.0560000000001
+  },
+  "delta_mm": 0.026557643480371127,
+  "mesh_steps": [
+   {
+    "delta": 0.026557643480371127,
+    "rel_mesh": -0.00011460766175808157
+   }
+  ],
+  "opening_removed_mm3": 58.40000000000001,
+  "closed_thr": 0.9,
+  "ok": true,
+  "why": null,
+  "file": "final_design.stl",
+  "timing_s": {
+   "A_geometry_gpu": 2.51,
+   "B2_fill_islands": 0.61,
+   "C_holes": 0.25,
+   "D_mass": 0.96,
+   "E1_marching_cubes_0": 0.7,
+   "E2_weld_checks": 4.43,
+   "E3_stl": 0.14,
+   "E4_wall_thickness": 1.56,
+   "total": 11.22
+  }
+ },
+ "closed_area_frac": 0.3739713315707753,
+ "hollow_area_frac": 0.48453146985114814,
+ "timing": {
+  "phase_s": [
+   793.437028169632,
+   733.3735418319702
+  ],
+  "context_s": 4.76837158203125e-07,
+  "rescore_s": 282.0457875728607,
+  "export_s": 11.313969612121582,
+  "finalise_s": 541.2380855083466
+ },
+ "peak": {
+  "gpu_gib": 26.82818603515625,
+  "host_gib": 4.6224365234375
+ },
+ "peak_export": {
+  "gpu_gib": 2.0111083984375,
+  "host_gib": 4.6221923828125
+ },
+ "peak_rescore": {
+  "gpu_gib": 26.74017333984375,
+  "host_gib": 47.6251220703125
+ },
+ "peak_optimiser": {
+  "gpu_gib": 26.82818603515625,
+  "host_gib": 56.033203125
+ },
+ "sensitivity": null,
+ "validation": null,
+ "report": {
+  "ok": true,
+  "path": "report.pdf"
+ },
+ "files": {
+  "final_design.stl": "final_design.stl",
+  "final_design_export.json": "final_design_export.json",
+  "wall_thickness.csv": "wall_thickness.csv",
+  "summary.json": "summary.json",
+  "summary.txt": "summary.txt",
+  "finalise_log.txt": "finalise_log.txt",
+  "report": "report.pdf"
+ }
+}

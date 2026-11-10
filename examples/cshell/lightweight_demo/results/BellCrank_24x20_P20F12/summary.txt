@@ -1,0 +1,20 @@
+cshell summary: BellCrank_24x20_P20F12
+
+DECISION: accepted
+  cshell design accepted: mass saving 30.2% (V/V0 0.6984); K/K0 1.0200 / 1.0199, P/P0 1.2537 / 1.2424 (optimisation / shifted grid) ≥ 1, export mass-matched and watertight
+
+mass target 60.074 g, final 60.070 g (V/V_target - 1 -7.27e-05, delta +0.0385 mm)
+
+objective: lightweight (J = the run's objective; ln K/K0 separate)
+grid                  J   lnK/K0    K/K0    P/P0    lamB   sigPN  governing  feasible
+optimisation    +0.3016  +0.0198   1.020   1.254   0.931   0.798  strength   True
+shifted         +0.3016  +0.0197   1.020   1.242   0.806   0.805  strength   True
+lightweight: J = mass saving 1 - V/V0 (V/V0 0.6984); accepted iff K/K0 ≥ 1 and P/P0 ≥ 1 on both grids (optimiser margins [1.02, 1.02])
+solid 86.019 g -> final 60.070 g: mass saving 30.2% (export target V_opt/V0 0.6984)
+
+export h 0.2 mm: 1870904 faces, watertight True, material bodies 1, shells 4, enclosed voids 3, escape holes 0
+fins removed by the export 541.61 mm³ (check, expected ≈ 0), void → material 0.00 mm³
+wall mm (nominal): min 1.652, p05 2.070, median 3.373, max 101.639; min off the hole rims 1.652
+closed area 37.7% of active, hollow 48.6% of the surface
+timing s: context_s 0, rescore_s 258, export_s 12, finalise_s 482
+peak: GPU 28.01 GiB, host 5.14 GiB; export alone GPU 1.84 GiB, host 5.14 GiB

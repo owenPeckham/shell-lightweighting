@@ -1,0 +1,37 @@
+{
+ "name": "Beam_20x30x130",
+ "step_file": "Beam_20x30x130.step",
+ "output_dir": "/projects/b6bl/owenpeckham.b6bl/home_data/shell-lightweighting/runs_cshell/LW_DEMO",
+ "supports": [
+  {
+   "type": "plane",
+   "normal": [
+    -1,
+    0,
+    0
+   ],
+   "extreme": true
+  }
+ ],
+ "loads": [
+  {
+   "faces": {
+    "type": "plane",
+    "normal": [
+     1,
+     0,
+     0
+    ],
+    "extreme": true
+   },
+   "force_N": [
+    0,
+    0,
+    -500.0
+   ]
+  }
+ ],
+ "mounts": {
+  "auto_analytic": false
+ }
+}

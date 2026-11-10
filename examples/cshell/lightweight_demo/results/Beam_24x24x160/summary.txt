@@ -1,0 +1,20 @@
+cshell summary: Beam_24x24x160
+
+DECISION: accepted
+  cshell design accepted: mass saving 49.5% (V/V0 0.5046); K/K0 1.0698 / 1.0680, P/P0 1.0200 / 1.0263 (optimisation / shifted grid) ≥ 1, export mass-matched and watertight
+
+mass target 48.361 g, final 48.363 g (V/V_target - 1 +2.73e-05, delta +0.0143 mm)
+
+objective: lightweight (J = the run's objective; ln K/K0 separate)
+grid                  J   lnK/K0    K/K0    P/P0    lamB   sigPN  governing  feasible
+optimisation    +0.4954  +0.0675   1.070   1.020   0.499   0.980  strength   True
+shifted         +0.4954  +0.0658   1.068   1.026   0.500   0.974  strength   True
+lightweight: J = mass saving 1 - V/V0 (V/V0 0.5046); accepted iff K/K0 ≥ 1 and P/P0 ≥ 1 on both grids (optimiser margins [1.02, 1.02])
+solid 95.846 g -> final 48.363 g: mass saving 49.5% (export target V_opt/V0 0.5046)
+
+export h 0.2 mm: 1676092 faces, watertight True, material bodies 1, shells 2, enclosed voids 1, escape holes 0
+fins removed by the export 210.50 mm³ (check, expected ≈ 0), void → material 0.00 mm³
+wall mm (nominal): min 2.093, p05 2.112, median 2.912, max 160.002; min off the hole rims 2.093
+closed area 20.9% of active, hollow 65.2% of the surface
+timing s: context_s 0, rescore_s 1362, export_s 16, finalise_s 2685
+peak: GPU 23.18 GiB, host 4.55 GiB; export alone GPU 1.69 GiB, host 4.55 GiB
