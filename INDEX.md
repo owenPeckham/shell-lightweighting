@@ -7,7 +7,7 @@ stronger. Three optimisers, from simplest to most general:
 | --- | --- | --- | --- | --- |
 | **ushell** (uniform shell) | `ushell/` (Fusion 360 add-in) | one wall thickness | `README.md` (install) | `ushell/logs/` (example log) |
 | **dshell** (discrete regions; was `vshell`) | `dshell/` | which regions are hollow + their wall | `dshell/README.md` | `examples/dshell/runs/<part>/` |
-| **cshell** (continuous) | `cshell/` | per-vertex wall thickness and offset fields | `cshell/README.md`, `docs/cshell/` | `examples/cshell/runs/<part>/`; escape holes + floors 1.00: `examples/cshell/runs_escape_floor1/<part>/` |
+| **cshell** (continuous) | `cshell/` | per-vertex wall thickness and offset fields | `cshell/README.md`, `docs/cshell/` | `examples/cshell/runs/<part>/`; escape holes + floors 1.00: `examples/cshell/runs_escape_floor1/<part>/`; lightweighting study: [`docs/cshell/reports/lightweight_study.html`](docs/cshell/reports/lightweight_study.html) |
 
 Renamed 2026-10-31: `vshell` → `dshell`, `continuous/` → `docs/cshell/`, `shell_lightweighting/` → `ushell/`,
 `examples/step/` → `examples/parts/`, `examples/runs/` → `examples/dshell/runs/`. Older documents keep the old
@@ -50,6 +50,11 @@ names in their text.
   the exported design; results and known issues in `docs/cshell/STATUS.md` §5 (Stage 2 comparison:
   `docs/cshell/VALIDATION.md` V6).
 
+- **cshell lightweighting study** ([`docs/cshell/reports/lightweight_study.html`](docs/cshell/reports/lightweight_study.html), self-contained HTML): `objective.type = "lightweight"`,
+  mass savings 2.4–14.9 % on the three parts and 30–50 % on stocky demo parts. The code, the
+  `examples/cshell/runs_lightweight/` results and the demos are on draft PR #4 (branch `worktree-cshell-lightweight`)
+  and reach main when it is merged.
+
 ## How to run
 
 - **ushell**: install in Fusion 360 (see `README.md`), run from Utilities → Add-Ins.
@@ -79,6 +84,7 @@ names in their text.
 | `OPEN_QUESTIONS.md` | Questions and decisions |
 | `PROMPT_*.md`, `README.md` | Session prompts and the hand-over pack description |
 | `plans/` | Agreed plans per work package (`PLAN_*.md`, incl. this restructure) |
+| `reports/` | Self-contained HTML study reports: [`lightweight_study.html`](reports/lightweight_study.html) (cshell as a lightweighter: min mass s.t. K/K0, P/P0 ≥ 1; code on draft PR #4, branch `worktree-cshell-lightweight`) |
 | `research/` | Studies behind the decisions (scripts, job logs, `REPORT.md` per study) |
 | `reference/` | Owen's FE stack used by cshell (`analysis.py`, `gpu_analysis.py`), `baseline_optimiser.py`, manuscript `main.pdf`, exports of the vshell theory doc and the feasibility study |
 | `environment.yml` | cshell conda environment (aarch64) |
